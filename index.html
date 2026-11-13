@@ -206,7 +206,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     </div>
 
     <div class="slots" id="slots"></div>
-    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、火力合計 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです(初期スキルと同じスキルも付けられません)。傑カードには追加スキル・極限スキルを付けられません。傑カードは無尽のルールの対象外で、初期スキルはそのまま発動します。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×(人数、部隊内の同じスキルの数、部隊内のXスキルの数のうち、スキルごとに決めたもの)で求めます。Xスキルは通常枠にしか付けられません。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
+    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×素攻バフ(全武将の素攻バフの増える分を足したもの。本人のみのバフは本人だけ)、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、火力合計 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです(初期スキルと同じスキルも付けられません)。傑カードには追加スキル・極限スキルを付けられません。傑カードは無尽のルールの対象外で、初期スキルはそのまま発動します。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×(人数、部隊内の同じスキルの数、部隊内のXスキルの数のうち、スキルごとに決めたもの)で求めます。Xスキルは通常枠にしか付けられません。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
   </section>
 
   <section id="view-master" class="view" hidden>
@@ -418,9 +418,11 @@ function spCount(name){const id=findId(M.skills,d=>d.name===name);if(!id||!form)
 function calc(){
   const sl=form.slots.map((s,i)=>({...s,...slotEff(i)}));
   const rei=spCount(SP.rei),hi=spCount(SP.hi),drop=dupDropped(),dv=(sel,i,k)=>drop.has(i+':'+k)?0:skillVal(sel,i);
-  /* 素攻バフ:部隊長の素攻バフは部隊全員に。「本人のみ」の素攻バフは本人だけに(両方かかるときは増える分を足す) */
-  const lb=sl[0].raw?.selfStat?1:N(sl[0].t?.statBuff)||1;
-  const sbOf=s=>s.raw?.selfStat&&s.t?lb+(N(s.t.statBuff)||1)-1:lb;
+  /* 素攻バフ:どの枠の武将の素攻バフも部隊全員に。「本人のみ」の素攻バフは本人だけに。
+     いくつもかかるときは増える分を足す(1 + Σ(バフ−1))。部隊長限定の武将は部隊長の枠でだけ効く */
+  const up=s=>s.t?(N(s.t.statBuff)||1)-1:0;
+  const lb=1+sl.reduce((a,s)=>a+(s.raw?.selfStat?0:up(s)),0);
+  const sbOf=s=>lb+(s.raw?.selfStat?up(s):0);
   let base=0,skill=0;
   const rows=sl.map((s,i)=>{
     if(!s.c||!s.t)return null;
@@ -696,7 +698,7 @@ function renderEditor(){
     ${coefByOf(d)==='same'&&!(!ini&&isMimic(d))?`<div class="field"><div class="checks"><label><input type="checkbox" id="f-coefMaxTr"${toFlag(d.coefMaxTr)?' checked':''}>係数は部隊内武将のTRの最大値を参照</label></div></div>`:''}
     ${ini?`<div class="field"><span class="label">特殊効果にチェックを入れてください(チェックした効果の値をTR表で入力)</span><div class="checks">${EFFS.map(([k])=>`<label><input type="checkbox" data-eff="${k}"${effsOf(d)[k]?' checked':''}>${effLabel(d,k)}</label>`+(k==='stat'&&effsOf(d).stat?`<label><input type="checkbox" data-eff2="self"${effsOf(d).self?' checked':''}>${effLabel(d,'stat')}は本人のみ</label>`:'')).join('')}<label><input type="checkbox" data-eff2="leader"${effsOf(d).leader?' checked':''}>部隊長限定</label></div></div>`
       :`<div class="field"><span class="label">特殊効果にチェックを入れてください(チェックした効果の値をTR表で入力)</span><div class="checks"><label><input type="checkbox" data-eff="dup"${dupOn(d)?' checked':''}>重複上限</label></div></div>`}
-    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。${coefMax(d)?'係数は、部隊内でこのスキルを持つ武将のうち、いちばん高いTRの係数を使います。':''}Xスキルは通常枠にしか付けられません。${ini?`素${sw(d)}バフ〜総${sw(d)}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0)。${effsOf(d).stat?(effsOf(d).self?`素${sw(d)}バフは本人だけにかかります。`:`素${sw(d)}バフは、部隊長のとき部隊全員にかかります。`):''}${effsOf(d).leader?'部隊長限定:部隊長の枠にいるときだけ、この初期スキルの効果が出ます。':''}`:''}${ini&&effsOf(d).total&&tbByOf(d)==='muzin'?`総${sw(d)}バフ = 総${sw(d)}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${sw(d)}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`:''}${!ini&&isMimic(d)?`模倣スキルの値 = 素スキル上昇率 + 模倣倍率 × ${mimicOf(d)==='self'?'自分':'部隊長'}の初期スキルのスキル上昇率(部隊の中で計算した値)。特殊効果は模倣しません。極限枠でも ×1.2 はかけません。${mimicOf(d)==='leader'?'部隊長に付けたときは効果なし。':''}`:''}${skillSide(d)==='防御'?'防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。':''}</p>`+trTable(!ini&&isMimic(d)?[['tr','TR'],['base','素スキル上昇率'],['mimicRate','模倣倍率'],...(dupOn(d)?[['dupMax','重複上限']]:[])]:!ini?[...SKILL_TR,...(dupOn(d)?[['dupMax','重複上限']]:[])]:ini?[...SKILL_TR,...initCols(d),...(effsOf(d).total&&tbByOf(d)==='muzin'?[['tbCoef',`総${sw(d)}バフ係数(%)`]]:[])]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
+    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。${coefMax(d)?'係数は、部隊内でこのスキルを持つ武将のうち、いちばん高いTRの係数を使います。':''}Xスキルは通常枠にしか付けられません。${ini?`素${sw(d)}バフ〜総${sw(d)}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0)。${effsOf(d).stat?(effsOf(d).self?`素${sw(d)}バフは本人だけにかかります。`:`素${sw(d)}バフは、部隊のどこにいても部隊全員にかかります。`):''}${effsOf(d).leader?'部隊長限定:部隊長の枠にいるときだけ、この初期スキルの効果が出ます。':''}`:''}${ini&&effsOf(d).total&&tbByOf(d)==='muzin'?`総${sw(d)}バフ = 総${sw(d)}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${sw(d)}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`:''}${!ini&&isMimic(d)?`模倣スキルの値 = 素スキル上昇率 + 模倣倍率 × ${mimicOf(d)==='self'?'自分':'部隊長'}の初期スキルのスキル上昇率(部隊の中で計算した値)。特殊効果は模倣しません。極限枠でも ×1.2 はかけません。${mimicOf(d)==='leader'?'部隊長に付けたときは効果なし。':''}`:''}${skillSide(d)==='防御'?'防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。':''}</p>`+trTable(!ini&&isMimic(d)?[['tr','TR'],['base','素スキル上昇率'],['mimicRate','模倣倍率'],...(dupOn(d)?[['dupMax','重複上限']]:[])]:!ini?[...SKILL_TR,...(dupOn(d)?[['dupMax','重複上限']]:[])]:ini?[...SKILL_TR,...initCols(d),...(effsOf(d).total&&tbByOf(d)==='muzin'?[['tbCoef',`総${sw(d)}バフ係数(%)`]]:[])]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
   }else if(coll==='jbuffs'){
     const sold=[...M.soldiers].sort(bySoldierOrder),tg=d.targets||[],unknown=tg.filter(t=>!sold.some(([,x])=>x.name===t));
     body=`<div class="grid">${JBUFF_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div>
