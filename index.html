@@ -473,7 +473,7 @@ function renderCalc(){
     <h3><span>${SLOT_NAMES[i]}</span></h3>
     <div class="field"><label class="label" for="card-${i}">武将</label><div class="pair">
       ${comboBox(i,'card',M.cards.get(s.card)?.name||'','武将名・カードNoで検索')}
-      <select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card?'':' disabled'}>${trOpts(cardV(M.cards.get(s.card)),s.tr)}</select></div>${s.card?`<span class="note" id="cardmeta-${i}">${esc(M.cards.get(s.card)?.rarity||'')} No.${esc(M.cards.get(s.card)?.no)} ・ コスト${fmt(N(M.cards.get(s.card)?.cost),1)}${initNameOf(s.card)?` ・ 初期:${esc(initNameOf(s.card))}`:''}</span>`:''}
+      <select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card?'':' disabled'}>${trOpts(cardV(M.cards.get(s.card)),s.tr)}</select></div>${s.card?`<span class="note" id="cardmeta-${i}">${esc(M.cards.get(s.card)?.rarity||'')} No.${esc(M.cards.get(s.card)?.no)}${initNameOf(s.card)?` ・ 初期:${esc(initNameOf(s.card))}`:''}</span>`:''}
       <div class="alloc"><span class="label">ステ振り</span><div class="seg" role="group" aria-label="ステ振り">
         <button type="button" data-alloc="atk" data-i="${i}" aria-pressed="${s.alloc!=='hei'}">攻撃</button><button type="button" data-alloc="hei" data-i="${i}" aria-pressed="${s.alloc==='hei'}">兵法</button></div></div></div>
     <div class="field"><label class="label" for="soldier-${i}">兵種</label><select id="soldier-${i}" data-i="${i}" data-k="soldier">${soldierOpts(s.soldier)}</select></div>
