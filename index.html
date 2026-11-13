@@ -477,7 +477,7 @@ function renderMaster(){
   let html='';
   if(mtab==='cards'){
     html=`<thead><tr><th class="l">カード名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>上昇率</th><th>攻撃(素攻)</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th><th>無尽</th></tr></thead><tbody>`+
-      (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip${d.side==='攻撃'?' atk':''}">${esc(d.side||'')}</span></td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${fmt(cardAtk(d))}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(N(last.initSkill))}</td><td class="num">${fmt(N(last.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(13))+'</tbody>';
+      (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip${String(d.side||'').includes('攻撃')?' atk':''}">${esc(d.side||'')}</span></td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${fmt(cardAtk(d))}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(N(last.initSkill))}</td><td class="num">${fmt(N(last.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(13))+'</tbody>';
   }else if(mtab==='skills'){
     const maxTr=Math.max(5,...list.flatMap(([,d])=>trsOf(d).map(t=>N(t.tr))));const trs=[...Array(maxTr+1).keys()];
     html=`<thead><tr><th class="l">スキル名</th><th>無尽</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
@@ -512,7 +512,7 @@ function renderEditor(){
   const {coll,id,data:d}=draft;
   const inp=(f,label,type)=>type==='rarity'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${(RARITIES.includes(d[f])||!d[f]?RARITIES:[...RARITIES,d[f]]).map(v=>`<option${d[f]===v?' selected':''}>${esc(v)}</option>`).join('')}</select></div>`
     :type==='flag'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}" data-flag="1">${(FLAG_LABELS[f]||['0','1']).map((l,v)=>`<option value="${v}"${toFlag(d[f])===v?' selected':''}>${l}</option>`).join('')}</select></div>`
-    :type==='side'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${['攻撃','防御'].map(v=>`<option${d[f]===v?' selected':''}>${v}</option>`).join('')}</select></div>`
+    :type==='side'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${['攻撃','防御','攻撃・防御'].map(v=>`<option${d[f]===v?' selected':''}>${v}</option>`).join('')}</select></div>`
     :`<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="${type}" ${type==='number'?'step="any"':''} value="${esc(d[f]??'')}"></div>`;
   let body='';
   if(coll==='cards'){
