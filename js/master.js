@@ -256,7 +256,11 @@ function fieldHtml(d, f, label, type) {
       .join('');
     return `<div class="field">${lab}<select id="f-${f}" data-f="${f}"${type === 'flag' ? ' data-flag="1"' : ''}>${opts}</select></div>`;
   }
-  const warn = f === 'no' ? '<span class="msg err" id="f-no-warn" aria-live="polite"></span>' : '';
+  /* 重複の警告を出す欄(カードNo、スキル・兵種の名前) */
+  const warn =
+    f === 'no' || (f === 'name' && NAME_UNIQUE.includes(draft?.coll))
+      ? `<span class="msg err" id="f-${f}-warn" aria-live="polite"></span>`
+      : '';
   return `<div class="field">${lab}<input id="f-${f}" data-f="${f}" type="${type}" ${type === 'number' ? 'step="any"' : ''} value="${esc(d[f] ?? '')}">${warn}</div>`;
 }
 const checkbox = (attrs, checked, label) =>
@@ -587,8 +591,26 @@ function checkNo() {
   const hit = dupNo(draft.coll, el.value, draft.id);
   w.textContent = hit ? `カードNo ${el.value.trim()} は既に登録済みです(${hit.name})` : '';
 }
+/* スキル・兵種は名前で重複を確かめる(前後の空白は無視) */
+const NAME_UNIQUE = ['skills', 'soldiers'];
+function dupName(coll, name, selfId) {
+  const n = String(name ?? '').trim();
+  if (!n) return null;
+  const id = findId(M[coll], x => String(x.name ?? '').trim() === n);
+  return id && id !== selfId ? M[coll].get(id) : null;
+}
+function checkName() {
+  const w = $('f-name-warn'),
+    el = $('f-name');
+  if (!w || !el || !draft) return;
+  const hit = dupName(draft.coll, el.value, draft.id);
+  w.textContent = hit
+    ? `「${el.value.trim()}」は既に登録済みです${draft.coll === 'skills' ? `(${isInitSkill(hit) ? '初期スキル' : 'スキル'})` : ''}`
+    : '';
+}
 $('editor').addEventListener('focusout', e => {
   if (e.target.id === 'f-no') checkNo();
+  if (e.target.id === 'f-name') checkName();
 });
 function validate(coll, d) {
   if (!String(d.name || '').trim()) return '名前を入力してください';
@@ -600,8 +622,7 @@ function validate(coll, d) {
     if (d.no === '' || !Number.isFinite(Number(d.no))) return 'カードNoを入力してください';
     if (dupNo(coll, d.no, draft.id)) return `カードNo ${d.no} はすでに登録されています`;
   } else {
-    const dup = findId(M[coll], x => x.name === d.name);
-    if (dup && dup !== draft.id) return '同じ名前がすでに登録されています';
+    if (dupName(coll, d.name, draft.id)) return '同じ名前がすでに登録されています';
   }
   if (d.trs) {
     if (!d.trs.length) return 'TRを1行以上入力してください';

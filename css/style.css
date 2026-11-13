@@ -817,3 +817,6 @@ tbody tr.editable:hover {
 #f-no-warn:empty {
   display: none;
 }
+#f-name-warn:empty {
+  display: none;
+}
