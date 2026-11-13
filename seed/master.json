@@ -1,0 +1,427 @@
+{
+ "cards": {
+  "n10052": {
+   "baseStat": 2500,
+   "cost": 5,
+   "growth": 170,
+   "hime": 0,
+   "name": "緋村剣心",
+   "no": 10052,
+   "rarity": "天",
+   "side": "攻撃",
+   "troops": 7740,
+   "trs": [
+    {
+     "initSkill": 700,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 2.5,
+     "totalBuff": 1,
+     "tr": 0
+    },
+    {
+     "initSkill": 850,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 2.5,
+     "totalBuff": 1,
+     "tr": 1
+    },
+    {
+     "initSkill": 850,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 2.6,
+     "totalBuff": 1,
+     "tr": 2
+    },
+    {
+     "initSkill": 1090,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 2.7,
+     "totalBuff": 1,
+     "tr": 3
+    },
+    {
+     "initSkill": 1450,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 2.8,
+     "totalBuff": 1,
+     "tr": 4
+    },
+    {
+     "initSkill": 1450,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 3,
+     "totalBuff": 1,
+     "tr": 5
+    }
+   ]
+  },
+  "n10053": {
+   "baseStat": 2550,
+   "cost": 5.5,
+   "growth": 170,
+   "hime": 0,
+   "name": "志々雄真実",
+   "no": 10053,
+   "rarity": "天",
+   "side": "攻撃",
+   "troops": 7980,
+   "trs": [
+    {
+     "initSkill": 770,
+     "mulLimit": 2,
+     "mulNormal": 2,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 0
+    },
+    {
+     "initSkill": 1030,
+     "mulLimit": 2,
+     "mulNormal": 2,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 1
+    },
+    {
+     "initSkill": 1410,
+     "mulLimit": 2,
+     "mulNormal": 2,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 2
+    },
+    {
+     "initSkill": 1929,
+     "mulLimit": 2,
+     "mulNormal": 2,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 3
+    },
+    {
+     "initSkill": 2830,
+     "mulLimit": 2,
+     "mulNormal": 2,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 4
+    },
+    {
+     "initSkill": 4400,
+     "mulLimit": 2,
+     "mulNormal": 2,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 5
+    }
+   ]
+  },
+  "n10066": {
+   "baseStat": 2580,
+   "cost": 5.5,
+   "growth": 170,
+   "hime": 0,
+   "name": "斎藤一",
+   "no": 10066,
+   "rarity": "天",
+   "side": "攻撃",
+   "troops": 8000,
+   "trs": [
+    {
+     "initSkill": 500,
+     "mulLimit": 1,
+     "mulNormal": 2.5,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 0
+    },
+    {
+     "initSkill": 540,
+     "mulLimit": 1,
+     "mulNormal": 2.6,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 1
+    },
+    {
+     "initSkill": 600,
+     "mulLimit": 1,
+     "mulNormal": 2.7,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 2
+    },
+    {
+     "initSkill": 670,
+     "mulLimit": 1,
+     "mulNormal": 2.8,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 3
+    },
+    {
+     "initSkill": 750,
+     "mulLimit": 1,
+     "mulNormal": 2.9,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 4
+    },
+    {
+     "initSkill": 840,
+     "mulLimit": 1,
+     "mulNormal": 3,
+     "statBuff": 1,
+     "totalBuff": 1,
+     "tr": 5
+    }
+   ]
+  },
+  "n1286": {
+   "baseStat": 1320,
+   "cost": 6,
+   "growth": 83,
+   "hime": 0,
+   "name": "織田信長",
+   "no": 1286,
+   "rarity": "天",
+   "side": "攻撃",
+   "troops": 9230,
+   "trs": [
+    {
+     "initSkill": 0,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 1,
+     "totalBuff": 1.3,
+     "tr": 0
+    },
+    {
+     "initSkill": 0,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 1,
+     "totalBuff": 1.31,
+     "tr": 1
+    },
+    {
+     "initSkill": 0,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 1,
+     "totalBuff": 1.33,
+     "tr": 2
+    },
+    {
+     "initSkill": 0,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 1,
+     "totalBuff": 1.35,
+     "tr": 3
+    },
+    {
+     "initSkill": 0,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 1,
+     "totalBuff": 1.37,
+     "tr": 4
+    },
+    {
+     "initSkill": 0,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 1,
+     "totalBuff": 1.4,
+     "tr": 5
+    }
+   ]
+  },
+  "n31286": {
+   "baseStat": 1320,
+   "cost": 6,
+   "growth": 83,
+   "hime": 0,
+   "name": "織田信長",
+   "no": 31286,
+   "rarity": "パラレル天",
+   "side": "攻撃",
+   "troops": 9230,
+   "trs": [
+    {
+     "initSkill": 0,
+     "mulLimit": 1,
+     "mulNormal": 1,
+     "statBuff": 1,
+     "totalBuff": 1.5,
+     "tr": 6
+    }
+   ]
+  }
+ },
+ "skills": {
+  "s000": {
+   "name": "天地超克",
+   "trs": [
+    {
+     "base": 0,
+     "coef": 9.6,
+     "tr": 0
+    },
+    {
+     "base": 0,
+     "coef": 10,
+     "tr": 1
+    },
+    {
+     "base": 0,
+     "coef": 10.5,
+     "tr": 2
+    },
+    {
+     "base": 0,
+     "coef": 11.2,
+     "tr": 3
+    },
+    {
+     "base": 0,
+     "coef": 12.2,
+     "tr": 4
+    },
+    {
+     "base": 0,
+     "coef": 13.5,
+     "tr": 5
+    }
+   ]
+  },
+  "s001": {
+   "name": "万物神勇",
+   "trs": [
+    {
+     "base": 0,
+     "coef": 9.2,
+     "tr": 0
+    },
+    {
+     "base": 0,
+     "coef": 9.3,
+     "tr": 1
+    },
+    {
+     "base": 0,
+     "coef": 9.6,
+     "tr": 2
+    },
+    {
+     "base": 0,
+     "coef": 10.2,
+     "tr": 3
+    },
+    {
+     "base": 0,
+     "coef": 11,
+     "tr": 4
+    },
+    {
+     "base": 0,
+     "coef": 12,
+     "tr": 5
+    }
+   ]
+  },
+  "s002": {
+   "name": "勇冠三軍",
+   "trs": [
+    {
+     "base": 50,
+     "coef": 10.2,
+     "tr": 0
+    },
+    {
+     "base": 50,
+     "coef": 10.8,
+     "tr": 1
+    },
+    {
+     "base": 50,
+     "coef": 11.5,
+     "tr": 2
+    },
+    {
+     "base": 50,
+     "coef": 12.4,
+     "tr": 3
+    },
+    {
+     "base": 50,
+     "coef": 13.5,
+     "tr": 4
+    },
+    {
+     "base": 50,
+     "coef": 15,
+     "tr": 5
+    }
+   ]
+  }
+ },
+ "soldiers": {
+  "o000": {
+   "atk": 0,
+   "name": "なし"
+  },
+  "o001": {
+   "atk": 31,
+   "name": "炮烙"
+  },
+  "o002": {
+   "atk": 33,
+   "name": "足鉄"
+  },
+  "o003": {
+   "atk": 32,
+   "name": "騎鉄"
+  },
+  "o004": {
+   "atk": 32,
+   "name": "雑賀"
+  },
+  "o005": {
+   "atk": 40,
+   "name": "炮烙＋７"
+  },
+  "o006": {
+   "atk": 43,
+   "name": "炮烙＋10"
+  },
+  "o007": {
+   "atk": 38,
+   "name": "騎鉄＋6"
+  },
+  "o008": {
+   "atk": 39,
+   "name": "騎鉄＋7"
+  },
+  "o009": {
+   "atk": 42,
+   "name": "騎鉄＋10"
+  },
+  "o010": {
+   "atk": 27,
+   "name": "弓騎馬"
+  }
+ },
+ "config": {
+  "main": {
+   "people": 280
+  }
+ }
+}

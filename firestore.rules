@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// IXA 部隊計算のセキュリティルール
+// ・マスタ(武将・スキル・兵種・設定)は誰でも読める
+// ・書き込めるのは admins コレクションに登録されたユーザーだけ
+// ・admins は本人が自分の登録を確認できるだけで、サイトからは書き込めない(Firebase コンソールで登録する)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /master/v2/{collection}/{docId} {
+      allow read: if collection in ['cards', 'skills', 'soldiers', 'config'];
+      allow write: if isAdmin() && collection in ['cards', 'skills', 'soldiers', 'config'];
+    }
+
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}
