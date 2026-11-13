@@ -186,9 +186,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
         <div><span class="label">素攻合計</span><b class="num" id="r-base">—</b></div>
         <div><span class="label">スキル総合計</span><b class="num" id="r-skill">—</b></div>
         <div><span class="label">総攻バフ(全枠+火焔)</span><b class="num" id="r-buff">—</b></div>
-        <div><span class="label">部隊長の素攻バフ</span><b class="num" id="r-lbuff">—</b></div>
         <div><span class="label">黎天列光 / 火焔武闘</span><b class="num" id="r-special">—</b></div>
-        <div><span class="label">無尽(部隊長No.1274)</span><b id="r-muzin" class="muzin">—</b></div>
       </div>
     </div>
 
@@ -314,9 +312,9 @@ function updateResults(){
   if(!form)return;const r=calc();
   $('r-total').textContent=fmt(r.total);$('r-total-jp').textContent=jp(r.total);
   $('r-base').textContent=fmt(r.base,1);$('r-skill').textContent=fmt(r.skill,1);
-  $('r-buff').textContent=fmt(r.buff,2);$('r-lbuff').textContent=fmt(r.lb,2);$('r-special').textContent=r.rei+' / '+r.hi;$('r-muzin').textContent=r.muzin?'有効':'—';$('r-muzin').classList.toggle('on',r.muzin);
+  $('r-buff').textContent=fmt(r.buff,2);$('r-special').textContent=r.rei+' / '+r.hi;
   r.rows.forEach((x,i)=>{const el=$('calc-'+i);if(!el)return;
-    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}</span>${x.void?`<span class="voidnote">無尽なし:総攻・素攻バフと倍枠は等倍</span>`:''}`:'<span>武将とTRを選んでください</span><span></span>'});
+    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
   form.slots.forEach((_,i)=>['s1','s2','lim'].forEach(k=>{const el=$(`eff-${k}-${i}`);if(el)el.innerHTML=skillEffect(i,k)}));
   if(M.cards.size&&M.skills.size&&M.soldiers.size)store.set('ixa-form-v2',toKeys(form));
 }
