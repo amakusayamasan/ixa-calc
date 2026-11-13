@@ -198,7 +198,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     </div>
 
     <div class="slots" id="slots"></div>
-    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
+    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。傑カードには追加スキル・極限スキルを付けられません。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
   </section>
 
   <section id="view-master" class="view" hidden>
@@ -388,7 +388,8 @@ $('slots').addEventListener('keydown',e=>{const c=comboOf(e.target);if(!c)return
 $('slots').addEventListener('mousedown',e=>{const li=e.target.closest('li[data-pick]');if(!li)return;e.preventDefault();
   if(li.classList.contains('off'))return;const box=li.closest('.combo');pick(+box.dataset.i,box.dataset.c,li.dataset.pick)});
 $('slots').addEventListener('focusout',e=>{const c=comboOf(e.target);if(c&&combo&&combo.i===c.i&&combo.k===c.k)closeCombo(true)});
-const comboBox=(i,k,value,ph)=>`<div class="combo${k==='soldier'?' solo':''}" data-i="${i}" data-c="${k}"><input id="${inputId(i,k)}" class="combo-in" data-i="${i}" data-c="${k}" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId(i,k)}" autocomplete="off" placeholder="${ph}" value="${esc(value)}">
+const isJCard=id=>M.cards.get(id)?.rarity==='傑';
+const comboBox=(i,k,value,ph,off)=>`<div class="combo${k==='soldier'?' solo':''}" data-i="${i}" data-c="${k}"><input id="${inputId(i,k)}" class="combo-in" data-i="${i}" data-c="${k}"${off?' disabled':''} type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId(i,k)}" autocomplete="off" placeholder="${ph}" value="${esc(value)}">
   <ul id="${listId(i,k)}" class="combo-list" role="listbox" aria-label="${KIND[k]}の候補" hidden></ul></div>`;
 function soldierOpts(sel){return '<option value="">— 兵種 —</option>'+[...M.soldiers].sort(bySoldierOrder).map(([id,d])=>`<option value="${esc(id)}"${id===sel?' selected':''}>${esc(d.name)}(攻${fmt(N(d.atk))})</option>`).join('')}
 function trOpts(d,sel){const t=trsOf(d);if(!t.length)return'<option value="">—</option>';return t.map(x=>`<option value="${N(x.tr)}"${N(x.tr)===N(sel)?' selected':''}>TR${N(x.tr)}</option>`).join('')}
@@ -400,10 +401,12 @@ function renderCalc(){
   $('jin').value=form.jin;
   if(!form.jb)form.jb=[];renderJb();
   {const seen=new Set();for(const s of form.slots){const n=M.cards.get(s.card)?.name;if(!n)continue;if(seen.has(n))s.card='';else seen.add(n)}}
+  /* 傑カードは通常枠・極限枠にスキルを付けられない */
+  for(const s of form.slots)if(isJCard(s.card))for(const k of SKILL_KEYS)s[k]={id:'',tr:0};
   for(const s of form.slots){const used=new Set();for(const k of SKILL_KEYS){const id=s[k].id;if(!id)continue;if(used.has(id))s[k].id='';else used.add(id)}}
-  const skillRow=(i,k,label,s)=>`<div class="field"><label class="label" for="${k}-${i}">${label}</label><div class="pair">
-    ${comboBox(i,k,M.skills.get(s.id)?.name||'','なし')}
-    <select id="${k}tr-${i}" data-i="${i}" data-k="${k}tr" aria-label="${label}のTR"${s.id?'':' disabled'}>${trOpts(M.skills.get(s.id),s.tr)}</select></div><p class="eff" id="eff-${k}-${i}" aria-live="polite"></p></div>`;
+  const skillRow=(i,k,label,s,off)=>`<div class="field"><label class="label" for="${k}-${i}">${label}</label><div class="pair">
+    ${comboBox(i,k,M.skills.get(s.id)?.name||'',off?'傑は付与不可':'なし',off)}
+    <select id="${k}tr-${i}" data-i="${i}" data-k="${k}tr" aria-label="${label}のTR"${s.id&&!off?'':' disabled'}>${trOpts(M.skills.get(s.id),s.tr)}</select></div><p class="eff" id="eff-${k}-${i}" aria-live="polite"></p></div>`;
   box.innerHTML=form.slots.map((s,i)=>`<div class="slot${i===0?' leader':''}">
     <h3><span>${SLOT_NAMES[i]}</span></h3>
     <div class="field"><label class="label" for="card-${i}">武将</label><div class="pair">
@@ -412,7 +415,7 @@ function renderCalc(){
       <div class="alloc"><span class="label">ステ振り</span><div class="seg" role="group" aria-label="ステ振り">
         <button type="button" data-alloc="atk" data-i="${i}" aria-pressed="${s.alloc!=='hei'}">攻撃</button><button type="button" data-alloc="hei" data-i="${i}" aria-pressed="${s.alloc==='hei'}">兵法</button></div></div></div>
     <div class="field"><label class="label" for="soldier-${i}">兵種</label><select id="soldier-${i}" data-i="${i}" data-k="soldier">${soldierOpts(s.soldier)}</select></div>
-    ${skillRow(i,'s1','追加スキル',s.s1)}${skillRow(i,'s2','追加スキル2',s.s2)}${skillRow(i,'lim','極限スキル',s.lim)}
+    ${skillRow(i,'s1','追加スキル',s.s1,isJCard(s.card))}${skillRow(i,'s2','追加スキル2',s.s2,isJCard(s.card))}${skillRow(i,'lim','極限スキル',s.lim,isJCard(s.card))}
     <div class="calc" id="calc-${i}"></div></div>`).join('');
   updateResults();
 }
