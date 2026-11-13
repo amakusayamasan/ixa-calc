@@ -434,7 +434,7 @@ $('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.clos
 /* ---------- マスタ一覧 ---------- */
 /* flag は 0/1 の選択。姫:0=姫ではない 1=姫。無尽は数値(0=なし、1以上=あり) */
 const FLAG_LABELS={hime:['姫ではない','姫']};
-const RARITIES=['覇・パラレル天','パラレル天','覇・天','天','極'];
+const RARITIES=['覇・パラレル天','パラレル天','覇・天','天','極','傑'];
 const toFlag=v=>{if(v==null)return 0;const t=String(v).trim();if(t===''||t==='0'||/^(false|no|なし|いいえ|×|✕|-|—)$/i.test(t))return 0;return 1};
 const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','rarity'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力・素防御力','number'],['growth','攻撃・防御上昇率','number'],['hime','姫','flag'],['muzin','無尽(0:なし、1以上:あり)','number']];
 const CARD_TR=[['tr','TR'],['initSkill','初期スキル'],['statBuff','素攻・防バフ'],['mulNormal','倍枠通常'],['mulLimit','倍枠極限'],['totalBuff','総攻・防バフ']];
