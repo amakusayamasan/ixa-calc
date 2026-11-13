@@ -278,7 +278,9 @@ const skillSide=d=>SIDES.includes(d?.side)?d.side:'攻撃';
 const forAtk=d=>skillSide(d)!=='防御';
 const sw=d=>({'攻撃':'攻','防御':'防','攻撃・防御':'攻・防'})[skillSide(d)];
 /* 攻防に合わせた初期スキル列の名前(素攻バフ/素防バフ/素攻・防バフ など) */
-const initCols=d=>SKILL_INIT.map(([f,l])=>[f,f==='statBuff'?`素${sw(d)}バフ`:f==='totalBuff'?`総${sw(d)}バフ`:l]);
+const initCols=d=>[...SKILL_INIT.map(([f,l])=>[f,f==='statBuff'?`素${sw(d)}バフ`:f==='totalBuff'?`総${sw(d)}バフ`:l]),TROOP_ADD];
+/* 兵数加算:この初期スキルを持つ武将がいると、同じ部隊の他の武将の兵数に足す */
+const TROOP_ADD=['troopAdd','兵数加算'];
 const skillValue=(t,n)=>N(t.base)+N(t.coef)*(n==null?N(config.people):n);
 /* 部隊の編成から n を数える。人数のときは null(=設定の人数) */
 function coefN(d,id){const by=coefByOf(d);if(by==='people'||!form)return null;
@@ -305,6 +307,7 @@ function cardTrs(c){if(!c)return[];const sk=skillByName(c.initName),st=sk?trsOf(
   if(st.length)return st.map(e=>{const old=trEntry(c,e.tr),o={tr:N(e.tr),initSkill:N(old?.initSkill)};
     for(const [f] of SKILL_INIT)o[f]=hasV(e[f])?N(e[f]):old&&hasV(old[f])?N(old[f]):1;
     /* 防御スキルの素防バフ・総防バフは攻撃部隊では使わない(倍枠は共通) */
+    if(hasV(e.troopAdd))o.troopAdd=N(e.troopAdd);
     if(!forAtk(sk.d)){o.statBuff=1;o.totalBuff=1}else if(tbByOf(sk.d)==='muzin')o.tbCoef=N(e.tbCoef);return o});
   const t=trsOf(c);return t.length?t:[{...CARD_DEFAULT_TR}]}
 const cardV=c=>c&&{...c,trs:cardTrs(c)};
@@ -339,12 +342,14 @@ function calc(){
   const rows=sl.map((s,i)=>{
     if(!s.c||!s.t)return null;
     /* 黎天列光:1つにつき部隊の全武将の兵数 +2000(部隊で2つまで) */
-    const troops=N(s.c.troops)+rei*REI_TROOPS,atk=s.alloc==='hei'?N(s.c.baseStat):cardAtk(s.c);
+    /* 他の武将の初期スキルの兵数加算(無尽で初期スキルが無効の武将の分は足さない) */
+    const tadd=sl.reduce((a,o,j)=>j!==i&&o.c&&o.raw&&!muzinVoid(o.c)?a+N(o.raw.troopAdd):a,0);
+    const troops=N(s.c.troops)+rei*REI_TROOPS+tadd,atk=s.alloc==='hei'?N(s.c.baseStat):cardAtk(s.c);
     const sname=M.soldiers.get(s.soldier)?.name,jb=jbBonus(sname),satk=N(M.soldiers.get(s.soldier)?.atk)+jb;
     const b=satk*troops*1.4+atk*1.4*lb;
     const init=initEff(s.c,s.t);
     const sk=init+(skillVal(s.s1)*muzinMul(s.s1,'s1')+skillVal(s.s2)*muzinMul(s.s2,'s2'))*N(s.t.mulNormal)+skillVal(s.lim)*muzinMul(s.lim,'lim')*N(s.t.mulLimit)*1.2;
-    base+=b;skill+=sk;return{troops,atk,satk,jb,b,sk,init,initRaw:initBase(s.c,s.t)};
+    base+=b;skill+=sk;return{tadd,troops,atk,satk,jb,b,sk,init,initRaw:initBase(s.c,s.t)};
   });
   /* 無尽を持つ武将の数(武将の無尽、初期スキル・追加スキル・極限スキルのどれかが無尽なら1人。本人も含む) */
   const mz=x=>N(M.skills.get(x?.id)?.muzin)>0;
@@ -375,7 +380,7 @@ function updateResults(){
   $('r-base').textContent=fmt(r.base,1);$('r-skill').textContent=fmt(r.skill,1);
   $('r-buff').textContent=fmt(r.buff,2);$('r-special').textContent=r.rei+' / '+r.hi;
   r.rows.forEach((x,i)=>{const el=$('calc-'+i);if(!el)return;
-    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw&&x.init!==x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}${x.tbMc!=null?`<span class="plus">(無尽${x.tbMc}人${x.tbMul>1?'・無尽×2':''})</span>`:''}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
+    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}${x.tadd?`<span class="plus">(兵数加算+${fmt(x.tadd)})</span>`:''}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw&&x.init!==x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}${x.tbMc!=null?`<span class="plus">(無尽${x.tbMc}人${x.tbMul>1?'・無尽×2':''})</span>`:''}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
   form.slots.forEach((_,i)=>['s1','s2','lim'].forEach(k=>{const el=$(`eff-${k}-${i}`);if(el)el.innerHTML=skillEffect(i,k)}));
   if(M.cards.size&&M.skills.size&&M.soldiers.size)store.set('ixa-form-v2',toKeys(form));
 }
@@ -599,7 +604,7 @@ function renderEditor(){
   }else if(coll==='skills'){
     const ini=toFlag(d.init)===1;
     body=`<div class="grid">${inp('name','スキル名','text')}${inp('side','攻撃or防御','side')}${inp('noAdd','スキル付与','flag')}${inp('coefBy','係数の掛け方','coef')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${ini?inp('tbBy',`総${sw(d)}バフの掛け方`,'tbby'):''}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
-    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。${ini?`素${sw(d)}バフ〜総${sw(d)}バフは、このスキルを初期スキルに持つ武将に効く値です。`:''}${ini&&tbByOf(d)==='muzin'?`総${sw(d)}バフ = 総${sw(d)}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${sw(d)}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`:''}${skillSide(d)==='防御'?'防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。':''}</p>`+trTable(ini?[...SKILL_TR,...initCols(d),...(tbByOf(d)==='muzin'?[['tbCoef',`総${sw(d)}バフ係数(%)`]]:[])]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
+    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。${ini?`素${sw(d)}バフ〜総${sw(d)}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0)。`:''}${ini&&tbByOf(d)==='muzin'?`総${sw(d)}バフ = 総${sw(d)}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${sw(d)}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`:''}${skillSide(d)==='防御'?'防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。':''}</p>`+trTable(ini?[...SKILL_TR,...initCols(d),...(tbByOf(d)==='muzin'?[['tbCoef',`総${sw(d)}バフ係数(%)`]]:[])]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
   }else if(coll==='jbuffs'){
     const sold=[...M.soldiers].sort(bySoldierOrder),tg=d.targets||[],unknown=tg.filter(t=>!sold.some(([,x])=>x.name===t));
     body=`<div class="grid">${JBUFF_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div>
@@ -656,7 +661,7 @@ function validate(coll,d){
 function clean(coll,d){
   if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='flag'?toFlag(d[f]):t==='number'?N(d[f]):String(d[f]??'').trim();if(N(d.muzin)>0)o.muzin=N(d.muzin);/* 以前の武将マスタの無尽(初期スキルがスキルマスタにない武将だけ使う) */
     if(Array.isArray(d.trs)&&d.trs.length)o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
-  if(coll==='skills')return{init:toFlag(d.init),side:skillSide(d),name:String(d.name).trim(),muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d),trs:trsOf({trs:d.trs.map(t=>{const o=Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])]));if(toFlag(d.init)){for(const [f] of SKILL_INIT)if(t[f]!=null&&t[f]!=='')o[f]=N(t[f]);if(tbByOf(d)==='muzin')o.tbCoef=N(t.tbCoef)}return o})}),...(toFlag(d.init)?{tbBy:tbByOf(d)}:{})};
+  if(coll==='skills')return{init:toFlag(d.init),side:skillSide(d),name:String(d.name).trim(),muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d),trs:trsOf({trs:d.trs.map(t=>{const o=Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])]));if(toFlag(d.init)){for(const [f] of SKILL_INIT)if(t[f]!=null&&t[f]!=='')o[f]=N(t[f]);if(hasV(t.troopAdd))o.troopAdd=N(t.troopAdd);if(tbByOf(d)==='muzin')o.tbCoef=N(t.tbCoef)}return o})}),...(toFlag(d.init)?{tbBy:tbByOf(d)}:{})};
   if(coll==='jbuffs'){const o={};for(const [f,,t] of JBUFF_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();o.targets=[...new Set((d.targets||[]).map(x=>String(x).trim()).filter(Boolean))];return o}
   const o={};for(const [f,,t] of SOLDIER_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();if(d.order!=null)o.order=N(d.order);return o;
 }
@@ -720,6 +725,7 @@ function planFrom(XLSX,wb){
       if(ix('係数の掛け方')>=0&&row[ix('係数の掛け方')]!=null&&String(row[ix('係数の掛け方')]).trim()!==''){const v=String(row[ix('係数の掛け方')]).trim();g.get(n).coefBy=/同/.test(v)||v==='same'?'same':/X|Ｘ/i.test(v)||v==='x'?'x':'people'}const s=g.get(n),tr={tr:N(row[ix('TR')]),base:ix('素スキル上昇率')<0?0:N(row[ix('素スキル上昇率')]),coef:N(row[ix('係数')])};
       {const c=[ix('攻撃or防御'),ix('攻防')].find(x=>x>=0);if(c!=null&&hasV(row[c])){const v=String(row[c]).trim();s.side=/攻/.test(v)&&/防/.test(v)?'攻撃・防御':/防/.test(v)?'防御':'攻撃'}}
       {const c=ix('総攻・防バフの掛け方');if(c>=0&&hasV(row[c]))s.tbBy=/無尽/.test(String(row[c]))?'muzin':'fixed';const k=ix('総攻・防バフ係数');if(k>=0&&hasV(row[k]))tr.tbCoef=N(row[k]);else{const old=M.skills.get(findId(M.skills,d=>d.name===n)||''),oe=old&&trEntry(old,tr.tr);if(oe&&oe.tbCoef!=null)tr.tbCoef=oe.tbCoef}}
+      {const k=ix('兵数加算');if(k>=0&&hasV(row[k]))tr.troopAdd=N(row[k]);else{const old=M.skills.get(findId(M.skills,d=>d.name===n)||''),oe=old&&trEntry(old,tr.tr);if(oe&&oe.troopAdd!=null)tr.troopAdd=oe.troopAdd}}
       for(const [f,l] of SKILL_INIT){const c=ix(l);if(c>=0&&row[c]!=null&&String(row[c]).trim()!=='')tr[f]=N(row[c]);else{const old=M.skills.get(findId(M.skills,d=>d.name===n)||''),oe=old&&trEntry(old,tr.tr);if(oe&&oe[f]!=null)tr[f]=oe[f]}}
       s.trs=s.trs.filter(t=>t.tr!==tr.tr);s.trs.push(tr)}
     for(const [n,s] of g){s.trs=trsOf(s);const id=findId(M.skills,d=>d.name===n);if(s.muzin==null)s.muzin=id?N(M.skills.get(id).muzin):0;if(s.xskill==null)s.xskill=id?toFlag(M.skills.get(id).xskill):0;if(s.noAdd==null)s.noAdd=id?toFlag(M.skills.get(id).noAdd):0;if(s.coefBy==null)s.coefBy=id?coefByOf(M.skills.get(id)):'people';if(s.side==null)s.side=id?skillSide(M.skills.get(id)):'攻撃';if(s.tbBy==null&&id&&M.skills.get(id).tbBy)s.tbBy=tbByOf(M.skills.get(id));s.init=id?(isInitSkill(M.skills.get(id))?1:0):(s.trs.some(t=>SKILL_INIT.some(([f])=>t[f]!=null))?1:0);plan.skills.push({id,data:s})}}
