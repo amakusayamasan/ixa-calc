@@ -124,6 +124,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
 .plus{color:var(--brass);font-weight:700;margin-left:4px}
 .mz{display:inline-block;font-size:11px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;margin-left:4px}
 .muzin.on{color:var(--accent)}
+.voidnote{grid-column:1/-1;font-size:11px;color:var(--danger);text-align:left!important}
 @media (max-width:640px){.jbrow{grid-template-columns:1fr}}
 .checks{display:flex;flex-wrap:wrap;gap:6px}
 .checks label{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;cursor:pointer;background:var(--panel);user-select:none}
@@ -263,6 +264,10 @@ function skillVal(sel){const s=M.skills.get(sel.id);if(!s)return 0;const t=trEnt
 function muzinMul(sel,k){if(!muzinOn())return 1;if(k==='lim')return 2;const s=M.skills.get(sel.id);return s&&N(s.muzin)>0?2:1}
 /* 初期スキルの効果(無尽を反映) */
 function initEff(c,t){const v=N(t?.initSkill);if(!muzinOn())return v;return N(c?.muzin)>0?v*2:0}
+/* 無尽が有効で、初期スキルに無尽がない武将は、初期スキル由来の効果がすべて無効:
+   総攻バフ・素攻バフ・倍枠通常・倍枠極限を1(等倍)として扱う */
+const muzinVoid=c=>muzinOn()&&!!c&&!(N(c.muzin)>0);
+function effT(c,t){if(!t)return t;if(!muzinVoid(c))return t;return{...t,statBuff:1,totalBuff:1,mulNormal:1,mulLimit:1}}
 /* 傑バフ
    ・所属時:その傑カード(カードNoが同じ武将)が部隊長・小隊長のどこかの枠にいれば自動でかかる
    ・外部:傑バフボタンで選んだものがかかる
@@ -274,7 +279,7 @@ const jbHits=(d,sname)=>!(d.targets&&d.targets.length)||(sname&&d.targets.includ
 function jbBonus(sname){if(!sname)return 0;
   return jbInUnit().reduce((a,d)=>a+(jbHits(d,sname)?jv(d,'atkIn'):0),0)+jbOuter().reduce((a,d)=>a+(jbHits(d,sname)?jv(d,'atkOut'):0),0)}
 function calc(){
-  const sl=form.slots.map(s=>{const c=M.cards.get(s.card);return{...s,c,t:trEntry(c,s.tr)}});
+  const sl=form.slots.map(s=>{const c=M.cards.get(s.card),raw=trEntry(c,s.tr);return{...s,c,raw,t:effT(c,raw)}});
   const names=sl.flatMap(s=>[s.s1,s.s2,s.lim]).map(x=>M.skills.get(x.id)?.name).filter(Boolean);
   const rei=Math.min(2,names.filter(n=>n===SP.rei).length),hi=Math.min(2,names.filter(n=>n===SP.hi).length);
   const lb=N(sl[0].t?.statBuff);
@@ -293,14 +298,14 @@ function calc(){
   const buffs=sl.filter(s=>s.t).map(s=>N(s.t.totalBuff)||1);
   const combined=1+buffs.reduce((a,b)=>a+(b-1),0);
   const buff=combined+hi*0.2,jin=N(form.jin);
-  rows.forEach((r,i)=>{if(r)r.tb=N(sl[i].t.totalBuff)||1});
+  rows.forEach((r,i)=>{if(r){r.tb=N(sl[i].t.totalBuff)||1;r.void=muzinVoid(sl[i].c)}});
   return{rows,base,skill,buff,lb,rei,hi,muzin:muzinOn(),total:(base*skill/100+base)*jin*buff};
 }
 /* スキル欄の下に出す効果。スキル上昇率 × 倍枠(極限は×1.2)= この枠で加算される値 */
 const SPECIAL_EFFECT={'黎天列光':'全武将の兵数 +2,000(部隊で2つまで)','火焔武闘':'総攻バフ +0.2(部隊で2つまで)'};
 function skillEffect(i,k){const sel=form.slots[i][k],sk=M.skills.get(sel.id);if(!sk)return'';
   const t=trEntry(sk,sel.tr);if(!t)return'このTRの値が登録されていません';
-  const v=skillValue(t),ct=trEntry(M.cards.get(form.slots[i].card),form.slots[i].tr);
+  const cc=M.cards.get(form.slots[i].card),v=skillValue(t),ct=effT(cc,trEntry(cc,form.slots[i].tr));
   const mz=muzinMul(sel,k),tag=mz>1?' <span class="mz">無尽×2</span>':'',sp=SPECIAL_EFFECT[sk.name]?`<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name])}</span>`:'';
   if(!ct)return`効果 <b>${fmt(v*mz,1)}</b>${tag}${sp}`;
   const mul=k==='lim'?N(ct.mulLimit)*1.2:N(ct.mulNormal);
@@ -311,7 +316,7 @@ function updateResults(){
   $('r-base').textContent=fmt(r.base,1);$('r-skill').textContent=fmt(r.skill,1);
   $('r-buff').textContent=fmt(r.buff,2);$('r-lbuff').textContent=fmt(r.lb,2);$('r-special').textContent=r.rei+' / '+r.hi;$('r-muzin').textContent=r.muzin?'有効':'—';$('r-muzin').classList.toggle('on',r.muzin);
   r.rows.forEach((x,i)=>{const el=$('calc-'+i);if(!el)return;
-    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
+    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}</span>${x.void?`<span class="voidnote">無尽なし:総攻・素攻バフと倍枠は等倍</span>`:''}`:'<span>武将とTRを選んでください</span><span></span>'});
   form.slots.forEach((_,i)=>['s1','s2','lim'].forEach(k=>{const el=$(`eff-${k}-${i}`);if(el)el.innerHTML=skillEffect(i,k)}));
   if(M.cards.size&&M.skills.size&&M.soldiers.size)store.set('ixa-form-v2',toKeys(form));
 }
