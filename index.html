@@ -393,7 +393,8 @@ const SKILL_KEYS=['s1','s2','lim'];
 const initNameOf=id=>String(M.cards.get(id)?.initName??'').trim();
 function skillItems(i,k,q){const words=kana(q).split(/\s+/).filter(Boolean);
   const taken=new Set(SKILL_KEYS.filter(x=>x!==k).map(x=>form.slots[i][x].id).filter(Boolean)),init=initNameOf(form.slots[i].card);
-  return [...M.skills].sort(byName).filter(([,d])=>words.every(w=>kana(d.name).includes(w))).map(([id,d])=>{const xl=k==='lim'&&isX(d),il=!!init&&String(d.name).trim()===init,na=toFlag(d.noAdd)===1;return{id,d,off:taken.has(id)||xl||il||na,why:na?'付与できないスキル':il?'この武将の初期スキル':xl?'Xスキルは極限枠に付けられません':'この武将で使用中'}})}
+  /* 付与できないスキルは候補に出さない */
+  return [...M.skills].sort(byName).filter(([,d])=>toFlag(d.noAdd)!==1).filter(([,d])=>words.every(w=>kana(d.name).includes(w))).map(([id,d])=>{const xl=k==='lim'&&isX(d),il=!!init&&String(d.name).trim()===init,na=toFlag(d.noAdd)===1;return{id,d,off:taken.has(id)||xl||il||na,why:na?'付与できないスキル':il?'この武将の初期スキル':xl?'Xスキルは極限枠に付けられません':'この武将で使用中'}})}
 /* 検索欄は「枠番号 i」と「種類 k(card / s1 / s2 / lim)」で区別する */
 const KIND={card:'武将',soldier:'兵種',s1:'追加スキル',s2:'追加スキル2',lim:'極限スキル'};
 const inputId=(i,k)=>`${k}-${i}`,listId=(i,k)=>`list-${k}-${i}`,trId=(i,k)=>k==='card'?`cardtr-${i}`:k==='soldier'?'':`${k}tr-${i}`;
