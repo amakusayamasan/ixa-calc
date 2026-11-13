@@ -11,15 +11,18 @@
 :root{
   --bg:#eef0ed; --panel:#fbfbf9; --fg:#1c2130; --muted:#5d6574; --line:#d3d7d6;
   --accent:#2c4a86; --accent-weak:#e2e8f4; --brass:#8a6a1f; --danger:#a3352b; --ok:#2f6b47;
+  --side-atk:#c0392b; --side-atk-bg:#fbe9e7; --side-def:#1f5fbf; --side-def-bg:#e6effb; --side-both:#2e7d4f; --side-both-bg:#e5f4ea;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;
   --f-disp:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#14171f; --panel:#1c202b; --fg:#e7e9ee; --muted:#9aa2b1; --line:#2e3442;
-  --accent:#8fa9e6; --accent-weak:#243150; --brass:#d8b45f; --danger:#e58377; --ok:#7cc79a; color-scheme:dark}}
+  --accent:#8fa9e6; --accent-weak:#243150; --brass:#d8b45f; --danger:#e58377; --ok:#7cc79a;
+  --side-atk:#f08a7e; --side-atk-bg:#3a2220; --side-def:#86b3f5; --side-def-bg:#1e2c45; --side-both:#7cd3a0; --side-both-bg:#1d3527; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#14171f; --panel:#1c202b; --fg:#e7e9ee; --muted:#9aa2b1; --line:#2e3442;
-  --accent:#8fa9e6; --accent-weak:#243150; --brass:#d8b45f; --danger:#e58377; --ok:#7cc79a; color-scheme:dark}
+  --accent:#8fa9e6; --accent-weak:#243150; --brass:#d8b45f; --danger:#e58377; --ok:#7cc79a;
+  --side-atk:#f08a7e; --side-atk-bg:#3a2220; --side-def:#86b3f5; --side-def-bg:#1e2c45; --side-both:#7cd3a0; --side-both-bg:#1d3527; color-scheme:dark}
 *,*::before,*::after{box-sizing:border-box}
 html{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 [hidden]{display:none!important}
@@ -100,7 +103,10 @@ th.l,td.l{text-align:left}
 tbody tr.editable{cursor:pointer}
 tbody tr.editable:hover{background:var(--accent-weak)}
 .chip{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted);margin-left:4px}
-.chip.atk{border-color:var(--brass);color:var(--brass)}
+/* 攻撃or防御の印:攻撃=赤、防御=青、攻撃・防御=緑 */
+.chip.side-atk{border-color:var(--side-atk);color:var(--side-atk);background:var(--side-atk-bg)}
+.chip.side-def{border-color:var(--side-def);color:var(--side-def);background:var(--side-def-bg)}
+.chip.side-both{border-color:var(--side-both);color:var(--side-both);background:var(--side-both-bg)}
 .editor{background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px}
 .editor .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .editor .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
@@ -477,7 +483,7 @@ function renderMaster(){
   let html='';
   if(mtab==='cards'){
     html=`<thead><tr><th class="l">カード名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>素防御力</th><th>攻撃上昇率</th><th>防御上昇率</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th><th>無尽</th></tr></thead><tbody>`+
-      (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip${String(d.side||'').includes('攻撃')?' atk':''}">${esc(d.side||'')}</span></td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(N(last.initSkill))}</td><td class="num">${fmt(N(last.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(14))+'</tbody>';
+      (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side==='攻撃・防御'?'side-both':d.side==='防御'?'side-def':d.side==='攻撃'?'side-atk':''}">${esc(d.side||'')}</span></td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(N(last.initSkill))}</td><td class="num">${fmt(N(last.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(14))+'</tbody>';
   }else if(mtab==='skills'){
     const maxTr=Math.max(5,...list.flatMap(([,d])=>trsOf(d).map(t=>N(t.tr))));const trs=[...Array(maxTr+1).keys()];
     html=`<thead><tr><th class="l">スキル名</th><th>無尽</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
