@@ -259,14 +259,13 @@ function planCards(cr, plan, warn) {
         t === 'flag' || t === 'check' ? toFlag(v(f)) : t === 'number' ? N(v(f)) : String(v(f) ?? '').trim();
     g.set(no, c);
   }
-  /* シートに無い列(姫・剣豪など)は、登録済みの値をそのまま残す。初期スキルがスキルマスタにない武将の、以前のTRの値と無尽も残す */
+  /* シートに無い列(姫・剣豪など)は、登録済みの値をそのまま残す */
   const missing = CARD_FIELDS.map(([f]) => f).filter(f => ix(CARD_COLS[f]) < 0);
   for (const [no, c] of g) {
     const id = findId(M.cards, d => String(d.no) === no);
     if (id) {
       const old = M.cards.get(id);
       for (const f of missing) if (old[f] != null) c[f] = old[f];
-      for (const f of ['trs', 'muzin']) if (old[f] !== undefined) c[f] = old[f];
     }
     plan.cards.push({ id, data: c });
   }

@@ -7,8 +7,6 @@ $('mtabs').addEventListener('click', e => {
   mtab = b.dataset.m;
   draft = null;
   importPlan = null;
-  cleaning = null;
-  renderClean();
   [...$('mtabs').children].forEach(x => x.setAttribute('aria-pressed', x === b));
   renderEditor();
   renderImport();

@@ -80,7 +80,7 @@ out.afterImport=[before,await p.evaluate(()=>Math.round(calc().total))];
 // 人数・削除・不要データ
 await p.click('[data-m=skills]');await p.fill('#peopleIn','300');await p.click('#peopleSave');await W(80);out.people=await p.evaluate(()=>config.people);
 await p.click('[data-m=soldiers]');await p.locator('#mtable tbody tr').first().click();await W(40);await p.click('[data-act=delete]');await W(20);await p.click('[data-act=delete]');await W(100);
-out.cleanBtn=await p.$eval('#mclean',e=>e.hidden);
+
 // 保存データ(日時・ID を除く)
 out.store=await p.evaluate(()=>{const st=window.__store,strip=o=>JSON.parse(JSON.stringify(o,(k,v)=>['updatedAt','at','logId'].includes(k)?undefined:v));
   const m={};for(const [k,v] of Object.entries(st)){if(k.startsWith('logs/'))continue;const c=k.split('/')[2];(m[c]=m[c]||[]).push(strip(v))}

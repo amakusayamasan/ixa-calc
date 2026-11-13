@@ -1,5 +1,5 @@
 // 武将と初期スキルのルール(武将のTR、初期スキルの効果、無尽部隊、部隊長限定、傑バフ、保存するときの形)
-// 使うファイル:core.js、legacy.js、fields.js、skills.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、fields.js、skills.js(調べ方:node tests/deps.js)
 /* 初期スキルの効果(無尽を反映) */
 /* 傑カードは無尽のルールの対象外:初期スキルはそのまま発動し、バフや倍枠も無効にならない */
 /* 初期スキルの元の値:初期スキル名がスキルマスタにあれば、武将のTRと同じTRのスキル上昇率。なければ武将マスタのTRごとの値 */
@@ -16,18 +16,19 @@ function initBase(c, t) {
     const e = trEntry(sk.d, t?.tr);
     if (e) return skillValueIn(e, sk.d, sk.id);
   }
-  return N(t?.initSkill);
+  return 0;
 }
 /* 武将のTRごとの値は、初期スキル(スキルマスタ)のTRから作る。
-   初期スキルがスキルマスタにない武将だけ、以前武将マスタに登録したTRの値(なければTR0・バフ1)を使う */
+   チェックしていない特殊効果は1倍。初期スキルがスキルマスタにない武将は、TR0・初期スキル0・バフ1 */
+const CARD_DEFAULT_TR = { tr: 0, statBuff: 1, mulNormal: 1, mulLimit: 1, totalBuff: 1 };
 function cardTrs(c) {
   if (!c) return [];
   const sk = skillByName(c.initName),
     st = sk ? trsOf(sk.d) : [];
   if (st.length)
     return st.map(e => {
-      const o = { tr: N(e.tr), initSkill: legacyInitSkill(c, e.tr) };
-      for (const [f] of SKILL_INIT) o[f] = hasV(e[f]) ? N(e[f]) : legacyCardValue(c, e.tr, f);
+      const o = { tr: N(e.tr) };
+      for (const [f] of SKILL_INIT) o[f] = hasV(e[f]) ? N(e[f]) : 1;
       /* 防御スキルの素防バフ・総防バフは攻撃部隊では使わない(倍枠は共通) */
       if (hasV(e.troopAdd)) o.troopAdd = N(e.troopAdd);
       {
@@ -41,17 +42,17 @@ function cardTrs(c) {
       } else if (tbByOf(sk.d) === 'muzin') o.tbCoef = N(e.tbCoef);
       return o;
     });
-  return legacyCardTrs(c);
+  return [{ ...CARD_DEFAULT_TR }];
 }
 const cardV = c => c && { ...c, trs: cardTrs(c) };
 function cardT(c, tr) {
   return cardTrs(c).find(t => N(t.tr) === N(tr));
 }
-/* 武将が無尽を持つか:初期スキル(スキルマスタ)の無尽で決める。初期スキルがスキルマスタにない武将だけ、以前の武将マスタの無尽を使う */
+/* 武将が無尽を持つか:初期スキル(スキルマスタ)の無尽で決める */
 const cardMuzin = c => {
   if (!c) return 0;
   const sk = skillByName(c.initName);
-  return sk ? N(sk.d.muzin) : legacyCardMuzin(c);
+  return sk ? N(sk.d.muzin) : 0;
 };
 function initEff(c, t) {
   if (t?.loOff) return 0;
@@ -106,15 +107,11 @@ function jbBonus(sname) {
     jbOuter().reduce((a, d) => a + (jbHits(d, sname) ? jv(d, 'atkOut') : 0), 0)
   );
 }
-/* 武将:項目の型をそろえる。初期スキルがスキルマスタにない武将の、以前の無尽とTRの値は残す */
+/* 武将:項目の型をそろえる */
 function normalizeCard(d) {
   const o = {};
   for (const [f, , t] of CARD_FIELDS)
     o[f] =
       t === 'flag' || t === 'check' ? toFlag(d[f]) : t === 'number' ? N(d[f]) : String(d[f] ?? '').trim();
-  if (N(d.muzin) > 0)
-    o.muzin = N(d.muzin); /* 以前の武将マスタの無尽(初期スキルがスキルマスタにない武将だけ使う) */
-  if (Array.isArray(d.trs) && d.trs.length)
-    o.trs = trsOf({ trs: d.trs.map(t => Object.fromEntries(CARD_TR.map(([f]) => [f, N(t[f])]))) });
   return o;
 }

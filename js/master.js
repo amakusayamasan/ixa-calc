@@ -1,5 +1,5 @@
 // マスタ管理画面(一覧・編集パネル・保存)
-// 使うファイル:core.js、legacy.js、fields.js、skills.js、cards.js、admin.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、fields.js、skills.js、cards.js、admin.js(調べ方:node tests/deps.js)
 /* ---------- マスタ一覧の列 ----------
    各列は [見出し, 左寄せか, セルの中身(d)=>HTML, 追加の属性(d)=>文字列] */
 const sideChip = side =>
@@ -82,31 +82,13 @@ const soldierList = q =>
     .filter(([, d]) => !q || String(d.name).includes(q) || String(d.branch || '').includes(q))
     .sort(bySoldierOrder);
 
-/* 古い形式のデータが残っていれば、件数と名前を出す(legacy.js) */
-function legacyNote() {
-  const u = legacyUsage();
-  if (!u.n) return '';
-  const names = [...u.cards, ...u.skills, ...u.jbuffs];
-  return ` ※古い形式のデータが${u.n}件あります(計算には使えています。「不要データを削除」や、初期スキルの登録・保存し直しで今の形式になります):${names.slice(0, 8).join('、')}${names.length > 8 ? ' ほか' : ''}`;
-}
 const PEOPLE_FORMULA = 'スキル上昇率 = 素スキル上昇率 + 係数×人数';
 function renderMaster() {
   $('madd').hidden = !isOwner || mtab === 'skills';
   $('maddSkill').hidden = $('maddInit').hidden = !isOwner || mtab !== 'skills';
   $('mimport').hidden = !isOwner;
-  $('mclean').hidden = !isOwner || !cleanPlan().n;
-  const mzDiff =
-    isOwner && mtab === 'cards'
-      ? [...M.cards.values()]
-          .filter(c => N(c.muzin) > 0 && skillByName(c.initName) && !(cardMuzin(c) > 0))
-          .map(c => `${c.name}(初期スキル「${c.initName}」)`)
-      : [];
   $('mnote').textContent = isOwner
-    ? '行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。' +
-      legacyNote() +
-      (mzDiff.length
-        ? ` ※無尽は初期スキルで判定します。以前武将マスタで無尽ありにしていた次の武将は、初期スキルの無尽が0です。スキルマスタで無尽を入れてください:${mzDiff.join('、')}`
-        : '')
+    ? '行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。'
     : 'マスタの編集は管理者のみです。管理者は右上の「管理者ログイン」からログインしてください。ここでは内容を確認できます。';
   const pp = $('people');
   pp.hidden = mtab !== 'skills';
@@ -660,12 +642,6 @@ $('editor').addEventListener('submit', async e => {
     $('mtabs').querySelector('[data-m=skills]').click();
     openEditor('skills', null, 'init');
     draft.data.name = iname;
-    /* 以前武将マスタに登録したTRの値があれば、それを最初の値にする */
-    const old = legacyInitTrs(data);
-    if (old.length) {
-      delete draft.data.effs;
-      draft.data.trs = old;
-    }
     renderEditor();
     msg(
       `初期スキルを追加してください。(武将「${data.name}」は保存しました。初期スキル「${iname}」がスキルマスタにありません)`,

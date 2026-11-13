@@ -1,5 +1,5 @@
 // マスタの項目の定義(武将・スキル・兵種・傑バフの入力項目、選択肢、並び順)
-// 使うファイル:core.js、legacy.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js(調べ方:node tests/deps.js)
 /* flag は 0/1 の選択。姫:0=姫ではない 1=姫。無尽は数値(0=なし、1以上=あり) */
 const FLAG_LABELS = {
   noMimic: ['模倣できる', '模倣できない'],
@@ -38,8 +38,8 @@ const SKILL_INIT = [
   ['totalBuff', '総攻・防バフ'],
 ];
 /* スキルの種類:0=スキル(通常枠・極限枠に付けるもの)、1=初期スキル(武将が最初から持つもの)。
-   init が未設定の古いデータは legacy.js で推定する */
-const isInitSkill = d => (d.init != null && d.init !== '' ? toFlag(d.init) === 1 : legacyIsInitSkill(d));
+ */
+const isInitSkill = d => toFlag(d.init) === 1;
 const LABEL = { cards: '武将', skills: 'スキル', soldiers: '兵種', jbuffs: '傑バフ' };
 /* 傑バフ:レアリティ「傑」の武将が持つ、兵種の攻撃力・防御力への加算値。カードNoで識別する
    その傑カードが部隊に所属しているときの値(atkIn/defIn)と、外からかかるときの値(atkOut/defOut)を持つ */
@@ -63,7 +63,7 @@ const splitTargets = v => [
 ];
 const targetsLabel = d => (d.targets && d.targets.length ? d.targets.join('、') : '全兵種');
 /* 以前の形(atk/def だけ)で保存されたものは、所属時の値として扱う */
-const jv = (d, f) => N(d[f] ?? legacyJbuffValue(d, f));
+const jv = (d, f) => N(d[f]);
 const byNo = (a, b) => N(a[1].no) - N(b[1].no) || byName(a, b);
 /* 兵種:攻撃力は攻撃部隊、防御力は防御部隊の計算に使う。order は取り込んだシートの行順 */
 const SOLDIER_FIELDS = [
