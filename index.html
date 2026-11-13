@@ -604,7 +604,7 @@ function renderEditor(){
 }
 /* 武将の編集画面のうち、初期スキル名で変わる部分(案内・登録ボタン・TR表) */
 function initAreaHtml(d){const sk=skillByName(d.initName),st=sk?trsOf(sk.d):[],name=String(d.initName??'').trim();
-  const note=!name?'初期スキル名が未入力です。TRと初期スキルの値は、スキルマスタの初期スキルから使います。'
+  const note=!name?'初期スキル名を入力してください(必須)。TRと初期スキルの値は、スキルマスタの初期スキルから使います。'
     :sk&&st.length?`TRと初期スキルの値(初期スキル・素攻・防バフ・倍枠通常・倍枠極限・総攻・防バフ)は、スキルマスタの「${esc(sk.d.name)}」(${trRange(sk.d)})から使います。変えるときはスキルマスタで編集してください。`
     :`「${esc(name)}」はスキルマスタにありません。保存すると、初期スキル追加画面に進みます。`;
   const btn=sk?`<button class="btn small ghost" type="button" data-act="openInit" style="align-self:start">「${esc(sk.d.name)}」をスキルマスタで編集</button>`:'';
@@ -636,7 +636,8 @@ function msg(t,err){const m=$('edmsg');if(m){m.textContent=t;m.className='msg '+
 function validate(coll,d){
   if(!String(d.name||'').trim())return'名前を入力してください';
   if(coll==='cards'){if(d.no===''||!Number.isFinite(Number(d.no)))return'カードNoを入力してください';
-    if(findId(M.cards,x=>String(x.no)===String(d.no))&&findId(M.cards,x=>String(x.no)===String(d.no))!==draft.id)return`カードNo ${d.no} はすでに登録されています`}
+    if(findId(M.cards,x=>String(x.no)===String(d.no))&&findId(M.cards,x=>String(x.no)===String(d.no))!==draft.id)return`カードNo ${d.no} はすでに登録されています`;
+    if(!String(d.initName??'').trim())return'初期スキル名を入力してください'}
   else if(coll==='jbuffs'){if(d.no===''||!Number.isFinite(Number(d.no)))return'カードNoを入力してください';
     const dup=findId(M.jbuffs,x=>String(x.no)===String(d.no));if(dup&&dup!==draft.id)return`カードNo ${d.no} はすでに登録されています`}
   else{const dup=findId(M[coll],x=>x.name===d.name);if(dup&&dup!==draft.id)return'同じ名前がすでに登録されています'}
