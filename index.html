@@ -213,6 +213,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
       <div class="mtools">
         <input id="msearch" class="search" type="search" placeholder="名前で絞り込み">
         <button id="mimport" class="btn ghost" type="button" hidden>Excelから取り込み</button>
+        <button id="mmigrate" class="btn ghost" type="button" hidden>初期スキルをスキルマスタへ移行</button>
         <button id="madd" class="btn" type="button" hidden>新規追加</button>
       </div>
     </div>
@@ -220,6 +221,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     <p class="note" id="mnote"></p>
     <div id="seedbox"></div>
     <div id="importbox"></div>
+    <div id="migratebox"></div>
     <div id="editor"></div>
     <div class="tablewrap"><table id="mtable"></table></div>
   </section>
@@ -502,7 +504,7 @@ const SOLDIER_FIELDS=[['name','兵種名','text'],['branch','兵科','text'],['a
 const bySoldierOrder=(a,b)=>N(a[1].order??9999)-N(b[1].order??9999)||byName(a,b);
 const trRange=d=>{const t=trsOf(d);return t.length?`TR${N(t[0].tr)}〜${N(t[t.length-1].tr)}`:'TRなし'};
 function renderMaster(){
-  $('madd').hidden=!isOwner;$('mimport').hidden=!isOwner;
+  $('madd').hidden=!isOwner;$('mimport').hidden=!isOwner;$('mmigrate').hidden=!isOwner;
   $('mnote').textContent=isOwner?'行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。':'マスタの編集は管理者のみです。管理者は右上の「管理者ログイン」からログインしてください。ここでは内容を確認できます。';
   const pp=$('people');pp.hidden=mtab!=='skills';
   if(mtab==='skills')pp.innerHTML=isOwner?`<label class="label" for="peopleIn">人数(スキル上昇率 = 素スキル上昇率 + 係数×人数)</label><input id="peopleIn" type="number" value="${esc(config.people)}"><button id="peopleSave" class="btn small ghost" type="button">人数を保存</button><span id="peopleMsg" class="msg"></span>`
@@ -697,7 +699,7 @@ function planFrom(XLSX,wb){
     for(const [key,d] of g)plan.jbuffs.push({id:findId(M.jbuffs,x=>String(x.no)===key),data:d});}
   plan.warn=[...new Set(warn)];return plan;
 }
-$('mimport').addEventListener('click',()=>{draft=null;renderEditor();importPlan='pick';renderImport()});
+$('mimport').addEventListener('click',()=>{draft=null;renderEditor();migratePlan=null;renderMigrate();importPlan='pick';renderImport()});
 $('importbox').addEventListener('change',async e=>{if(e.target.id!=='xfile'||!e.target.files[0])return;const m=$('impmsg');m.className='msg';m.textContent='読み込んでいます…';
   try{const XLSX=await loadXLSX();const wb=XLSX.read(await e.target.files[0].arrayBuffer(),{type:'array'});importPlan=planFrom(XLSX,wb);renderImport()}
   catch(err){m.className='msg err';m.textContent='読み込めませんでした:'+err.message}});
@@ -713,10 +715,57 @@ $('importbox').addEventListener('click',async e=>{const b=e.target.closest('[dat
     importPlan=null;renderImport();status(`Excelから ${done} 件を取り込みました。`);setTimeout(()=>status(''),5000);
   }catch(err){m.className='msg err';m.textContent=`${done}件まで取り込んだところで止まりました(${err.code||err.message})。もう一度「取り込む」を押すと続きから上書きします。`;b.disabled=false}});
 
+/* ---------- 武将マスタの初期スキルの値を、スキルマスタへまとめて移す ---------- */
+/* ・スキルマスタにないスキル:新規登録(素スキル上昇率=武将の初期スキル、係数0、素攻・防バフ〜総攻・防バフ=武将の値)
+   ・スキルマスタにあるスキル:空欄の項目だけ武将の値で埋める(入っている値は変えない)。スキル側にないTRは追加する
+   ・同じ初期スキル名の武将が複数あり値が違うときは、カードNoの小さい武将の値を使い、確認画面に表示する */
+const MIG_FIELDS=[['base','初期スキル','initSkill'],...SKILL_INIT.map(([f,l])=>[f,l,f])];
+const hasV=v=>v!=null&&String(v).trim()!=='';
+let migratePlan=null;
+function planMigrate(){
+  const groups=new Map();
+  for(const [id,c] of M.cards){const n=String(c.initName??'').trim();if(!n)continue;if(!groups.has(n))groups.set(n,[]);groups.get(n).push(c)}
+  const plan={create:[],update:[],same:0,warn:[]};
+  for(const [name,cs] of groups){cs.sort((a,b)=>N(a.no)-N(b.no));
+    /* TRごとに、武将の値をまとめる */
+    const byTr=new Map();
+    for(const c of cs)for(const t of (c.trs||[])){const k=N(t.tr);if(!byTr.has(k))byTr.set(k,{});const o=byTr.get(k);
+      for(const [sf,l,cf] of MIG_FIELDS){if(!hasV(t[cf]))continue;const v=N(t[cf]);
+        if(o[sf]==null)o[sf]={v,from:c};else if(o[sf].v!==v)plan.warn.push(`「${name}」TR${k}の${l}:${o[sf].from.name}(No.${o[sf].from.no})=${fmt(o[sf].v,2)} と ${c.name}(No.${c.no})=${fmt(v,2)} が違います。${o[sf].from.name}の値を使います`)}}
+    const sid=findId(M.skills,d=>String(d.name).trim()===name);
+    if(!sid){const trs=[...byTr].sort((a,b)=>a[0]-b[0]).map(([tr,o])=>{const e={tr,base:o.base?o.base.v:0,coef:0};for(const [f] of SKILL_INIT)if(o[f])e[f]=o[f].v;return e});
+      plan.create.push({name,cards:cs,data:{name,muzin:0,xskill:0,coefBy:'people',noAdd:0,trs}});continue}
+    const old=M.skills.get(sid),trs=(old.trs||[]).map(t=>({...t}));let filled=0,added=0;
+    for(const [tr,o] of byTr){let e=trs.find(t=>N(t.tr)===tr);
+      if(!e){e={tr,base:o.base?o.base.v:0,coef:0};for(const [f] of SKILL_INIT)if(o[f])e[f]=o[f].v;trs.push(e);added++;continue}
+      for(const [f] of SKILL_INIT)if(!hasV(e[f])&&o[f]){e[f]=o[f].v;filled++}}
+    if(!filled&&!added){plan.same++;continue}
+    plan.update.push({id:sid,name,cards:cs,filled,added,data:{...old,trs:trsOf({trs})}});
+  }
+  return plan}
+function renderMigrate(){const box=$('migratebox');if(!migratePlan){box.innerHTML='';return}const p=migratePlan;
+  const li=(x,t)=>`<li>${esc(x.name)}<span class="note">(${x.cards.map(c=>esc(c.name)).join('、')})${t?' '+t:''}</span></li>`;
+  box.innerHTML=`<div class="import"><strong>初期スキルをスキルマスタへ移行</strong>
+    <p class="note">武将マスタの「初期スキル名」が入っている武将の、TR表の初期スキル・素攻・防バフ・倍枠通常・倍枠極限・総攻・防バフをスキルマスタに登録します。すでにスキルマスタにある値は変えず、空欄だけを埋めます。武将マスタの値はそのまま残ります。</p>
+    <ul><li>新規登録:${p.create.length}件</li>${p.create.map(x=>li(x)).join('')}
+    <li>空欄を埋める:${p.update.length}件</li>${p.update.map(x=>li(x,[x.filled?`${x.filled}項目`:'',x.added?`TR${x.added}行追加`:''].filter(Boolean).join('・'))).join('')}
+    <li>移行済み(変更なし):${p.same}件</li>
+    ${p.warn.map(w=>`<li style="color:var(--danger)">${esc(w)}</li>`).join('')}</ul>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${p.create.length+p.update.length?'<button class="btn" type="button" data-mig="run">移行する</button>':''}<button class="btn ghost" type="button" data-mig="cancel">${p.create.length+p.update.length?'やめる':'閉じる'}</button></div><p class="msg" id="migmsg"></p></div>`}
+$('mmigrate').addEventListener('click',()=>{draft=null;renderEditor();importPlan=null;renderImport();migratePlan=planMigrate();renderMigrate()});
+$('migratebox').addEventListener('click',async e=>{const b=e.target.closest('[data-mig]');if(!b)return;
+  if(b.dataset.mig==='cancel'){migratePlan=null;renderMigrate();return}
+  const p=migratePlan,m=$('migmsg');b.disabled=true;m.className='msg';m.textContent='移行しています…';
+  try{const batch=db.batch();
+    for(const x of p.create)batch.set(db.doc(`${BASE}/skills/${newId('s')}`),x.data);
+    for(const x of p.update)batch.set(db.doc(`${BASE}/skills/${x.id}`),x.data);
+    await batch.commit();const n=p.create.length+p.update.length;migratePlan=null;renderMigrate();status(`初期スキル ${n} 件をスキルマスタに移行しました(新規 ${p.create.length}・更新 ${p.update.length})。`);setTimeout(()=>status(''),6000)}
+  catch(err){b.disabled=false;m.className='msg err';m.textContent='移行できませんでした('+(err.code||err.message)+')'}});
+
 /* ---------- 画面切替・起動 ---------- */
-$('mtabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mtab=b.dataset.m;draft=null;importPlan=null;[...$('mtabs').children].forEach(x=>x.setAttribute('aria-pressed',x===b));renderEditor();renderImport();renderMaster()});
+$('mtabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mtab=b.dataset.m;draft=null;importPlan=null;migratePlan=null;renderMigrate();[...$('mtabs').children].forEach(x=>x.setAttribute('aria-pressed',x===b));renderEditor();renderImport();renderMaster()});
 $('msearch').addEventListener('input',renderMaster);
-$('madd').addEventListener('click',()=>{importPlan=null;renderImport();openEditor(mtab,null)});
+$('madd').addEventListener('click',()=>{importPlan=null;renderImport();migratePlan=null;renderMigrate();openEditor(mtab,null)});
 $('mtable').addEventListener('click',e=>{const tr=e.target.closest('tr[data-id]');if(!tr||!isOwner)return;importPlan=null;renderImport();openEditor(mtab,tr.dataset.id)});
 $('people').addEventListener('click',async e=>{if(e.target.id!=='peopleSave')return;const v=Number($('peopleIn').value),m=$('peopleMsg');
   if(!Number.isFinite(v)||v<=0){m.className='msg err';m.textContent='人数は正の数で入力してください';return}
