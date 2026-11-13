@@ -145,7 +145,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
 <body>
 <div class="wrap">
   <header>
-    <h1>IXA 部隊計算<small>攻撃部隊・素火力</small></h1>
+    <h1>IXA 部隊計算</h1>
     <div class="auth">
       <span id="role" class="role">閲覧のみ</span>
       <span id="userName" class="note"></span>
@@ -377,7 +377,7 @@ function renderCalc(){
     ${comboBox(i,k,M.skills.get(s.id)?.name||'','なし')}
     <select id="${k}tr-${i}" data-i="${i}" data-k="${k}tr" aria-label="${label}のTR"${s.id?'':' disabled'}>${trOpts(M.skills.get(s.id),s.tr)}</select></div><p class="eff" id="eff-${k}-${i}" aria-live="polite"></p></div>`;
   box.innerHTML=form.slots.map((s,i)=>`<div class="slot${i===0?' leader':''}">
-    <h3><span>${SLOT_NAMES[i]}</span><em class="label">${i===0?'素攻バフ・兵数補正を参照':''}</em></h3>
+    <h3><span>${SLOT_NAMES[i]}</span></h3>
     <div class="field"><label class="label" for="card-${i}">武将</label><div class="pair">
       ${comboBox(i,'card',M.cards.get(s.card)?.name||'','武将名・カードNoで検索')}
       <select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card?'':' disabled'}>${trOpts(M.cards.get(s.card),s.tr)}</select></div>${s.card?`<span class="note" id="cardmeta-${i}">${esc(M.cards.get(s.card)?.rarity||'')} No.${esc(M.cards.get(s.card)?.no)} ・ コスト${fmt(N(M.cards.get(s.card)?.cost),1)}</span>`:''}</div>
