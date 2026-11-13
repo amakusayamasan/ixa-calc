@@ -434,8 +434,9 @@ $('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.clos
 /* ---------- マスタ一覧 ---------- */
 /* flag は 0/1 の選択。姫:0=姫ではない 1=姫。無尽は数値(0=なし、1以上=あり) */
 const FLAG_LABELS={hime:['姫ではない','姫']};
+const RARITIES=['覇・パラレル天','パラレル天','覇・天','天','極'];
 const toFlag=v=>{if(v==null)return 0;const t=String(v).trim();if(t===''||t==='0'||/^(false|no|なし|いいえ|×|✕|-|—)$/i.test(t))return 0;return 1};
-const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','text'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力・素防御力','number'],['growth','攻撃・防御上昇率','number'],['hime','姫','flag'],['muzin','無尽(0:なし、1以上:あり)','number']];
+const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','rarity'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力・素防御力','number'],['growth','攻撃・防御上昇率','number'],['hime','姫','flag'],['muzin','無尽(0:なし、1以上:あり)','number']];
 const CARD_TR=[['tr','TR'],['initSkill','初期スキル'],['statBuff','素攻・防バフ'],['mulNormal','倍枠通常'],['mulLimit','倍枠極限'],['totalBuff','総攻・防バフ']];
 const SKILL_TR=[['tr','TR'],['base','素スキル上昇率'],['coef','係数']];
 const LABEL={cards:'武将',skills:'スキル',soldiers:'兵種',jbuffs:'傑バフ'};
@@ -498,7 +499,8 @@ function syncDraft(){if(!draft)return;const d=draft.data;
 function renderEditor(){
   const box=$('editor');if(!draft||!isOwner){box.innerHTML='';return}
   const {coll,id,data:d}=draft;
-  const inp=(f,label,type)=>type==='flag'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}" data-flag="1">${(FLAG_LABELS[f]||['0','1']).map((l,v)=>`<option value="${v}"${toFlag(d[f])===v?' selected':''}>${l}</option>`).join('')}</select></div>`
+  const inp=(f,label,type)=>type==='rarity'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${(RARITIES.includes(d[f])||!d[f]?RARITIES:[...RARITIES,d[f]]).map(v=>`<option${d[f]===v?' selected':''}>${esc(v)}</option>`).join('')}</select></div>`
+    :type==='flag'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}" data-flag="1">${(FLAG_LABELS[f]||['0','1']).map((l,v)=>`<option value="${v}"${toFlag(d[f])===v?' selected':''}>${l}</option>`).join('')}</select></div>`
     :type==='side'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${['攻撃','防御'].map(v=>`<option${d[f]===v?' selected':''}>${v}</option>`).join('')}</select></div>`
     :`<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="${type}" ${type==='number'?'step="any"':''} value="${esc(d[f]??'')}"></div>`;
   let body='';
@@ -581,6 +583,7 @@ function planFrom(XLSX,wb){
       tr:'TR',initSkill:'初期スキル',statBuff:'素攻・防バフ',mulNormal:'倍枠通常',mulLimit:'倍枠極限',totalBuff:'総攻・防バフ'};
     const g=new Map();
     for(const row of cr.slice(1)){const v=k=>ix(col[k])<0?null:row[ix(col[k])];if(v('no')==null||v('name')==null)continue;
+      if(v('rarity')!=null&&String(v('rarity')).trim()!==''&&!RARITIES.includes(String(v('rarity')).trim()))warn.push(`カードNo ${String(v('no')).trim()} のレアリティ「${String(v('rarity')).trim()}」は選択肢にありません(そのまま登録します)`);
       const no=String(v('no')).trim();if(!g.has(no)){const c={};for(const [f,,t] of CARD_FIELDS)c[f]=t==='flag'?toFlag(v(f)):t==='number'?N(v(f)):String(v(f)??'').trim();c.trs=[];g.set(no,c)}
       const c=g.get(no);const tr={};for(const [f] of CARD_TR)tr[f]=N(v(f));
       if(c.trs.some(t=>t.tr===tr.tr))warn.push(`カードNo ${no} のTR${tr.tr}が2行あります(後の行を使います)`),c.trs=c.trs.filter(t=>t.tr!==tr.tr);
