@@ -109,6 +109,11 @@ tbody tr.editable:hover{background:var(--accent-weak)}
 .trtable input{width:96px;padding:4px 6px}
 .trtable input.tr{width:60px}
 .computed{color:var(--brass);font-weight:700}
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.checks label{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;cursor:pointer;background:var(--panel);user-select:none}
+.checks label:hover{border-color:var(--accent)}
+.checks label:has(input:checked){border-color:var(--accent);background:var(--accent-weak);color:var(--accent);font-weight:700}
+.checks input{width:auto;margin:0;padding:0;accent-color:var(--accent)}
 .msg{font-size:13px;margin:0}
 .msg.err{color:var(--danger)} .msg.ok{color:var(--ok)}
 .import{background:var(--panel);border:1px dashed var(--accent);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
