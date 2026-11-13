@@ -122,9 +122,16 @@ function renderClean() {
   const p = cleaning;
   box.innerHTML = `<div class="import"><strong>不要データの削除</strong>
     <p class="note">画面に出なくなった古いデータを消します。計算結果は変わりません。</p><ul>
-    <li>武将:${p.cards.length}枚(以前のTRごとの値・無尽)</li><li>スキル:${p.skills.length}件(種類・攻撃or防御を保存、使わない初期スキル用の値)</li><li>傑バフ:${p.jbuffs.length}件(古い攻撃力・防御力)</li>
-    ${p.keep.length ? `<li>初期スキルがスキルマスタにないため残す武将:${p.keep.map(esc).join('、')}</li>` : ''}</ul>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-cl="run">削除する</button><button class="btn ghost" type="button" data-cl="cancel">やめる</button></div><p class="msg" id="clmsg"></p></div>`;
+    ${[
+      `武将:${p.cards.length}枚(以前のTRごとの値・無尽)`,
+      `スキル:${p.skills.length}件(種類・攻撃or防御を保存、使わない初期スキル用の値)`,
+      `傑バフ:${p.jbuffs.length}件(古い攻撃力・防御力)`,
+      p.keep.length && `初期スキルがスキルマスタにないため残す武将:${p.keep.map(esc).join('、')}`,
+    ]
+      .filter(Boolean)
+      .map(t => `<li>${t}</li>`)
+      .join('')}</ul>
+    ${buttonRow(button('削除する', 'data-cl="run"'), button('やめる', 'data-cl="cancel"', 'btn ghost'))}<p class="msg" id="clmsg"></p></div>`;
 }
 $('mclean').addEventListener('click', () => {
   draft = null;

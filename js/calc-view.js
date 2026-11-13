@@ -414,21 +414,28 @@ function renderJb() {
   const list = [...M.jbuffs].filter(([, d]) => jbHasOuter(d)).sort(byNo),
     sel = new Set(jbOuter().map(d => String(d.no))),
     innNos = new Set(inn.map(d => String(d.no)));
-  panel.innerHTML = `<div class="jbhead"><strong>外部からかける傑バフを選ぶ</strong><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small ghost" type="button" data-jb-act="all"${list.length && list.some(([, d]) => !sel.has(String(d.no))) ? '' : ' disabled'}>傑バフすべてOn</button><button class="btn small ghost" type="button" data-jb-act="clear"${sel.size ? '' : ' disabled'}>傑バフすべてOff</button><button class="btn small" type="button" data-jb-act="close">閉じる</button></div></div>
-    <p class="note">チェックした傑バフの「外部」の攻撃力が、対象兵種の兵士攻撃力に足されます。その傑カードが部隊長・小隊長の枠にいる場合は「所属時」の攻撃力が自動で足され、外部にもチェックがあれば両方を合計します。防御力は防御部隊の計算で使います。</p>
-    <div class="jblist">${
-      list.length
-        ? list
-            .map(([id, d]) => {
-              const no = String(d.no),
-                on = sel.has(no),
-                inU = innNos.has(no);
-              return `<div class="jbrow${on || inU ? ' on' : ''}"><label><input type="checkbox" data-jb="${esc(no)}"${on ? ' checked' : ''}><span><b>${esc(d.name)}</b><br><span class="meta">No.${esc(no)} ・ 対象:${esc(targetsLabel(d))}</span></span></label>
-      <div class="jbvals"><span class="${on ? 'jbon' : ''}">外部 攻+${fmt(jv(d, 'atkOut'), 2)}</span><span class="${inU ? 'jbon' : ''}">${inU ? '部隊に所属中:' : ''}所属時 攻+${fmt(jv(d, 'atkIn'), 2)}</span></div></div>`;
-            })
-            .join('')
-        : '<p class="note">外部攻撃力が登録された傑バフがありません。マスタ管理の「傑バフ」タブで、外部攻撃力を登録してください。</p>'
-    }</div>`;
+  const anyOff = list.length && list.some(([, d]) => !sel.has(String(d.no)));
+  const head = `<div class="jbhead"><strong>外部からかける傑バフを選ぶ</strong>${buttonRow(
+    button('傑バフすべてOn', `data-jb-act="all"${anyOff ? '' : ' disabled'}`, 'btn small ghost'),
+    button('傑バフすべてOff', `data-jb-act="clear"${sel.size ? '' : ' disabled'}`, 'btn small ghost'),
+    button('閉じる', 'data-jb-act="close"', 'btn small'),
+  )}</div>`;
+  const rows = list.length
+    ? list.map(([, d]) => jbRowHtml(d, sel.has(String(d.no)), innNos.has(String(d.no)))).join('')
+    : '<p class="note">外部攻撃力が登録された傑バフがありません。マスタ管理の「傑バフ」タブで、外部攻撃力を登録してください。</p>';
+  panel.innerHTML = `${head}
+    <p class="note">${JB_NOTE}</p>
+    <div class="jblist">${rows}</div>`;
+}
+const JB_NOTE =
+  'チェックした傑バフの「外部」の攻撃力が、対象兵種の兵士攻撃力に足されます。その傑カードが部隊長・小隊長の枠にいる場合は「所属時」の攻撃力が自動で足され、外部にもチェックがあれば両方を合計します。防御力は防御部隊の計算で使います。';
+/* 傑バフの選択パネルの1行。on=外部にチェックあり、inU=部隊に所属中 */
+function jbRowHtml(d, on, inU) {
+  const no = String(d.no);
+  const label = `<label><input type="checkbox" data-jb="${esc(no)}"${on ? ' checked' : ''}><span><b>${esc(d.name)}</b><br><span class="meta">No.${esc(no)} ・ 対象:${esc(targetsLabel(d))}</span></span></label>`;
+  const vals = `<div class="jbvals"><span class="${on ? 'jbon' : ''}">外部 攻+${fmt(jv(d, 'atkOut'), 2)}</span><span class="${inU ? 'jbon' : ''}">${inU ? '部隊に所属中:' : ''}所属時 攻+${fmt(jv(d, 'atkIn'), 2)}</span></div>`;
+  return `<div class="jbrow${on || inU ? ' on' : ''}">${label}
+      ${vals}</div>`;
 }
 $('jbBtn').addEventListener('click', () => {
   const p = $('jbpanel');

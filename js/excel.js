@@ -25,9 +25,13 @@ function renderImport() {
   if (importPlan === 'pick') {
     box.innerHTML = `<div class="import"><strong>Excelから取り込み</strong>
     <p class="note">「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」シートを読み込みます(列はフォーマットのとおり)(あるシートだけで構いません)。武将と傑バフはカードNo、スキルはスキル名、兵種は兵種名が同じものを上書きし、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small ghost" type="button" data-imp="fmt">フォーマットをダウンロード(空)</button><button class="btn small ghost" type="button" data-imp="dump">今のマスタをダウンロード</button></div>
+    ${buttonRow(
+      button('フォーマットをダウンロード(空)', 'data-imp="fmt"', 'btn small ghost'),
+      button('今のマスタをダウンロード', 'data-imp="dump"', 'btn small ghost'),
+    )}
     <p class="note">「今のマスタ」は、登録済みのデータが入った取り込み用のExcelです。直してそのまま取り込めます。</p>
-    <input id="xfile" type="file" accept=".xlsx,.xlsm,.xls"><div style="display:flex;gap:8px"><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;
+    <input id="xfile" type="file" accept=".xlsx,.xlsm,.xls">
+    <div style="display:flex;gap:8px">${button('やめる', 'data-imp="cancel"', 'btn ghost')}</div><p class="msg" id="impmsg"></p></div>`;
     return;
   }
   const p = importPlan;
@@ -37,7 +41,7 @@ function renderImport() {
     <li>兵種:${p.soldiers.length}件 うち新規 ${p.soldiers.filter(c => !c.id).length}件</li>
     <li>傑バフ:${p.jbuffs.length}件 うち新規 ${p.jbuffs.filter(c => !c.id).length}件</li>
     ${p.people != null ? `<li>人数:${p.people}</li>` : ''}${p.warn.map(w => `<li style="color:var(--danger)">${esc(w)}</li>`).join('')}</ul>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-imp="run">取り込む</button><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;
+    ${buttonRow(button('取り込む', 'data-imp="run"'), button('やめる', 'data-imp="cancel"', 'btn ghost'))}<p class="msg" id="impmsg"></p></div>`;
 }
 /* 取り込み用のExcelを作る(列名は取り込みと同じ)。withData=false なら見出しだけ */
 const X_CARD = [

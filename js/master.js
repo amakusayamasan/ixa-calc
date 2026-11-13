@@ -391,7 +391,7 @@ function renderEditor() {
     soldiers: soldierEditorBody,
   }[coll](d);
   box.innerHTML = `<form class="editor" id="edform" novalidate><strong>${editorTitle(coll, id, d)}</strong>${body}
-    <div class="actions"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">保存</button><button class="btn ghost" type="button" data-act="close">閉じる</button></div>
+    <div class="actions">${buttonRow('<button class="btn" type="submit">保存</button>', button('閉じる', 'data-act="close"', 'btn ghost'))}
     ${id ? '<button class="btn danger" type="button" data-act="delete">削除</button>' : ''}</div><p class="msg" id="edmsg"></p></form>`;
 }
 /* 武将の編集画面のうち、初期スキル名で変わる部分(案内・登録ボタン・TR表) */

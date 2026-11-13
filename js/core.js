@@ -102,3 +102,9 @@ const allLoaded = () => loaded.cards && loaded.skills && loaded.soldiers;
 const trsOf = d => [...(d?.trs || [])].sort((a, b) => N(a.tr) - N(b.tr));
 const trEntry = (d, tr) => (d?.trs || []).find(t => N(t.tr) === N(tr));
 const cardAtk = c => N(c.baseStat) + N(c.growth) * STAT_FACTOR;
+/* ---------- HTML の小さな部品 ---------- */
+/* ボタン1つ。attrs は data-* などの属性(なければ空) */
+const button = (label, attrs = '', cls = 'btn') =>
+  `<button class="${cls}" type="button"${attrs ? ' ' + attrs : ''}>${label}</button>`;
+/* 横に並べるボタンの列 */
+const buttonRow = (...btns) => `<div style="display:flex;gap:8px;flex-wrap:wrap">${btns.join('')}</div>`;
