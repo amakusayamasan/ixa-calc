@@ -368,7 +368,7 @@ const SKILL_TR=[['tr','TR'],['base','素スキル上昇率'],['coef','係数']];
 const LABEL={cards:'武将',skills:'スキル',soldiers:'兵種'};
 const trRange=d=>{const t=trsOf(d);return t.length?`TR${N(t[0].tr)}〜${N(t[t.length-1].tr)}`:'TRなし'};
 function renderMaster(){
-  $('madd').hidden=!isOwner;$('mimport').hidden=!isOwner||mtab==='soldiers';
+  $('madd').hidden=!isOwner;$('mimport').hidden=!isOwner;
   $('mnote').textContent=isOwner?'行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。':'マスタの編集は管理者のみです。管理者は右上の「管理者ログイン」からログインしてください。ここでは内容を確認できます。';
   const pp=$('people');pp.hidden=mtab!=='skills';
   if(mtab==='skills')pp.innerHTML=isOwner?`<label class="label" for="peopleIn">人数(スキル上昇率 = 素スキル上昇率 + 係数×人数)</label><input id="peopleIn" type="number" value="${esc(config.people)}"><button id="peopleSave" class="btn small ghost" type="button">人数を保存</button><span id="peopleMsg" class="msg"></span>`
@@ -456,20 +456,21 @@ function loadXLSX(){return xlsxPromise||(xlsxPromise=new Promise((ok,ng)=>{const
 function renderImport(){
   const box=$('importbox');if(!importPlan){box.innerHTML='';return}
   if(importPlan==='pick'){box.innerHTML=`<div class="import"><strong>Excelから取り込み</strong>
-    <p class="note">「武将データ」「スキルデータ」シートを読み込みます。武将はカードNo、スキルはスキル名が同じものを上書きし、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
+    <p class="note">「武将データ」「スキルデータ」「兵種データ」シートを読み込みます(あるシートだけで構いません)。武将はカードNo、スキルはスキル名、兵種は兵種名が同じものを上書きし、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
     <input id="xfile" type="file" accept=".xlsx,.xlsm,.xls"><div style="display:flex;gap:8px"><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;return}
   const p=importPlan;
   box.innerHTML=`<div class="import"><strong>取り込み内容の確認</strong><ul>
     <li>武将:${p.cards.length}枚(TR ${p.cards.reduce((a,c)=>a+c.trs.length,0)}行) うち新規 ${p.cards.filter(c=>!c.id).length}枚</li>
     <li>スキル:${p.skills.length}件 うち新規 ${p.skills.filter(c=>!c.id).length}件</li>
+    <li>兵種:${p.soldiers.length}件 うち新規 ${p.soldiers.filter(c=>!c.id).length}件</li>
     ${p.people!=null?`<li>人数:${p.people}</li>`:''}${p.warn.map(w=>`<li style="color:var(--danger)">${esc(w)}</li>`).join('')}</ul>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-imp="run">取り込む</button><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;
 }
 function readSheet(XLSX,wb,name){const ws=wb.Sheets[name];if(!ws)return null;return XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true})}
 function planFrom(XLSX,wb){
-  const warn=[],plan={cards:[],skills:[],people:null,warn};
-  const cr=readSheet(XLSX,wb,'武将データ'),sr=readSheet(XLSX,wb,'スキルデータ');
-  if(!cr&&!sr)throw new Error('「武将データ」「スキルデータ」シートが見つかりません');
+  const warn=[],plan={cards:[],skills:[],soldiers:[],people:null,warn};
+  const cr=readSheet(XLSX,wb,'武将データ'),sr=readSheet(XLSX,wb,'スキルデータ'),or=readSheet(XLSX,wb,'兵種データ');
+  if(!cr&&!sr&&!or)throw new Error('「武将データ」「スキルデータ」「兵種データ」のどのシートも見つかりません');
   if(cr){const h=cr[0].map(x=>String(x??'').trim()),ix=n=>h.indexOf(n);
     const need=['カードNo','カード名','TR'];for(const n of need)if(ix(n)<0)throw new Error(`武将データに「${n}」列がありません`);
     const col={no:'カードNo',rarity:'レアリティ',cost:'武将コスト',side:'攻撃or防御',name:'カード名',troops:'兵数',baseStat:'素攻撃力・素防御力',growth:'攻撃・防御上昇率',hime:'姫',
@@ -490,6 +491,14 @@ function planFrom(XLSX,wb){
       if(!g.has(n))g.set(n,{name:n,trs:[]});const s=g.get(n),tr={tr:N(row[ix('TR')]),base:ix('素スキル上昇率')<0?0:N(row[ix('素スキル上昇率')]),coef:N(row[ix('係数')])};
       s.trs=s.trs.filter(t=>t.tr!==tr.tr);s.trs.push(tr)}
     for(const [n,s] of g){s.trs=trsOf(s);plan.skills.push({id:findId(M.skills,d=>d.name===n),data:s})}}
+  /* 兵種データ:兵種名・兵士攻撃力の2列。兵種名が同じものを上書き */
+  if(or&&or.length){const h=or[0].map(x=>String(x??'').trim()),ix=n=>h.indexOf(n);
+    for(const n of ['兵種名','兵士攻撃力'])if(ix(n)<0)throw new Error(`兵種データに「${n}」列がありません`);
+    const g=new Map();
+    for(const row of or.slice(1)){const name=row[ix('兵種名')];if(name==null||String(name).trim()==='')continue;const n=String(name).trim();
+      const v=row[ix('兵士攻撃力')];if(v==null||String(v).trim()===''||!Number.isFinite(Number(v)))warn.push(`兵種「${n}」の兵士攻撃力が数値ではありません(0として取り込みます)`);
+      if(g.has(n))warn.push(`兵種「${n}」が2行あります(後の行を使います)`);g.set(n,{name:n,atk:N(v)})}
+    for(const [n,d] of g)plan.soldiers.push({id:findId(M.soldiers,x=>x.name===n),data:d})}
   plan.warn=[...new Set(warn)];return plan;
 }
 $('mimport').addEventListener('click',()=>{draft=null;renderEditor();importPlan='pick';renderImport()});
@@ -498,10 +507,11 @@ $('importbox').addEventListener('change',async e=>{if(e.target.id!=='xfile'||!e.
   catch(err){m.className='msg err';m.textContent='読み込めませんでした:'+err.message}});
 $('importbox').addEventListener('click',async e=>{const b=e.target.closest('[data-imp]');if(!b)return;
   if(b.dataset.imp==='cancel'){importPlan=null;renderImport();return}
-  const p=importPlan,m=$('impmsg');b.disabled=true;let done=0;const total=p.cards.length+p.skills.length+(p.people!=null?1:0);
+  const p=importPlan,m=$('impmsg');b.disabled=true;let done=0;const total=p.cards.length+p.skills.length+p.soldiers.length+(p.people!=null?1:0);
   try{
     for(const c of p.cards){await db.doc(`${BASE}/cards/${c.id||'n'+c.data.no+'_'+Math.random().toString(36).slice(2,6)}`).set(c.data);m.textContent=`取り込み中 ${++done}/${total}`}
     for(const s of p.skills){await db.doc(`${BASE}/skills/${s.id||newId('s')}`).set(s.data);m.textContent=`取り込み中 ${++done}/${total}`}
+    for(const o of p.soldiers){await db.doc(`${BASE}/soldiers/${o.id||newId('o')}`).set(o.data);m.textContent=`取り込み中 ${++done}/${total}`}
     if(p.people!=null){await db.doc(`${BASE}/config/main`).set({...config,people:p.people});done++}
     importPlan=null;renderImport();status(`Excelから ${done} 件を取り込みました。`);setTimeout(()=>status(''),5000);
   }catch(err){m.className='msg err';m.textContent=`${done}件まで取り込んだところで止まりました(${err.code||err.message})。もう一度「取り込む」を押すと続きから上書きします。`;b.disabled=false}});
