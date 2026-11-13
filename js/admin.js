@@ -1,0 +1,271 @@
+// 管理者の書き込み(最終更新者・変更履歴)、不要データの削除、初期データ投入、ログイン表示
+/* 変更履歴:保存・削除のたびに logs/{id} へ追記する(ルールで追記のみ・書き換え不可)。マスタの書き込みと同じバッチで書くので、
+   履歴が書けないときはマスタも書き換わらない */
+const COLL_JA = { cards: '武将', skills: 'スキル', soldiers: '兵種', jbuffs: '傑バフ', config: '設定' };
+const plain = v =>
+  v == null
+    ? null
+    : JSON.parse(
+        JSON.stringify(v, (k, x) =>
+          ['updatedAt', 'updatedBy', 'updatedName', 'logId'].includes(k) ? undefined : x,
+        ),
+      );
+/* ルールで、マスタの書き込みには同じバッチの履歴が必須:
+   ・保存:マスタの logId と同じIDの履歴  ・削除:del_{区分}_{ID}_{消すデータの logId(なければ noid)} の履歴 */
+const newLogId = () => `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+function addLog(batch, action, coll, docId, before, after, logId) {
+  const ts = window.firebase?.firestore?.FieldValue?.serverTimestamp?.() || new Date();
+  batch.set(db.doc(`logs/${logId}`), {
+    at: ts,
+    by: me?.uid || '',
+    name: myName(),
+    action,
+    coll: COLL_JA[coll] || coll,
+    docId,
+    label: String((after || before)?.name ?? (coll === 'config' ? '人数' : docId)),
+    before: plain(before),
+    after: plain(after),
+  });
+}
+/* マスタ1件を書く(after=null なら削除)。履歴と同じバッチに入れる */
+function putWithLog(batch, action, coll, docId, after, before) {
+  const path = `${BASE}/${coll}/${docId}`;
+  if (before === undefined) before = coll === 'config' ? config : M[coll]?.get(docId) || null;
+  if (after) {
+    const id = newLogId();
+    batch.set(db.doc(path), { ...after, ...nowStamp(), logId: id });
+    addLog(batch, action, coll, docId, before, after, id);
+  } else {
+    batch.delete(db.doc(path));
+    addLog(batch, action, coll, docId, before, null, `del_${coll}_${docId}_${before?.logId || 'noid'}`);
+  }
+}
+async function writeWithLog(action, coll, docId, after) {
+  const batch = db.batch();
+  putWithLog(batch, action, coll, docId, after);
+  await batch.commit();
+}
+const logErr = err =>
+  err?.code === 'permission-denied'
+    ? '権限がありません。Firebase のルールに変更履歴(logs)の設定が入っているか確認してください'
+    : err?.code || err?.message;
+/* 表示名が未登録なら保存させない */
+function needName() {
+  if (myName()) return false;
+  msgAny(
+    `表示名が登録されていないため保存できません。Firebase コンソールの admins コレクションで、ドキュメント「${me?.uid || ''}」に、フィールド name(文字列)で表示名を追加してから、サイトを読み込み直してください。`,
+  );
+  return true;
+}
+const msgAny = t => {
+  const el = $('edmsg') || $('impmsg') || $('peopleMsg');
+  if (el) {
+    el.className = 'msg err';
+    el.textContent = t;
+  } else status(t, true);
+};
+
+/* ---------- 画面に出なくなった古いデータの削除(管理者用。消すものがなくなるとボタンは消える) ----------
+   ・武将:TRごとの値と無尽(初期スキルがスキルマスタにある武将だけ。ない武将は計算に使うので残す)
+   ・スキル:種類と攻撃or防御を保存し、ふつうのスキルからは初期スキル用の値を、固定の初期スキルからは総攻バフ係数を消す
+   ・傑バフ:古い「攻撃力・防御力」を所属時攻撃力・所属時防御力に移して消す */
+function cleanPlan() {
+  const out = { cards: [], skills: [], jbuffs: [], keep: [], n: 0 };
+  if (!allLoaded()) return out;
+  for (const [id, c] of M.cards) {
+    const sk = skillByName(c.initName);
+    if (!sk || !trsOf(sk.d).length) {
+      if (c.trs || c.muzin != null) out.keep.push(c.name);
+      continue;
+    }
+    if (c.trs !== undefined || c.muzin !== undefined) {
+      const d = { ...c };
+      delete d.trs;
+      delete d.muzin;
+      out.cards.push({ id, name: c.name, data: d });
+    }
+  }
+  for (const [id, k] of M.skills) {
+    const ini = isInitSkill(k),
+      tb = ini && tbByOf(k) === 'muzin';
+    const trs = (k.trs || []).map(t => {
+      const o = { ...t };
+      if (!ini) {
+        for (const [f] of SKILL_INIT) delete o[f];
+        delete o.troopAdd;
+      }
+      if (!tb) delete o.tbCoef;
+      return o;
+    });
+    const d = { ...k, init: ini ? 1 : 0, side: skillSide(k), trs };
+    if (!ini) delete d.tbBy;
+    if (JSON.stringify(d) !== JSON.stringify(k)) out.skills.push({ id, name: k.name, data: d });
+  }
+  for (const [id, j] of M.jbuffs) {
+    if (j.atk === undefined && j.def === undefined) continue;
+    const d = { ...j };
+    for (const f of JBUFF_VALS) d[f] = jv(j, f);
+    delete d.atk;
+    delete d.def;
+    out.jbuffs.push({ id, name: j.name, data: d });
+  }
+  out.n = out.cards.length + out.skills.length + out.jbuffs.length;
+  return out;
+}
+let cleaning = null;
+function renderClean() {
+  const box = $('cleanbox');
+  if (!cleaning) {
+    box.innerHTML = '';
+    return;
+  }
+  const p = cleaning;
+  box.innerHTML = `<div class="import"><strong>不要データの削除</strong>
+    <p class="note">画面に出なくなった古いデータを消します。計算結果は変わりません。</p><ul>
+    <li>武将:${p.cards.length}枚(以前のTRごとの値・無尽)</li><li>スキル:${p.skills.length}件(種類・攻撃or防御を保存、使わない初期スキル用の値)</li><li>傑バフ:${p.jbuffs.length}件(古い攻撃力・防御力)</li>
+    ${p.keep.length ? `<li>初期スキルがスキルマスタにないため残す武将:${p.keep.map(esc).join('、')}</li>` : ''}</ul>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-cl="run">削除する</button><button class="btn ghost" type="button" data-cl="cancel">やめる</button></div><p class="msg" id="clmsg"></p></div>`;
+}
+$('mclean').addEventListener('click', () => {
+  draft = null;
+  renderEditor();
+  importPlan = null;
+  renderImport();
+  cleaning = cleanPlan();
+  renderClean();
+});
+$('cleanbox').addEventListener('click', async e => {
+  const b = e.target.closest('[data-cl]');
+  if (!b) return;
+  if (b.dataset.cl === 'cancel') {
+    cleaning = null;
+    renderClean();
+    return;
+  }
+  const p = cleaning,
+    m = $('clmsg');
+  b.disabled = true;
+  m.className = 'msg';
+  m.textContent = '削除しています…';
+  const before = form ? Math.round(calc().total) : null;
+  try {
+    const ops = [
+      ...p.cards.map(x => ['cards', x]),
+      ...p.skills.map(x => ['skills', x]),
+      ...p.jbuffs.map(x => ['jbuffs', x]),
+    ];
+    for (let i = 0; i < ops.length; i += 200) {
+      const batch = db.batch();
+      for (const [coll, x] of ops.slice(i, i + 200)) putWithLog(batch, '不要データ削除', coll, x.id, x.data);
+      await batch.commit();
+    }
+    cleaning = null;
+    renderClean();
+    setTimeout(() => {
+      const after = form ? Math.round(calc().total) : null;
+      status(
+        `不要データを削除しました(武将${p.cards.length}・スキル${p.skills.length}・傑バフ${p.jbuffs.length})。` +
+          (before != null
+            ? before === after
+              ? '計算結果は変わっていません。'
+              : `計算結果が変わりました(${fmt(before)} → ${fmt(after)})。お知らせください。`
+            : ''),
+      );
+      setTimeout(() => status(''), 8000);
+    }, 500);
+  } catch (err) {
+    b.disabled = false;
+    m.className = 'msg err';
+    m.textContent = '削除できませんでした(' + logErr(err) + ')';
+  }
+});
+
+/* ---------- 初期データ投入(マスタが空のときだけ、管理者に表示) ---------- */
+function renderSeed() {
+  const box = $('seedbox');
+  const empty = allLoaded() && !M.cards.size && !M.skills.size && !M.soldiers.size;
+  if (!isOwner || !empty || !db) {
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = `<div class="seed"><strong>マスタがまだ空です</strong><p class="note">Claude版で登録していた武将・スキル・兵種・人数を、まとめて登録します(seed/master.json)。</p>
+    <button id="seedRun" class="btn" type="button">初期データを投入</button><p class="msg" id="seedMsg"></p></div>`;
+}
+$('seedbox').addEventListener('click', async e => {
+  if (e.target.id !== 'seedRun') return;
+  const b = e.target,
+    m = $('seedMsg');
+  b.disabled = true;
+  m.className = 'msg';
+  m.textContent = '投入しています…';
+  try {
+    const r = await fetch('seed/master.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('seed/master.json を読み込めません');
+    const d = await r.json();
+    const batch = db.batch();
+    let n = 0;
+    if (needName()) {
+      b.disabled = false;
+      return;
+    }
+    for (const coll of ['cards', 'skills', 'soldiers'])
+      for (const [id, v] of Object.entries(d[coll] || {})) {
+        putWithLog(batch, '初期データ投入', coll, id, v, null);
+        n++;
+      }
+    if (d.config && d.config.main) {
+      putWithLog(batch, '初期データ投入', 'config', 'main', d.config.main, null);
+      n++;
+    }
+    await batch.commit();
+    status(`初期データ ${n} 件を登録しました。`);
+    setTimeout(() => status(''), 5000);
+  } catch (err) {
+    b.disabled = false;
+    m.className = 'msg err';
+    m.textContent = '投入できませんでした(' + logErr(err) + ')';
+  }
+});
+
+/* ---------- Firebase:管理者ログインとデータの読み込み ---------- */
+function setRole(user) {
+  $('role').textContent = isOwner ? '管理者' : '閲覧のみ';
+  $('role').className = 'role' + (isOwner ? ' admin' : '');
+  me = user || null;
+  $('login').hidden = !!user;
+  $('logout').hidden = !user;
+  $('userName').textContent = user
+    ? isOwner && myName()
+      ? myName()
+      : user.displayName || user.email || ''
+    : '';
+  const n = $('uidnote');
+  if (user && !isOwner) {
+    n.hidden = false;
+    n.innerHTML = `ログインしていますが、管理者として登録されていません。管理者にするには、Firestore の <b>admins</b> コレクションに、次のユーザーIDを「ドキュメントID」として追加してください。<br><code id="uidcode">${esc(user.uid)}</code> <button id="uidcopy" class="btn small ghost" type="button">コピー</button>`;
+  } else {
+    n.hidden = true;
+    n.innerHTML = '';
+  }
+  draft = null;
+  importPlan = null;
+  renderEditor();
+  renderImport();
+  renderMaster();
+  renderSeed();
+}
+$('uidnote').addEventListener('click', async e => {
+  if (e.target.id !== 'uidcopy') return;
+  const t = $('uidcode').textContent;
+  try {
+    await navigator.clipboard.writeText(t);
+    e.target.textContent = 'コピーしました';
+  } catch (err) {
+    const r = document.createRange();
+    r.selectNodeContents($('uidcode'));
+    const sel = getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+    e.target.textContent = '選択しました(Ctrl+Cでコピー)';
+  }
+});
