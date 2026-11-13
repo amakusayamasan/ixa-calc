@@ -592,7 +592,8 @@ function initAreaHtml(d){const sk=skillByName(d.initName),st=sk?trsOf(sk.d):[],n
   const note=!name?'初期スキル名が未入力です。TRと初期スキルの値は、スキルマスタの初期スキルから使います。'
     :sk&&st.length?`TRと初期スキルの値(初期スキル・素攻・防バフ・倍枠通常・倍枠極限・総攻・防バフ)は、スキルマスタの「${esc(sk.d.name)}」(${trRange(sk.d)})から使います。変えるときはスキルマスタで編集してください。`
     :`「${esc(name)}」はスキルマスタにありません。保存すると、初期スキル追加画面に進みます。`;
-  return `<div class="field"><p class="note" id="initNote">${note}</p></div>`}
+  const btn=sk?`<button class="btn small ghost" type="button" data-act="openInit" style="align-self:start">「${esc(sk.d.name)}」をスキルマスタで編集</button>`:'';
+  return `<div class="field"><p class="note" id="initNote">${note}</p>${btn}</div>`}
 function trTable(cols,trs,computed,clabel,ro){
   return `<div class="field"><span class="label">TRごとの値</span><div class="trtable"><table><thead><tr>${cols.map(c=>`<th class="l">${c[1]}</th>`).join('')}${computed?`<th>${clabel}</th>`:''}<th></th></tr></thead><tbody>
   ${trs.map((t,r)=>`<tr>${cols.map(([f,l])=>{const v=ro?ro(f,t):null;return v!=null?`<td class="num computed" title="スキルマスタの値">${v}</td>`:`<td class="l"><input class="${f==='tr'?'tr':''}" type="number" step="any" data-t="${r}:${f}" aria-label="${l}" value="${esc(t[f]??'')}"></td>`}).join('')}${computed?`<td class="num computed" data-c="${r}">${computed(t)}</td>`:''}<td><button class="btn small danger" type="button" data-act="rmtr" data-r="${r}"${trs.length<2?' disabled':''}>行を削除</button></td></tr>`).join('')}
@@ -607,6 +608,8 @@ $('editor').addEventListener('input',()=>{if(!draft)return;syncDraft();const d=d
   if(draft.coll==='cards'&&$('atkPreview'))$('atkPreview').textContent=fmt(cardAtk(d));
   if(draft.coll==='skills')d.trs.forEach((t,r)=>{const c=document.querySelector(`[data-c="${r}"]`);if(c)c.textContent=skillLabel(t,d)})});
 $('editor').addEventListener('click',async e=>{const b=e.target.closest('[data-act]');if(!b||!draft)return;const act=b.dataset.act;
+  /* 武将の初期スキルを、スキルマスタの編集画面で開く(武将の未保存の変更は破棄) */
+  if(act==='openInit'){syncDraft();const sk=skillByName(draft.data.initName);if(!sk)return;$('mtabs').querySelector('[data-m=skills]').click();openEditor('skills',sk.id);return}
   if(act==='close'){draft=null;renderEditor();return}
   if(act==='addtr'){syncDraft();const last=draft.data.trs[draft.data.trs.length-1]||{};draft.data.trs.push({...last,tr:N(last.tr)+1});renderEditor();return}
   if(act==='rmtr'){syncDraft();draft.data.trs.splice(+b.dataset.r,1);renderEditor();return}
