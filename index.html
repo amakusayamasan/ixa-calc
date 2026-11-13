@@ -657,7 +657,7 @@ function trTable(cols,trs,computed,clabel,ro){
 $('editor').addEventListener('change',e=>{if(draft&&e.target.dataset.eff){syncDraft();const d=draft.data,k=e.target.dataset.eff;d.effs={...effsOf(d),[k]:e.target.checked};
     /* チェックしたら空欄に最初の値(バフ・倍枠は1)を入れる */
     if(e.target.checked&&k!=='troop')for(const f of EFFS.find(x=>x[0]===k)[2])d.trs.forEach(t=>{if(!hasV(t[f]))t[f]=1});renderEditor();return}
-  if(draft&&e.target.id==='f-mimic'){syncDraft();if(isMimic(draft.data))draft.data.trs.forEach(t=>{if(!hasV(t.mimicRate))t.mimicRate=1});renderEditor();return}
+  if(draft&&e.target.id==='f-mimic'){syncDraft();if(isMimic(draft.data)){draft.data.side='攻撃・防御';draft.data.trs.forEach(t=>{if(!hasV(t.mimicRate))t.mimicRate=1})}renderEditor();return}
   if(draft&&(e.target.id==='f-tbBy'||(draft.coll==='skills'&&e.target.id==='f-side'))){syncDraft();renderEditor();return}
   if(draft&&e.target.id==='f-init'){syncDraft();const d=draft.data;
     /* 初期スキルに切り替えたら、空の素攻・防バフ〜総攻・防バフに1を入れる */
