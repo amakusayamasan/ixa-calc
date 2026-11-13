@@ -287,8 +287,16 @@ function muzinMul(sel,k){if(!muzinOn())return 1;if(k==='lim')return 2;const s=M.
 /* 初期スキルの元の値:初期スキル名がスキルマスタにあれば、武将のTRと同じTRのスキル上昇率。なければ武将マスタのTRごとの値 */
 const skillByName=n=>{const k=String(n??'').trim();if(!k)return null;const id=findId(M.skills,d=>String(d.name).trim()===k);return id?{id,d:M.skills.get(id)}:null};
 function initBase(c,t){const sk=skillByName(c?.initName);if(sk){const e=trEntry(sk.d,t?.tr);if(e)return skillValue(e,coefN(sk.d,sk.id))}return N(t?.initSkill)}
-function cardT(c,tr){const t=trEntry(c,tr);if(!t)return t;const sk=skillByName(c?.initName),e=sk&&trEntry(sk.d,tr);if(!e)return t;
-  const o={...t};for(const [f] of SKILL_INIT)if(e[f]!=null&&e[f]!=='')o[f]=N(e[f]);return o}
+/* 武将のTRごとの値は、初期スキル(スキルマスタ)のTRから作る。
+   初期スキルがスキルマスタにない武将だけ、以前武将マスタに登録したTRの値(なければTR0・バフ1)を使う */
+const hasV=v=>v!=null&&String(v).trim()!=='';
+const CARD_DEFAULT_TR={tr:0,initSkill:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1};
+function cardTrs(c){if(!c)return[];const sk=skillByName(c.initName),st=sk?trsOf(sk.d):[];
+  if(st.length)return st.map(e=>{const old=trEntry(c,e.tr),o={tr:N(e.tr),initSkill:N(old?.initSkill)};
+    for(const [f] of SKILL_INIT)o[f]=hasV(e[f])?N(e[f]):old&&hasV(old[f])?N(old[f]):1;return o});
+  const t=trsOf(c);return t.length?t:[{...CARD_DEFAULT_TR}]}
+const cardV=c=>c&&{...c,trs:cardTrs(c)};
+function cardT(c,tr){return cardTrs(c).find(t=>N(t.tr)===N(tr))}
 const initLinked=(c,tr)=>{const sk=skillByName(c?.initName);return !!(sk&&trEntry(sk.d,tr))};
 function initEff(c,t){const v=initBase(c,t);if(!muzinOn()||c?.rarity==='傑')return v;return N(c?.muzin)>0?v*2:0}
 /* 無尽が有効で、初期スキルに無尽がない武将は、初期スキル由来の効果がすべて無効:
@@ -380,7 +388,7 @@ const inputId=(i,k)=>`${k}-${i}`,listId=(i,k)=>`list-${k}-${i}`,trId=(i,k)=>k===
 const selOf=(i,k)=>k==='card'?form.slots[i].card:k==='soldier'?form.slots[i].soldier:form.slots[i][k].id;
 const mapOf=k=>k==='card'?M.cards:k==='soldier'?M.soldiers:M.skills;
 const nameOf=(i,k)=>mapOf(k).get(selOf(i,k))?.name||'';
-function metaOf(k,x){if(k==='soldier')return`兵士攻撃力 ${fmt(N(x.d.atk),2)}`;if(k==='card')return`${esc(x.d.rarity||'')} No.${esc(x.d.no)} ・ ${trRange(x.d)}${x.off?' ・ 他の枠で使用中':''}`;
+function metaOf(k,x){if(k==='soldier')return`兵士攻撃力 ${fmt(N(x.d.atk),2)}`;if(k==='card')return`${esc(x.d.rarity||'')} No.${esc(x.d.no)} ・ ${trRange(cardV(x.d))}${x.off?' ・ 他の枠で使用中':''}`;
   const t=trsOf(x.d),last=t[t.length-1];return`${isX(x.d)?'Xスキル ・ ':''}${trRange(x.d)}${last?` ・ TR${N(last.tr)}で ${skillLabel(last,x.d)}`:''}${x.off?' ・ '+x.why:''}`}
 let combo=null;
 function openCombo(i,k,q){const input=$(inputId(i,k)),list=$(listId(i,k));if(!input||!list)return;
@@ -396,7 +404,7 @@ function drawCombo(){if(!combo)return;const {i,k,items,active}=combo,list=$(list
 function closeCombo(restore){if(!combo)return;const {i,k}=combo,list=$(listId(i,k)),input=$(inputId(i,k));combo=null;
   if(list)list.hidden=true;if(input){input.setAttribute('aria-expanded','false');if(restore)input.value=nameOf(i,k)}}
 function pick(i,k,id){closeCombo(false);const s=form.slots[i];
-  if(k==='card'){s.card=id;s.tr=fitTr(M.cards.get(id),s.tr)}else if(k==='soldier'){s.soldier=id}else{s[k].id=id;s[k].tr=fitTr(M.skills.get(id),s[k].tr)}
+  if(k==='card'){s.card=id;s.tr=fitTr(cardV(M.cards.get(id)),s.tr)}else if(k==='soldier'){s.soldier=id}else{s[k].id=id;s[k].tr=fitTr(M.skills.get(id),s[k].tr)}
   renderCalc();const next=id?(trId(i,k)&&$(trId(i,k))):$(inputId(i,k));next&&next.focus()}
 function moveActive(step){const {items}=combo;if(!items.length)return;let n=combo.active;
   for(let c=0;c<items.length;c++){n=(n+step+items.length)%items.length;if(!items[n].off)break}combo.active=n;drawCombo()}
@@ -438,7 +446,7 @@ function renderCalc(){
     <h3><span>${SLOT_NAMES[i]}</span></h3>
     <div class="field"><label class="label" for="card-${i}">武将</label><div class="pair">
       ${comboBox(i,'card',M.cards.get(s.card)?.name||'','武将名・カードNoで検索')}
-      <select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card?'':' disabled'}>${trOpts(M.cards.get(s.card),s.tr)}</select></div>${s.card?`<span class="note" id="cardmeta-${i}">${esc(M.cards.get(s.card)?.rarity||'')} No.${esc(M.cards.get(s.card)?.no)} ・ コスト${fmt(N(M.cards.get(s.card)?.cost),1)}${initNameOf(s.card)?` ・ 初期:${esc(initNameOf(s.card))}`:''}</span>`:''}
+      <select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card?'':' disabled'}>${trOpts(cardV(M.cards.get(s.card)),s.tr)}</select></div>${s.card?`<span class="note" id="cardmeta-${i}">${esc(M.cards.get(s.card)?.rarity||'')} No.${esc(M.cards.get(s.card)?.no)} ・ コスト${fmt(N(M.cards.get(s.card)?.cost),1)}${initNameOf(s.card)?` ・ 初期:${esc(initNameOf(s.card))}`:''}</span>`:''}
       <div class="alloc"><span class="label">ステ振り</span><div class="seg" role="group" aria-label="ステ振り">
         <button type="button" data-alloc="atk" data-i="${i}" aria-pressed="${s.alloc!=='hei'}">攻撃</button><button type="button" data-alloc="hei" data-i="${i}" aria-pressed="${s.alloc==='hei'}">兵法</button></div></div></div>
     <div class="field"><label class="label" for="soldier-${i}">兵種</label><select id="soldier-${i}" data-i="${i}" data-k="soldier">${soldierOpts(s.soldier)}</select></div>
@@ -518,7 +526,7 @@ function renderMaster(){
   let html='';
   if(mtab==='cards'){
     html=`<thead><tr><th class="l">カード名</th><th class="l">初期スキル名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>素防御力</th><th>攻撃上昇率</th><th>防御上昇率</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th><th>無尽</th></tr></thead><tbody>`+
-      (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side==='攻撃・防御'?'side-both':d.side==='防御'?'side-def':d.side==='攻撃'?'side-atk':''}">${esc(d.side||'')}</span></td><td class="l">${esc(d.initName||'—')}</td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(initBase(d,last),1)}</td><td class="num">${fmt(N(cardT(d,last.tr)?.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(15))+'</tbody>';
+      (list.length?list.map(([id,d])=>{const t=cardTrs(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side==='攻撃・防御'?'side-both':d.side==='防御'?'side-def':d.side==='攻撃'?'side-atk':''}">${esc(d.side||'')}</span></td><td class="l">${esc(d.initName||'—')}</td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="l">${trRange({trs:t})}</td><td class="num">${fmt(initBase(d,last),1)}</td><td class="num">${fmt(N(cardT(d,last.tr)?.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(15))+'</tbody>';
   }else if(mtab==='skills'){
     const maxTr=Math.max(5,...list.flatMap(([,d])=>trsOf(d).map(t=>N(t.tr))));const trs=[...Array(maxTr+1).keys()];
     html=`<thead><tr><th class="l">スキル名</th><th class="l">種類</th><th>無尽</th><th>Xスキル</th><th>付与</th><th class="l">係数の掛け方</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
@@ -537,7 +545,7 @@ function renderMaster(){
 function openEditor(coll,id,kind){
   const d=id?structuredClone(M[coll].get(id)):null;
   if(coll==='cards'&&d&&d.muzin==null)d.muzin=0;
-  if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',initName:'',troops:'',baseStat:'',baseDef:'',growth:'',growthDef:'',hime:0,muzin:0,trs:[{tr:0,initSkill:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}};
+  if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',initName:'',troops:'',baseStat:'',baseDef:'',growth:'',growthDef:'',hime:0,muzin:0}};
   else if(coll==='skills')draft={coll,id,data:d?{...d,init:isInitSkill(d)?1:0,muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d)}
     :kind==='init'?{init:1,name:'',muzin:0,xskill:0,noAdd:1,coefBy:'people',trs:[{tr:0,base:0,coef:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}
     :{init:0,name:'',muzin:0,xskill:0,noAdd:0,coefBy:'people',trs:[{tr:0,base:0,coef:0}]}};
@@ -580,12 +588,12 @@ function renderEditor(){
     ${id?'<button class="btn danger" type="button" data-act="delete">削除</button>':''}</div><p class="msg" id="edmsg"></p></form>`;
 }
 /* 武将の編集画面のうち、初期スキル名で変わる部分(案内・登録ボタン・TR表) */
-function initAreaHtml(d){const sk=skillByName(d.initName),linked=r=>sk&&trEntry(sk.d,r.tr);
-  const initNote=!String(d.initName??'').trim()?'初期スキル名が未入力のため、下の表の初期スキルの値を使います。'
-    :sk?`「${esc(sk.d.name)}」の値をスキルマスタから使います(武将のTRと同じTR)。${d.trs.some(r=>!linked(r))?'スキルマスタにないTRは、表の値を使います。':''}`
-    :`「${esc(d.initName)}」はスキルマスタにありません。表の初期スキルの値を使います。`;
-  return `<div class="field"><p class="note" id="initNote">${initNote}</p>${String(d.initName??'').trim()&&!sk?`<button class="btn small ghost" type="button" data-act="initToSkill" style="align-self:start">表の初期スキルの値で「${esc(d.initName)}」をスキルマスタに登録</button>`:''}</div>`
-    +trTable(CARD_TR,d.trs,null,null,(f,r)=>{if(!linked(r))return null;const e=trEntry(sk.d,r.tr);if(f==='initSkill')return fmt(skillValue(e),1);if(SKILL_INIT.some(([x])=>x===f)&&e[f]!=null&&e[f]!=='')return fmt(N(e[f]),2);return null})}
+function initAreaHtml(d){const sk=skillByName(d.initName),st=sk?trsOf(sk.d):[],name=String(d.initName??'').trim();
+  const note=!name?'初期スキル名が未入力です。TRと初期スキルの値は、スキルマスタの初期スキルから使います。'
+    :sk&&st.length?`TRと初期スキルの値(初期スキル・素攻・防バフ・倍枠通常・倍枠極限・総攻・防バフ)は、スキルマスタの「${esc(sk.d.name)}」(${trRange(sk.d)})から使います。変えるときはスキルマスタで編集してください。`
+    :`「${esc(name)}」はスキルマスタにありません。スキルマスタの「初期スキル追加」で登録してください。`;
+  const old=trsOf(d).length&&name&&!sk;
+  return `<div class="field"><p class="note" id="initNote">${note}</p>${old?`<button class="btn small ghost" type="button" data-act="initToSkill" style="align-self:start">以前登録したTRの値で「${esc(name)}」をスキルマスタに登録</button>`:''}</div>`}
 function trTable(cols,trs,computed,clabel,ro){
   return `<div class="field"><span class="label">TRごとの値</span><div class="trtable"><table><thead><tr>${cols.map(c=>`<th class="l">${c[1]}</th>`).join('')}${computed?`<th>${clabel}</th>`:''}<th></th></tr></thead><tbody>
   ${trs.map((t,r)=>`<tr>${cols.map(([f,l])=>{const v=ro?ro(f,t):null;return v!=null?`<td class="num computed" title="スキルマスタの値">${v}</td>`:`<td class="l"><input class="${f==='tr'?'tr':''}" type="number" step="any" data-t="${r}:${f}" aria-label="${l}" value="${esc(t[f]??'')}"></td>`}).join('')}${computed?`<td class="num computed" data-c="${r}">${computed(t)}</td>`:''}<td><button class="btn small danger" type="button" data-act="rmtr" data-r="${r}"${trs.length<2?' disabled':''}>行を削除</button></td></tr>`).join('')}
@@ -622,7 +630,7 @@ function validate(coll,d){
   return'';
 }
 function clean(coll,d){
-  if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='flag'?toFlag(d[f]):t==='number'?N(d[f]):String(d[f]??'').trim();o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
+  if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='flag'?toFlag(d[f]):t==='number'?N(d[f]):String(d[f]??'').trim();if(Array.isArray(d.trs)&&d.trs.length)o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
   if(coll==='skills')return{init:toFlag(d.init),name:String(d.name).trim(),muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d),trs:trsOf({trs:d.trs.map(t=>{const o=Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])]));if(toFlag(d.init))for(const [f] of SKILL_INIT)if(t[f]!=null&&t[f]!=='')o[f]=N(t[f]);return o})})};
   if(coll==='jbuffs'){const o={};for(const [f,,t] of JBUFF_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();o.targets=[...new Set((d.targets||[]).map(x=>String(x).trim()).filter(Boolean))];return o}
   const o={};for(const [f,,t] of SOLDIER_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();if(d.order!=null)o.order=N(d.order);return o;
