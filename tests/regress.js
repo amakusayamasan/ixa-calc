@@ -35,7 +35,7 @@ for(const s of inits){await p.click('#maddInit');await W(40);await p.fill('#f-na
   for(const e of s.eff){await p.check(`[data-eff=${e}]`);await W(30)}if(s.self){await p.check('[data-eff2=self]');await W(30)}if(s.lead){await p.check('[data-eff2=leader]');await W(30)}
   if(s.tb){await p.selectOption('#f-tbBy',s.tb);await W(30)}await addTr(5);
   for(let k=0;k<6;k++){await p.fill(`[data-t="${k}:base"]`,String(s.base+k*100));if(s.coef)await p.fill(`[data-t="${k}:coef"]`,String(s.coef[k]));for(const [f,v] of Object.entries(s.v))await p.fill(`[data-t="${k}:${f}"]`,String(v))}
-  out['editorText_'+s.n]=await p.$eval('#edform',e=>e.innerText);out.msgs.push(await save())}
+  out['editorText_'+s.n]=await p.$eval('#edform',e=>e.innerHTML.replace(/ value="[^"]*"/g,''));out.msgs.push(await save())}
 const skills=[
  {n:'自模倣S',mimic:'self',rate:[1,1,1,1.05,1.1,1.15]},{n:'他真似S',mimic:'leader',rate:[1.1,1.1,1.2,1.2,1.25,1.25],base:100},
  {n:'火焔武闘',x:true,coefBy:'x',coef:720,dup:2},{n:'同数S',coefBy:'same',coef:50,base:300,coefMax:true},{n:'防御S',side:'防御',base:5000},{n:'無尽S',muz:1,base:2000,coef:3}];
@@ -43,8 +43,8 @@ for(const s of skills){await p.click('#maddSkill');await W(40);await p.fill('#f-
   if(s.x)await p.selectOption('#f-xskill','1');if(s.coefBy){await p.selectOption('#f-coefBy',s.coefBy);await W(30)}if(s.coefMax){await p.check('#f-coefMaxTr');await W(30)}
   if(s.mimic){await p.selectOption('#f-mimic',s.mimic);await W(30)}if(s.dup){await p.check('[data-eff=dup]');await W(30)}await addTr(5);
   for(let k=0;k<6;k++){if(s.base!=null)await p.fill(`[data-t="${k}:base"]`,String(s.base+k*10));if(s.coef!=null&&!s.mimic)await p.fill(`[data-t="${k}:coef"]`,String(s.coef));if(s.rate)await p.fill(`[data-t="${k}:mimicRate"]`,String(s.rate[k]));if(s.dup)await p.fill(`[data-t="${k}:dupMax"]`,String(s.dup))}
-  out['editorText_'+s.n]=await p.$eval('#edform',e=>e.innerText);out.msgs.push(await save())}
-out.skillList=await p.$eval('#mtable',e=>e.innerText);
+  out['editorText_'+s.n]=await p.$eval('#edform',e=>e.innerHTML.replace(/ value="[^"]*"/g,''));out.msgs.push(await save())}
+out.skillList=await p.$eval('#mtable',e=>e.innerHTML);
 // 武将に初期スキルを設定(画面から)
 await p.click('[data-m=cards]');
 const cardInit=[['緋村剣心','初L',{hime:true}],['織田信長','初S',{}],['志々雄真実','初T',{kengou:true}],['斎藤一','初M',{}]];
@@ -52,7 +52,7 @@ for(const [cn,sn,f] of cardInit){await p.locator('#mtable tbody tr',{hasText:cn}
 // 存在しない初期スキル名 → 初期スキル追加画面へ
 await p.locator('#mtable tbody tr',{hasText:'織田信長'}).nth(1).click();await W(50);await p.fill('#f-initName','未登録初期');await p.click('#edform button[type=submit]');await W(100);
 out.redirect=await p.evaluate(()=>[mtab,draft&&draft.coll,draft&&draft.data.name,$('edmsg').textContent]);await p.click('[data-act=close]');
-await p.click('[data-m=cards]');out.cardList=await p.$eval('#mtable',e=>e.innerText);out.cardEditor=await (async()=>{await p.locator('#mtable tbody tr',{hasText:'緋村剣心'}).click();await W(50);const t=await p.$eval('#edform',e=>e.innerText);await p.click('[data-act=close]');return t})();
+await p.click('[data-m=cards]');out.cardList=await p.$eval('#mtable',e=>e.innerHTML);out.masterHead=await p.$eval('#view-master',e=>e.innerText.slice(0,400));out.cardEditor=await (async()=>{await p.locator('#mtable tbody tr',{hasText:'緋村剣心'}).click();await W(50);const t=await p.$eval('#edform',e=>e.innerHTML);await p.click('[data-act=close]');return t})();
 // 編成いろいろ
 await p.click('#tab-calc');await W(50);
 const setForm=async spec=>{await p.evaluate(spec=>{const sid=n=>n?findId(M.skills,d=>d.name===n):'';const cid=n=>findId(M.cards,d=>d.name===n&&d.rarity!=='覇・パラレル天'&&d.rarity!=='パラレル天')||findId(M.cards,d=>d.name===n);
@@ -67,15 +67,15 @@ await p.evaluate(async()=>{const id=findId(M.cards,d=>d.name==='緋村剣心');c
 for(const [k,spec] of Object.entries(forms)){await setForm(spec);out[k+'_muzin']=await snapCalc()}
 // 傑バフ
 await p.evaluate(async()=>{const b=db.batch();putWithLog(b,'追加','jbuffs','jb1',{no:20001,name:'傑A',targets:['焙烙火矢','鉄砲騎馬'],atkIn:5,defIn:3,atkOut:2,defOut:1},null);putWithLog(b,'追加','jbuffs','jb2',{no:20002,name:'傑B',targets:['焙烙火矢'],atkIn:4,defIn:0,atkOut:3,defOut:0},null);await b.commit()});await W(100);
-await setForm(forms.f1);await p.click('#jbBtn');await W(30);out.jbPanel=await p.$eval('#jbpanel',e=>e.innerText);await p.click('#jbpanel button:has-text("すべてOn")');await W(40);out.f1_jb=await snapCalc();
+await setForm(forms.f1);await p.click('#jbBtn');await W(30);out.jbPanel=await p.$eval('#jbpanel',e=>e.innerHTML);await p.click('#jbpanel button:has-text("すべてOn")');await W(40);out.f1_jb=await snapCalc();
 // 候補一覧
 await p.click('#card-0');await p.fill('#card-0','');await W(60);out.cardCands=await p.$eval('#list-card-0',e=>[...e.querySelectorAll('li')].map(l=>l.className.replace(/\s*active/,'')+'|'+l.innerText.replace(/\n/g,' ')));
 await p.keyboard.press('Escape');await p.click('#s1-1');await p.fill('#s1-1','');await W(60);out.skillCands=await p.$eval('#list-s1-1',e=>[...e.querySelectorAll('li')].map(l=>l.className.replace(/\s*active/,'')+'|'+l.innerText.replace(/\n/g,' ')));await p.keyboard.press('Escape');
 // Excel ダウンロード(模擬)→ 取り込み
-await p.click('#tab-master');await p.click('#mimport');await W(40);await p.click('[data-imp=fmt]');await W(100);out.xlsxFmt=await p.evaluate(()=>[window.__fname,window.__wb.SheetNames,...window.__wb.SheetNames.map(n=>window.__wb.Sheets[n].aoa)]);
+await p.click('#tab-master');await p.click('#mimport');await W(40);out.importPick=await p.$eval('#importbox',e=>e.innerHTML);await p.click('[data-imp=fmt]');await W(100);out.xlsxFmt=await p.evaluate(()=>[window.__fname,window.__wb.SheetNames,...window.__wb.SheetNames.map(n=>window.__wb.Sheets[n].aoa)]);
 await p.click('[data-imp=dump]');await W(100);out.xlsxDump=await p.evaluate(()=>window.__wb.SheetNames.map(n=>window.__wb.Sheets[n].aoa));
 const before=await p.evaluate(()=>Math.round(calc().total));
-await p.evaluate(()=>{importPlan=planFrom(window.XLSX,window.__wb);renderImport()});await W(40);out.importPlan=await p.$eval('#importbox',e=>e.innerText);await p.click('[data-imp=run]');await W(500);
+await p.evaluate(()=>{importPlan=planFrom(window.XLSX,window.__wb);renderImport()});await W(40);out.importPlan=await p.$eval('#importbox',e=>e.innerHTML);await p.click('[data-imp=run]');await W(500);
 out.afterImport=[before,await p.evaluate(()=>Math.round(calc().total))];
 // 人数・削除・不要データ
 await p.click('[data-m=skills]');await p.fill('#peopleIn','300');await p.click('#peopleSave');await W(80);out.people=await p.evaluate(()=>config.people);
@@ -86,4 +86,9 @@ out.store=await p.evaluate(()=>{const st=window.__store,strip=o=>JSON.parse(JSON
   const m={};for(const [k,v] of Object.entries(st)){if(k.startsWith('logs/'))continue;const c=k.split('/')[2];(m[c]=m[c]||[]).push(strip(v))}
   for(const c in m)m[c]=m[c].map(x=>JSON.stringify(x)).sort();
   const logs=Object.entries(st).filter(([k])=>k.startsWith('logs/')).map(([k,v])=>[v.action,v.coll,v.label,v.name,v.by,k.startsWith('logs/del_')]).map(x=>x.join('|')).sort();return{m,logs}});
+// 管理者でないログイン・閲覧のみ
+const p2=await b.newPage();p2.on('pageerror',e=>errs.push('p2:'+e.message));for(const [re,f] of [[/gstatic\.com\/firebasejs\/.*firebase-app-compat\.js/,'stub.js']])await p2.route(re,r=>r.fulfill({path:path.join(dir,f),contentType:'text/javascript'}));
+await p2.route(/gstatic\.com\/firebasejs\/.*(auth|firestore)-compat\.js/,r=>r.fulfill({body:''}));await p2.route(/fonts\./,r=>r.fulfill({body:''}));
+await p2.goto('http://127.0.0.1:'+(process.env.PORT||8765)+'/index.html?mode=viewer');await p2.waitForTimeout(200);out.viewerHead=await p2.$eval('header',e=>e.innerHTML);
+await p2.click('#login');await p2.waitForTimeout(100);out.uidnote=await p2.$eval('#uidnote',e=>e.innerHTML);await p2.click('#tab-master');await p2.waitForTimeout(50);out.viewerMaster=await p2.$eval('#view-master',e=>e.innerText.slice(0,600));
 out.errs=errs;process.stdout.write(JSON.stringify(out,null,1));await b.close()})();
