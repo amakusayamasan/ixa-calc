@@ -258,6 +258,18 @@ const SAMPLE={jin:1.05,slots:[
   {card:'10053',tr:5,soldier:'焙烙火矢',s1:['勇冠三軍',5],s2:['万物神勇',5],lim:['天地超克',5]},
   {card:'10066',tr:5,soldier:'焙烙火矢',s1:['天地超克',0],s2:['万物神勇',0],lim:['勇冠三軍',0]}]};
 const M={cards:new Map(),skills:new Map(),soldiers:new Map(),jbuffs:new Map()};
+/* 最終更新者:管理者ごとの表示名は、Firebase コンソールで admins/{ユーザーID} の name フィールドに登録する。
+   保存のたびに 表示名・ユーザーID・日時 を記録する */
+let me=null,adminName='';
+const myName=()=>adminName;
+const nowStamp=()=>({updatedBy:me?.uid||'',updatedName:myName(),updatedAt:(window.firebase?.firestore?.FieldValue?.serverTimestamp?.())||new Date()});
+const stampText=v=>{if(!v?.updatedName)return'';const t=v.updatedAt?.toDate?v.updatedAt.toDate():v.updatedAt?new Date(v.updatedAt.seconds?v.updatedAt.seconds*1000:v.updatedAt):null;
+  const ds=t&&!isNaN(t)?`${t.getFullYear()}/${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`:'';
+  return`最終更新:${v.updatedName}${ds?`(${ds})`:''}`};
+/* 表示名が未登録なら保存させない */
+function needName(){if(myName())return false;
+  msgAny(`表示名が登録されていないため保存できません。Firebase コンソールの admins コレクションで、ドキュメント「${me?.uid||''}」に、フィールド name(文字列)で表示名を追加してから、サイトを読み込み直してください。`);return true}
+const msgAny=t=>{const el=$('edmsg')||$('impmsg')||$('peopleMsg');if(el){el.className='msg err';el.textContent=t}else status(t,true)};
 const loaded={cards:false,skills:false,soldiers:false,jbuffs:false,config:false};
 let config={people:280};
 let db=null,isOwner=false,mtab='cards',draft=null,form=null,importPlan=null;
@@ -658,7 +670,7 @@ function renderEditor(){
   }else body=`<div class="grid">${SOLDIER_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div><p class="note">攻撃力は攻撃部隊、防御力は防御部隊の計算に使います。</p>`;
   box.innerHTML=`<form class="editor" id="edform" novalidate><strong>${coll==='skills'?(id?`${esc(d.name)} を編集(${toFlag(d.init)?'初期スキル':'スキル'})`:(toFlag(d.init)?'初期スキル':'スキル')+'を追加'):id?esc(d.name)+' を編集':LABEL[coll]+'を追加'}</strong>${body}
     <div class="actions"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">保存</button><button class="btn ghost" type="button" data-act="close">閉じる</button></div>
-    ${id?'<button class="btn danger" type="button" data-act="delete">削除</button>':''}</div><p class="msg" id="edmsg"></p></form>`;
+    ${id?'<button class="btn danger" type="button" data-act="delete">削除</button>':''}</div><p class="msg" id="edmsg"></p>${id&&stampText(M[coll]?.get(id))?`<p class="note" id="edstamp">${esc(stampText(M[coll].get(id)))}</p>`:''}</form>`;
 }
 /* 武将の編集画面のうち、初期スキル名で変わる部分(案内・登録ボタン・TR表) */
 function initAreaHtml(d){const sk=skillByName(d.initName),st=sk?trsOf(sk.d):[],name=String(d.initName??'').trim();
@@ -718,7 +730,8 @@ function clean(coll,d){
 const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 $('editor').addEventListener('submit',async e=>{e.preventDefault();syncDraft();const {coll}=draft;const err=validate(coll,draft.data);if(err)return msg(err,true);
   const data=clean(coll,draft.data);const id=draft.id||(coll==='cards'?'n'+data.no+'_'+Math.random().toString(36).slice(2,6):coll==='jbuffs'?'j'+data.no:newId(coll[0]));
-  try{await db.doc(`${BASE}/${coll}/${id}`).set(data);draft.id=id;draft.data=structuredClone(data);renderEditor();msg('保存しました')}catch(er){msg('保存できませんでした('+(er.code||er.message)+')',true);return}
+  if(needName())return;
+  try{await db.doc(`${BASE}/${coll}/${id}`).set({...data,...nowStamp()});draft.id=id;draft.data=structuredClone(data);renderEditor();msg('保存しました')}catch(er){msg('保存できませんでした('+(er.code||er.message)+')',true);return}
   /* 武将の初期スキル名がスキルマスタにないときは、その名前で初期スキル追加画面を開く */
   const iname=coll==='cards'?String(data.initName??'').trim():'';
   if(iname&&!skillByName(iname)){$('mtabs').querySelector('[data-m=skills]').click();openEditor('skills',null,'init');draft.data.name=iname;
@@ -832,13 +845,14 @@ $('importbox').addEventListener('change',async e=>{if(e.target.id!=='xfile'||!e.
 $('importbox').addEventListener('click',async e=>{const b=e.target.closest('[data-imp]');if(!b)return;
   if(b.dataset.imp==='cancel'){importPlan=null;renderImport();return}
   if(b.dataset.imp==='fmt'||b.dataset.imp==='dump'){const m=$('impmsg');try{m.className='msg';m.textContent='作成しています…';await downloadXlsx(b.dataset.imp==='dump');m.textContent=''}catch(err){m.className='msg err';m.textContent='作成できませんでした:'+err.message}return}
+  if(needName())return;const st=nowStamp();
   const p=importPlan,m=$('impmsg');b.disabled=true;let done=0;const total=p.cards.length+p.skills.length+p.soldiers.length+p.jbuffs.length+(p.people!=null?1:0);
   try{
-    for(const c of p.cards){await db.doc(`${BASE}/cards/${c.id||'n'+c.data.no+'_'+Math.random().toString(36).slice(2,6)}`).set(c.data);m.textContent=`取り込み中 ${++done}/${total}`}
-    for(const s of p.skills){await db.doc(`${BASE}/skills/${s.id||newId('s')}`).set(s.data);m.textContent=`取り込み中 ${++done}/${total}`}
-    for(const o of p.soldiers){await db.doc(`${BASE}/soldiers/${o.id||newId('o')}`).set(o.data);m.textContent=`取り込み中 ${++done}/${total}`}
-    for(const j of p.jbuffs){await db.doc(`${BASE}/jbuffs/${j.id||'j'+j.data.no}`).set(j.data);m.textContent=`取り込み中 ${++done}/${total}`}
-    if(p.people!=null){await db.doc(`${BASE}/config/main`).set({...config,people:p.people});done++}
+    for(const c of p.cards){await db.doc(`${BASE}/cards/${c.id||'n'+c.data.no+'_'+Math.random().toString(36).slice(2,6)}`).set({...c.data,...st});m.textContent=`取り込み中 ${++done}/${total}`}
+    for(const s of p.skills){await db.doc(`${BASE}/skills/${s.id||newId('s')}`).set({...s.data,...st});m.textContent=`取り込み中 ${++done}/${total}`}
+    for(const o of p.soldiers){await db.doc(`${BASE}/soldiers/${o.id||newId('o')}`).set({...o.data,...st});m.textContent=`取り込み中 ${++done}/${total}`}
+    for(const j of p.jbuffs){await db.doc(`${BASE}/jbuffs/${j.id||'j'+j.data.no}`).set({...j.data,...st});m.textContent=`取り込み中 ${++done}/${total}`}
+    if(p.people!=null){await db.doc(`${BASE}/config/main`).set({...config,people:p.people,...st});done++}
     importPlan=null;renderImport();status(`Excelから ${done} 件を取り込みました。`);setTimeout(()=>status(''),5000);
   }catch(err){m.className='msg err';m.textContent=`${done}件まで取り込んだところで止まりました(${err.code||err.message})。もう一度「取り込む」を押すと続きから上書きします。`;b.disabled=false}});
 
@@ -869,7 +883,7 @@ $('cleanbox').addEventListener('click',async e=>{const b=e.target.closest('[data
   const p=cleaning,m=$('clmsg');b.disabled=true;m.className='msg';m.textContent='削除しています…';
   const before=form?Math.round(calc().total):null;
   try{const ops=[...p.cards.map(x=>['cards',x]),...p.skills.map(x=>['skills',x]),...p.jbuffs.map(x=>['jbuffs',x])];
-    for(let i=0;i<ops.length;i+=400){const batch=db.batch();for(const [coll,x] of ops.slice(i,i+400))batch.set(db.doc(`${BASE}/${coll}/${x.id}`),x.data);await batch.commit()}
+    for(let i=0;i<ops.length;i+=400){const batch=db.batch();for(const [coll,x] of ops.slice(i,i+400))batch.set(db.doc(`${BASE}/${coll}/${x.id}`),{...x.data,...nowStamp()});await batch.commit()}
     cleaning=null;renderClean();setTimeout(()=>{const after=form?Math.round(calc().total):null;
       status(`不要データを削除しました(武将${p.cards.length}・スキル${p.skills.length}・傑バフ${p.jbuffs.length})。`+(before!=null?(before===after?'計算結果は変わっていません。':`計算結果が変わりました(${fmt(before)} → ${fmt(after)})。お知らせください。`):''));setTimeout(()=>status(''),8000)},500)}
   catch(err){b.disabled=false;m.className='msg err';m.textContent='削除できませんでした('+(err.code||err.message)+')'}});
@@ -883,7 +897,8 @@ $('maddInit').addEventListener('click',()=>{importPlan=null;renderImport();openE
 $('mtable').addEventListener('click',e=>{const tr=e.target.closest('tr[data-id]');if(!tr||!isOwner)return;importPlan=null;renderImport();openEditor(mtab,tr.dataset.id)});
 $('people').addEventListener('click',async e=>{if(e.target.id!=='peopleSave')return;const v=Number($('peopleIn').value),m=$('peopleMsg');
   if(!Number.isFinite(v)||v<=0){m.className='msg err';m.textContent='人数は正の数で入力してください';return}
-  try{await db.doc(`${BASE}/config/main`).set({...config,people:v});m.className='msg ok';m.textContent='保存しました'}catch(err){m.className='msg err';m.textContent='保存できませんでした('+(err.code||err.message)+')'}});
+  if(needName())return;
+  try{await db.doc(`${BASE}/config/main`).set({...config,people:v,...nowStamp()});m.className='msg ok';m.textContent='保存しました'}catch(err){m.className='msg err';m.textContent='保存できませんでした('+(err.code||err.message)+')'}});
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)show(b.dataset.view)});
 function show(v){for(const b of document.querySelectorAll('.tabs button'))b.setAttribute('aria-selected',b.dataset.view===v);
   $('view-calc').hidden=v!=='calc';$('view-master').hidden=v!=='master';try{history.replaceState(null,'',location.pathname+location.search+'#'+v)}catch(e){}if(v==='master')renderMaster()}
@@ -908,7 +923,8 @@ $('seedbox').addEventListener('click',async e=>{if(e.target.id!=='seedRun')retur
 /* ---------- Firebase:管理者ログインとデータの読み込み ---------- */
 function setRole(user){
   $('role').textContent=isOwner?'管理者':'閲覧のみ';$('role').className='role'+(isOwner?' admin':'');
-  $('login').hidden=!!user;$('logout').hidden=!user;$('userName').textContent=user?(user.displayName||user.email||''):'';
+  me=user||null;
+  $('login').hidden=!!user;$('logout').hidden=!user;$('userName').textContent=user?(isOwner&&myName()?myName():(user.displayName||user.email||'')):'';
   const n=$('uidnote');
   if(user&&!isOwner){n.hidden=false;n.innerHTML=`ログインしていますが、管理者として登録されていません。管理者にするには、Firestore の <b>admins</b> コレクションに、次のユーザーIDを「ドキュメントID」として追加してください。<br><code id="uidcode">${esc(user.uid)}</code> <button id="uidcopy" class="btn small ghost" type="button">コピー</button>`}
   else{n.hidden=true;n.innerHTML=''}
@@ -929,7 +945,8 @@ $('uidnote').addEventListener('click',async e=>{if(e.target.id!=='uidcopy')retur
   $('logout').addEventListener('click',()=>auth.signOut());
   auth.onAuthStateChanged(async user=>{
     isOwner=false;
-    if(user){try{isOwner=(await db.doc('admins/'+user.uid).get()).exists}catch(e){isOwner=false}}
+    adminName='';
+    if(user){try{const a=await db.doc('admins/'+user.uid).get();isOwner=a.exists;adminName=isOwner?String(a.data()?.name??'').trim():''}catch(e){isOwner=false}}
     setRole(user)});
   const timer=setTimeout(()=>status('マスタの読み込みに時間がかかっています。通信状態を確認してください。',true),10000);
   const fail=err=>{clearTimeout(timer);for(const k in loaded)loaded[k]=true;status('マスタを読み込めませんでした('+(err.code||err.message)+')。Firestore のルール設定を確認してください。',true);renderCalc();renderMaster()};
