@@ -417,7 +417,10 @@ $('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.clos
   form.jb=(form.jb||[]).map(String).filter(x=>x!==no);if(c.checked)form.jb.push(no);renderJb();updateResults()});
 
 /* ---------- マスタ一覧 ---------- */
-const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','text'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力・素防御力','number'],['growth','攻撃・防御上昇率','number'],['hime','姫','number']];
+/* flag は 0/1 の選択。姫:0=姫ではない 1=姫、無尽:0=持っていない 1=持っている */
+const FLAG_LABELS={hime:['姫ではない','姫'],muzin:['なし','無尽あり']};
+const toFlag=v=>{if(v==null)return 0;const t=String(v).trim();if(t===''||t==='0'||/^(false|no|なし|いいえ|×|✕|-|—)$/i.test(t))return 0;return 1};
+const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','text'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力・素防御力','number'],['growth','攻撃・防御上昇率','number'],['hime','姫','flag'],['muzin','初期スキルに無尽','flag']];
 const CARD_TR=[['tr','TR'],['initSkill','初期スキル'],['statBuff','素攻・防バフ'],['mulNormal','倍枠通常'],['mulLimit','倍枠極限'],['totalBuff','総攻・防バフ']];
 const SKILL_TR=[['tr','TR'],['base','素スキル上昇率'],['coef','係数']];
 const LABEL={cards:'武将',skills:'スキル',soldiers:'兵種',jbuffs:'傑バフ'};
@@ -446,8 +449,8 @@ function renderMaster(){
   const empty=cols=>`<tr><td class="l" colspan="${cols}" style="color:var(--muted)">${loaded[mtab]?(q?'該当なし':`${LABEL[mtab]}はまだ登録されていません。`):'読み込み中…'}</td></tr>`;
   let html='';
   if(mtab==='cards'){
-    html=`<thead><tr><th class="l">カード名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>上昇率</th><th>攻撃(素攻)</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th></tr></thead><tbody>`+
-      (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip${d.side==='攻撃'?' atk':''}">${esc(d.side||'')}</span></td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${fmt(cardAtk(d))}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(N(last.initSkill))}</td><td class="num">${fmt(N(last.totalBuff),2)}</td><td class="num">${N(d.hime)?'○':'—'}</td></tr>`}).join(''):empty(12))+'</tbody>';
+    html=`<thead><tr><th class="l">カード名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>上昇率</th><th>攻撃(素攻)</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th><th>無尽</th></tr></thead><tbody>`+
+      (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip${d.side==='攻撃'?' atk':''}">${esc(d.side||'')}</span></td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${fmt(cardAtk(d))}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(N(last.initSkill))}</td><td class="num">${fmt(N(last.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${toFlag(d.muzin)?'○':'—'}</td></tr>`}).join(''):empty(13))+'</tbody>';
   }else if(mtab==='skills'){
     const maxTr=Math.max(5,...list.flatMap(([,d])=>trsOf(d).map(t=>N(t.tr))));const trs=[...Array(maxTr+1).keys()];
     html=`<thead><tr><th class="l">スキル名</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
@@ -465,7 +468,7 @@ function renderMaster(){
 /* ---------- 編集パネル ---------- */
 function openEditor(coll,id){
   const d=id?structuredClone(M[coll].get(id)):null;
-  if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',troops:'',baseStat:'',growth:'',hime:0,trs:[{tr:0,initSkill:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}};
+  if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',troops:'',baseStat:'',growth:'',hime:0,muzin:0,trs:[{tr:0,initSkill:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}};
   else if(coll==='skills')draft={coll,id,data:d||{name:'',trs:[{tr:0,base:0,coef:0}]}};
   else if(coll==='jbuffs'){if(d){for(const f of JBUFF_VALS)d[f]=jv(d,f);d.targets=d.targets||[]}draft={coll,id,data:d||{no:'',name:'',targets:[],atkIn:'',defIn:'',atkOut:'',defOut:''}}}
   else draft={coll,id,data:d||{name:'',branch:'',atk:'',def:'',destroy:'',speed:''}};
@@ -473,13 +476,14 @@ function openEditor(coll,id){
   renderEditor();$('editor').scrollIntoView({block:'nearest'});
 }
 function syncDraft(){if(!draft)return;const d=draft.data;
-  for(const el of $('editor').querySelectorAll('[data-f]')){const f=el.dataset.f;d[f]=el.type==='number'?(el.value===''?'':Number(el.value)):el.value}
+  for(const el of $('editor').querySelectorAll('[data-f]')){const f=el.dataset.f;d[f]=el.dataset.flag?Number(el.value):el.type==='number'?(el.value===''?'':Number(el.value)):el.value}
   if(draft.coll==='jbuffs'&&$('editor').querySelector('[name=jtarget]')){const known=[...$('editor').querySelectorAll('[name=jtarget]')];const unknown=(d.targets||[]).filter(t=>!known.some(k=>k.value===t));d.targets=[...known.filter(k=>k.checked).map(k=>k.value),...unknown]}
   for(const el of $('editor').querySelectorAll('[data-t]')){const [r,f]=el.dataset.t.split(':');d.trs[+r][f]=el.value===''?'':Number(el.value)}}
 function renderEditor(){
   const box=$('editor');if(!draft||!isOwner){box.innerHTML='';return}
   const {coll,id,data:d}=draft;
-  const inp=(f,label,type)=>type==='side'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${['攻撃','防御'].map(v=>`<option${d[f]===v?' selected':''}>${v}</option>`).join('')}</select></div>`
+  const inp=(f,label,type)=>type==='flag'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}" data-flag="1">${(FLAG_LABELS[f]||['0','1']).map((l,v)=>`<option value="${v}"${toFlag(d[f])===v?' selected':''}>${l}</option>`).join('')}</select></div>`
+    :type==='side'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${['攻撃','防御'].map(v=>`<option${d[f]===v?' selected':''}>${v}</option>`).join('')}</select></div>`
     :`<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="${type}" ${type==='number'?'step="any"':''} value="${esc(d[f]??'')}"></div>`;
   let body='';
   if(coll==='cards'){
@@ -523,7 +527,7 @@ function validate(coll,d){
   return'';
 }
 function clean(coll,d){
-  if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
+  if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='flag'?toFlag(d[f]):t==='number'?N(d[f]):String(d[f]??'').trim();o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
   if(coll==='skills')return{name:String(d.name).trim(),trs:trsOf({trs:d.trs.map(t=>Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])])))})};
   if(coll==='jbuffs'){const o={};for(const [f,,t] of JBUFF_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();o.targets=[...new Set((d.targets||[]).map(x=>String(x).trim()).filter(Boolean))];return o}
   const o={};for(const [f,,t] of SOLDIER_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();if(d.order!=null)o.order=N(d.order);return o;
@@ -543,7 +547,7 @@ function renderImport(){
     <input id="xfile" type="file" accept=".xlsx,.xlsm,.xls"><div style="display:flex;gap:8px"><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;return}
   const p=importPlan;
   box.innerHTML=`<div class="import"><strong>取り込み内容の確認</strong><ul>
-    <li>武将:${p.cards.length}枚(TR ${p.cards.reduce((a,c)=>a+c.trs.length,0)}行) うち新規 ${p.cards.filter(c=>!c.id).length}枚</li>
+    <li>武将:${p.cards.length}枚(TR ${p.cards.reduce((a,c)=>a+(c.data.trs||[]).length,0)}行) うち新規 ${p.cards.filter(c=>!c.id).length}枚</li>
     <li>スキル:${p.skills.length}件 うち新規 ${p.skills.filter(c=>!c.id).length}件</li>
     <li>兵種:${p.soldiers.length}件 うち新規 ${p.soldiers.filter(c=>!c.id).length}件</li>
     <li>傑バフ:${p.jbuffs.length}件 うち新規 ${p.jbuffs.filter(c=>!c.id).length}件</li>
@@ -557,16 +561,18 @@ function planFrom(XLSX,wb){
   if(!cr&&!sr&&!or&&!jr)throw new Error('「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」のどのシートも見つかりません');
   if(cr){const h=cr[0].map(x=>String(x??'').trim()),ix=n=>h.indexOf(n);
     const need=['カードNo','カード名','TR'];for(const n of need)if(ix(n)<0)throw new Error(`武将データに「${n}」列がありません`);
-    const col={no:'カードNo',rarity:'レアリティ',cost:'武将コスト',side:'攻撃or防御',name:'カード名',troops:'兵数',baseStat:'素攻撃力・素防御力',growth:'攻撃・防御上昇率',hime:'姫',
+    const col={no:'カードNo',rarity:'レアリティ',cost:'武将コスト',side:'攻撃or防御',name:'カード名',troops:'兵数',baseStat:'素攻撃力・素防御力',growth:'攻撃・防御上昇率',hime:'姫',muzin:'無尽',
       tr:'TR',initSkill:'初期スキル',statBuff:'素攻・防バフ',mulNormal:'倍枠通常',mulLimit:'倍枠極限',totalBuff:'総攻・防バフ'};
     const g=new Map();
     for(const row of cr.slice(1)){const v=k=>ix(col[k])<0?null:row[ix(col[k])];if(v('no')==null||v('name')==null)continue;
-      const no=String(v('no')).trim();if(!g.has(no)){const c={};for(const [f,,t] of CARD_FIELDS)c[f]=t==='number'?N(v(f)):String(v(f)??'').trim();c.trs=[];g.set(no,c)}
+      const no=String(v('no')).trim();if(!g.has(no)){const c={};for(const [f,,t] of CARD_FIELDS)c[f]=t==='flag'?toFlag(v(f)):t==='number'?N(v(f)):String(v(f)??'').trim();c.trs=[];g.set(no,c)}
       const c=g.get(no);const tr={};for(const [f] of CARD_TR)tr[f]=N(v(f));
       if(c.trs.some(t=>t.tr===tr.tr))warn.push(`カードNo ${no} のTR${tr.tr}が2行あります(後の行を使います)`),c.trs=c.trs.filter(t=>t.tr!==tr.tr);
       if(String(v('name')).trim()!==c.name||N(v('troops'))!==c.troops)warn.push(`カードNo ${no} の行ごとにカード名か兵数が違います(最初の行を使います)`);
       c.trs.push(tr)}
-    for(const [no,c] of g){c.trs=trsOf(c);plan.cards.push({id:findId(M.cards,d=>String(d.no)===no),data:c})}}
+    /* シートに無い列(無尽・姫など)は、登録済みの値をそのまま残す */
+    const missing=CARD_FIELDS.map(([f])=>f).filter(f=>ix(col[f])<0);
+    for(const [no,c] of g){c.trs=trsOf(c);const id=findId(M.cards,d=>String(d.no)===no);if(id){const old=M.cards.get(id);for(const f of missing)if(old[f]!=null)c[f]=old[f]}plan.cards.push({id,data:c})}}
   if(sr){const h=sr[0].map(x=>String(x??'').trim()),ix=n=>h.indexOf(n);
     for(const n of ['スキル名','TR','係数'])if(ix(n)<0)throw new Error(`スキルデータに「${n}」列がありません`);
     for(const row of sr){const k=row.findIndex(x=>String(x??'').trim()==='人数');if(k>=0&&Number.isFinite(Number(row[k+1]))){plan.people=Number(row[k+1]);break}}
