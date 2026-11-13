@@ -192,7 +192,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     </div>
 
     <div class="slots" id="slots"></div>
-    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
+    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
   </section>
 
   <section id="view-master" class="view" hidden>
@@ -279,7 +279,7 @@ const jbInUnit=()=>{if(!form)return[];const nos=new Set(form.slots.map(s=>M.card
 const jbHits=(d,sname)=>!(d.targets&&d.targets.length)||(sname&&d.targets.includes(sname));
 function jbBonus(sname){if(!sname)return 0;
   return jbInUnit().reduce((a,d)=>a+(jbHits(d,sname)?jv(d,'atkIn'):0),0)+jbOuter().reduce((a,d)=>a+(jbHits(d,sname)?jv(d,'atkOut'):0),0)}
-/* ステ振り:攻撃振りは 攻撃 = 素攻撃力 + 上昇率×690、兵法振りは 攻撃 = 素攻撃力 */
+/* ステ振り:攻撃振りは 攻撃 = 素攻撃力 + 攻撃上昇率×690、兵法振りは 攻撃 = 素攻撃力 */
 function calc(){
   const sl=form.slots.map(s=>{const c=M.cards.get(s.card),raw=trEntry(c,s.tr);return{...s,c,raw,t:effT(c,raw)}});
   const names=sl.flatMap(s=>[s.s1,s.s2,s.lim]).map(x=>M.skills.get(x.id)?.name).filter(Boolean);
@@ -447,7 +447,7 @@ $('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.clos
 const FLAG_LABELS={hime:['姫ではない','姫']};
 const RARITIES=['覇・パラレル天','パラレル天','覇・天','天','極','傑'];
 const toFlag=v=>{if(v==null)return 0;const t=String(v).trim();if(t===''||t==='0'||/^(false|no|なし|いいえ|×|✕|-|—)$/i.test(t))return 0;return 1};
-const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','rarity'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力・素防御力','number'],['growth','攻撃・防御上昇率','number'],['hime','姫','flag'],['muzin','無尽(0:なし、1以上:あり)','number']];
+const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','rarity'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力','number'],['baseDef','素防御力','number'],['growth','攻撃上昇率','number'],['growthDef','防御上昇率','number'],['hime','姫','flag'],['muzin','無尽(0:なし、1以上:あり)','number']];
 const CARD_TR=[['tr','TR'],['initSkill','初期スキル'],['statBuff','素攻・防バフ'],['mulNormal','倍枠通常'],['mulLimit','倍枠極限'],['totalBuff','総攻・防バフ']];
 const SKILL_TR=[['tr','TR'],['base','素スキル上昇率'],['coef','係数']];
 const LABEL={cards:'武将',skills:'スキル',soldiers:'兵種',jbuffs:'傑バフ'};
@@ -476,8 +476,8 @@ function renderMaster(){
   const empty=cols=>`<tr><td class="l" colspan="${cols}" style="color:var(--muted)">${loaded[mtab]?(q?'該当なし':`${LABEL[mtab]}はまだ登録されていません。`):'読み込み中…'}</td></tr>`;
   let html='';
   if(mtab==='cards'){
-    html=`<thead><tr><th class="l">カード名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>上昇率</th><th>攻撃(素攻)</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th><th>無尽</th></tr></thead><tbody>`+
-      (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip${String(d.side||'').includes('攻撃')?' atk':''}">${esc(d.side||'')}</span></td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${fmt(cardAtk(d))}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(N(last.initSkill))}</td><td class="num">${fmt(N(last.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(13))+'</tbody>';
+    html=`<thead><tr><th class="l">カード名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>素防御力</th><th>攻撃上昇率</th><th>防御上昇率</th><th>攻撃(素攻)</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th><th>無尽</th></tr></thead><tbody>`+
+      (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip${String(d.side||'').includes('攻撃')?' atk':''}">${esc(d.side||'')}</span></td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="num">${fmt(cardAtk(d))}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(N(last.initSkill))}</td><td class="num">${fmt(N(last.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(15))+'</tbody>';
   }else if(mtab==='skills'){
     const maxTr=Math.max(5,...list.flatMap(([,d])=>trsOf(d).map(t=>N(t.tr))));const trs=[...Array(maxTr+1).keys()];
     html=`<thead><tr><th class="l">スキル名</th><th>無尽</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
@@ -496,7 +496,7 @@ function renderMaster(){
 function openEditor(coll,id){
   const d=id?structuredClone(M[coll].get(id)):null;
   if(coll==='cards'&&d&&d.muzin==null)d.muzin=0;
-  if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',troops:'',baseStat:'',growth:'',hime:0,muzin:0,trs:[{tr:0,initSkill:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}};
+  if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',troops:'',baseStat:'',baseDef:'',growth:'',growthDef:'',hime:0,muzin:0,trs:[{tr:0,initSkill:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}};
   else if(coll==='skills')draft={coll,id,data:d?{...d,muzin:N(d.muzin)}:{name:'',muzin:0,trs:[{tr:0,base:0,coef:0}]}};
   else if(coll==='jbuffs'){if(d){for(const f of JBUFF_VALS)d[f]=jv(d,f);d.targets=d.targets||[]}draft={coll,id,data:d||{no:'',name:'',targets:[],atkIn:'',defIn:'',atkOut:'',defOut:''}}}
   else draft={coll,id,data:d||{name:'',branch:'',atk:'',def:'',destroy:'',speed:''}};
@@ -516,7 +516,7 @@ function renderEditor(){
     :`<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="${type}" ${type==='number'?'step="any"':''} value="${esc(d[f]??'')}"></div>`;
   let body='';
   if(coll==='cards'){
-    body=`<div class="grid">${CARD_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}<div class="field"><span class="label">攻撃(素攻)= 素攻撃力 + 上昇率×690</span><b class="computed num" id="atkPreview">${fmt(cardAtk(d))}</b></div></div>`+trTable(CARD_TR,d.trs);
+    body=`<div class="grid">${CARD_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}<div class="field"><span class="label">攻撃(素攻)= 素攻撃力 + 攻撃上昇率×690</span><b class="computed num" id="atkPreview">${fmt(cardAtk(d))}</b></div></div>`+trTable(CARD_TR,d.trs);
   }else if(coll==='skills'){
     body=`<div class="grid">${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>`+trTable(SKILL_TR,d.trs,t=>fmt(skillValue(t),1),'スキル上昇率');
   }else if(coll==='jbuffs'){
@@ -588,9 +588,9 @@ function planFrom(XLSX,wb){
   const warn=[],plan={cards:[],skills:[],soldiers:[],jbuffs:[],people:null,warn};
   const cr=readSheet(XLSX,wb,'武将データ'),sr=readSheet(XLSX,wb,'スキルデータ'),or=readSheet(XLSX,wb,'兵種データ'),jr=readSheet(XLSX,wb,'傑バフデータ');
   if(!cr&&!sr&&!or&&!jr)throw new Error('「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」のどのシートも見つかりません');
-  if(cr){const h=cr[0].map(x=>String(x??'').trim()),ix=n=>h.indexOf(n);
+  if(cr){const h=cr[0].map(x=>String(x??'').trim()),ix=n=>{if(Array.isArray(n)){for(const x of n){const k=h.indexOf(x);if(k>=0)return k}return -1}return h.indexOf(n)};
     const need=['カードNo','カード名','TR'];for(const n of need)if(ix(n)<0)throw new Error(`武将データに「${n}」列がありません`);
-    const col={no:'カードNo',rarity:'レアリティ',cost:'武将コスト',side:'攻撃or防御',name:'カード名',troops:'兵数',baseStat:'素攻撃力・素防御力',growth:'攻撃・防御上昇率',hime:'姫',muzin:'無尽',
+    const col={no:'カードNo',rarity:'レアリティ',cost:'武将コスト',side:'攻撃or防御',name:'カード名',troops:'兵数',baseStat:['素攻撃力','素攻撃力・素防御力'],baseDef:['素防御力'],growth:['攻撃上昇率','攻撃・防御上昇率','上昇率'],growthDef:['防御上昇率'],hime:'姫',muzin:'無尽',
       tr:'TR',initSkill:'初期スキル',statBuff:'素攻・防バフ',mulNormal:'倍枠通常',mulLimit:'倍枠極限',totalBuff:'総攻・防バフ'};
     const g=new Map();
     for(const row of cr.slice(1)){const v=k=>ix(col[k])<0?null:row[ix(col[k])];if(v('no')==null||v('name')==null)continue;
