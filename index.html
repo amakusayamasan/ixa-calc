@@ -263,9 +263,6 @@ const M={cards:new Map(),skills:new Map(),soldiers:new Map(),jbuffs:new Map()};
 let me=null,adminName='';
 const myName=()=>adminName;
 const nowStamp=()=>({updatedBy:me?.uid||'',updatedName:myName(),updatedAt:(window.firebase?.firestore?.FieldValue?.serverTimestamp?.())||new Date()});
-const stampText=v=>{if(!v?.updatedName)return'';const t=v.updatedAt?.toDate?v.updatedAt.toDate():v.updatedAt?new Date(v.updatedAt.seconds?v.updatedAt.seconds*1000:v.updatedAt):null;
-  const ds=t&&!isNaN(t)?`${t.getFullYear()}/${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`:'';
-  return`最終更新:${v.updatedName}${ds?`(${ds})`:''}`};
 /* 表示名が未登録なら保存させない */
 function needName(){if(myName())return false;
   msgAny(`表示名が登録されていないため保存できません。Firebase コンソールの admins コレクションで、ドキュメント「${me?.uid||''}」に、フィールド name(文字列)で表示名を追加してから、サイトを読み込み直してください。`);return true}
@@ -670,7 +667,7 @@ function renderEditor(){
   }else body=`<div class="grid">${SOLDIER_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div><p class="note">攻撃力は攻撃部隊、防御力は防御部隊の計算に使います。</p>`;
   box.innerHTML=`<form class="editor" id="edform" novalidate><strong>${coll==='skills'?(id?`${esc(d.name)} を編集(${toFlag(d.init)?'初期スキル':'スキル'})`:(toFlag(d.init)?'初期スキル':'スキル')+'を追加'):id?esc(d.name)+' を編集':LABEL[coll]+'を追加'}</strong>${body}
     <div class="actions"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">保存</button><button class="btn ghost" type="button" data-act="close">閉じる</button></div>
-    ${id?'<button class="btn danger" type="button" data-act="delete">削除</button>':''}</div><p class="msg" id="edmsg"></p>${id&&stampText(M[coll]?.get(id))?`<p class="note" id="edstamp">${esc(stampText(M[coll].get(id)))}</p>`:''}</form>`;
+    ${id?'<button class="btn danger" type="button" data-act="delete">削除</button>':''}</div><p class="msg" id="edmsg"></p></form>`;
 }
 /* 武将の編集画面のうち、初期スキル名で変わる部分(案内・登録ボタン・TR表) */
 function initAreaHtml(d){const sk=skillByName(d.initName),st=sk?trsOf(sk.d):[],name=String(d.initName??'').trim();
