@@ -109,6 +109,18 @@ tbody tr.editable:hover{background:var(--accent-weak)}
 .trtable input{width:96px;padding:4px 6px}
 .trtable input.tr{width:60px}
 .computed{color:var(--brass);font-weight:700}
+.jbbtn.on{background:var(--accent-weak);font-weight:700}
+.jbpanel{background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.jbpanel .jbhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.jblist{display:flex;flex-direction:column;gap:6px;max-height:360px;overflow:auto}
+.jbrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.jbrow.on{border-color:var(--accent);background:var(--accent-weak)}
+.jbrow label{display:flex;gap:8px;align-items:flex-start;cursor:pointer;min-width:0}
+.jbrow label input{width:auto;margin-top:4px;accent-color:var(--accent)}
+.jbrow .meta{font-size:12px;color:var(--muted)}
+.jbrow .seg button{padding:4px 10px;font-size:12px;white-space:nowrap}
+.plus{color:var(--brass);font-weight:700;margin-left:4px}
+@media (max-width:640px){.jbrow{grid-template-columns:1fr}}
 .checks{display:flex;flex-wrap:wrap;gap:6px}
 .checks label{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;cursor:pointer;background:var(--panel);user-select:none}
 .checks label:hover{border-color:var(--accent)}
@@ -158,7 +170,10 @@ tbody tr.editable:hover{background:var(--accent-weak)}
       <div class="field" style="width:130px"><label class="label" for="jin">弐の陣・デバフ</label>
         <input id="jin" type="number" step="0.01" value="1.05"></div>
       <button id="resetForm" class="btn ghost" type="button">サンプル編成に戻す</button>
+      <div class="field"><span class="label">傑バフ</span>
+        <button id="jbBtn" class="btn ghost jbbtn" type="button" aria-expanded="false" aria-controls="jbpanel">傑バフ:なし</button></div>
     </div>
+    <div id="jbpanel" class="jbpanel" hidden></div>
 
     <div class="result" aria-live="polite">
       <div class="big"><span class="label">素火力</span><div class="v num" id="r-total">—</div><div class="sub num" id="r-total-jp"></div></div>
@@ -172,7 +187,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     </div>
 
     <div class="slots" id="slots"></div>
-    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は 素攻撃力 + 上昇率×690、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊長の兵数+8000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)で、この2つと天穿奏覇はスキル値に加算しません。編成はこの端末に記憶されます。</p>
+    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は 素攻撃力 + 上昇率×690、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊長の兵数+8000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)で、この2つと天穿奏覇はスキル値に加算しません。傑バフは、選んだものの攻撃力(所属時か外部)を対象兵種の兵士攻撃力に足します。編成はこの端末に記憶されます。</p>
   </section>
 
   <section id="view-master" class="view" hidden>
@@ -233,6 +248,11 @@ const findId=(map,pred)=>{for(const [id,d] of map)if(pred(d))return id;return ''
 
 /* ---------- 計算 ---------- */
 function skillVal(sel){const s=M.skills.get(sel.id);if(!s||ZERO_IN_KENSHIN.includes(s.name))return 0;const t=trEntry(s,sel.tr);return t?skillValue(t):0}
+/* 傑バフ:選んだ傑バフのうち、その兵種が対象(空なら全兵種)のものの攻撃力を足す。所属時/外部は傑バフごとに選ぶ */
+const jbFind=no=>{const id=findId(M.jbuffs,d=>String(d.no)===String(no));return id?M.jbuffs.get(id):null};
+const jbActive=()=>(form?.jb||[]).map(x=>({...x,d:jbFind(x.no)})).filter(x=>x.d);
+const jbHits=(d,sname)=>!(d.targets&&d.targets.length)||(sname&&d.targets.includes(sname));
+function jbBonus(sname){if(!sname)return 0;return jbActive().reduce((a,x)=>a+(jbHits(x.d,sname)?jv(x.d,x.mode==='in'?'atkIn':'atkOut'):0),0)}
 function calc(){
   const sl=form.slots.map(s=>{const c=M.cards.get(s.card);return{...s,c,t:trEntry(c,s.tr)}});
   const names=sl.flatMap(s=>[s.s1,s.s2,s.lim]).map(x=>M.skills.get(x.id)?.name).filter(Boolean);
@@ -242,10 +262,10 @@ function calc(){
   const rows=sl.map((s,i)=>{
     if(!s.c||!s.t)return null;
     const troops=N(s.c.troops)+(i===0?rei*8000:0),atk=cardAtk(s.c);
-    const satk=N(M.soldiers.get(s.soldier)?.atk);
+    const sname=M.soldiers.get(s.soldier)?.name,jb=jbBonus(sname),satk=N(M.soldiers.get(s.soldier)?.atk)+jb;
     const b=satk*troops*1.4+atk*1.4*lb;
     const sk=N(s.t.initSkill)+(skillVal(s.s1)+skillVal(s.s2))*N(s.t.mulNormal)+skillVal(s.lim)*N(s.t.mulLimit)*1.2;
-    base+=b;skill+=sk;return{troops,atk,satk,b,sk};
+    base+=b;skill+=sk;return{troops,atk,satk,jb,b,sk};
   });
   /* 総攻バフは全枠の武将から集めて足し算(1+各(バフ-1)の和)。火焔武闘は最後に+0.2ずつ */
   const buffs=sl.filter(s=>s.t).map(s=>N(s.t.totalBuff)||1);
@@ -269,15 +289,15 @@ function updateResults(){
   $('r-base').textContent=fmt(r.base,1);$('r-skill').textContent=fmt(r.skill,1);
   $('r-buff').textContent=fmt(r.buff,2);$('r-lbuff').textContent=fmt(r.lb,2);$('r-special').textContent=r.rei+' / '+r.hi;
   r.rows.forEach((x,i)=>{const el=$('calc-'+i);if(!el)return;
-    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
+    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
   form.slots.forEach((_,i)=>['s1','s2','lim'].forEach(k=>{const el=$(`eff-${k}-${i}`);if(el)el.innerHTML=skillEffect(i,k)}));
   if(M.cards.size&&M.skills.size&&M.soldiers.size)store.set('ixa-form-v2',toKeys(form));
 }
 /* 端末への記憶はIDではなく「カードNo・スキル名・兵種名」で持つ */
-function toKeys(f){return{jin:f.jin,slots:f.slots.map(s=>({card:String(M.cards.get(s.card)?.no??''),tr:s.tr,soldier:M.soldiers.get(s.soldier)?.name||'',
+function toKeys(f){return{jin:f.jin,jb:(f.jb||[]).map(x=>({no:String(x.no),mode:x.mode==='in'?'in':'out'})),slots:f.slots.map(s=>({card:String(M.cards.get(s.card)?.no??''),tr:s.tr,soldier:M.soldiers.get(s.soldier)?.name||'',
   s1:[M.skills.get(s.s1.id)?.name||'',s.s1.tr],s2:[M.skills.get(s.s2.id)?.name||'',s.s2.tr],lim:[M.skills.get(s.lim.id)?.name||'',s.lim.tr]}))}}
 function fromKeys(f){const sk=([n,tr])=>({id:n?findId(M.skills,d=>d.name===n):'',tr:N(tr)});
-  return{jin:f.jin??1.05,slots:f.slots.map(s=>({card:findId(M.cards,d=>String(d.no)===String(s.card)),tr:N(s.tr),soldier:findId(M.soldiers,d=>d.name===s.soldier),s1:sk(s.s1),s2:sk(s.s2),lim:sk(s.lim)}))}}
+  return{jin:f.jin??1.05,jb:Array.isArray(f.jb)?f.jb.map(x=>({no:String(x.no),mode:x.mode==='in'?'in':'out'})):[],slots:f.slots.map(s=>({card:findId(M.cards,d=>String(d.no)===String(s.card)),tr:N(s.tr),soldier:findId(M.soldiers,d=>d.name===s.soldier),s1:sk(s.s1),s2:sk(s.s2),lim:sk(s.lim)}))}}
 const byName=(a,b)=>String(a[1].name).localeCompare(String(b[1].name),'ja',{numeric:true})||N(a[1].no)-N(b[1].no);
 /* 武将検索。同じ武将(カード名が同じもの。パラレルも含む)は他の枠で選べない */
 const kana=s=>String(s??'').normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
@@ -342,6 +362,7 @@ function renderCalc(){
   if(!M.cards.size){box.innerHTML='<p class="note">武将マスタがまだ登録されていません。「マスタ管理」から登録すると、ここで部隊を組めます。</p>';return}
   if(!form)form=fromKeys(store.get('ixa-form-v2')||SAMPLE);
   $('jin').value=form.jin;
+  if(!form.jb)form.jb=[];renderJb();
   {const seen=new Set();for(const s of form.slots){const n=M.cards.get(s.card)?.name;if(!n)continue;if(seen.has(n))s.card='';else seen.add(n)}}
   for(const s of form.slots){const used=new Set();for(const k of SKILL_KEYS){const id=s[k].id;if(!id)continue;if(used.has(id))s[k].id='';else used.add(id)}}
   const skillRow=(i,k,label,s)=>`<div class="field"><label class="label" for="${k}-${i}">${label}</label><div class="pair">
@@ -366,6 +387,28 @@ $('slots').addEventListener('change',e=>{const t=e.target,k=t.dataset.k;if(!k)re
   updateResults()});
 $('jin').addEventListener('input',e=>{if(form){form.jin=parseFloat(e.target.value);updateResults()}});
 $('resetForm').addEventListener('click',()=>{form=fromKeys(SAMPLE);renderCalc()});
+function renderJb(){const btn=$('jbBtn'),panel=$('jbpanel');const act=form?jbActive():[];
+  btn.textContent=act.length?`傑バフ:${act.length}件`:'傑バフ:なし';btn.classList.toggle('on',act.length>0);
+  btn.setAttribute('aria-expanded',String(!panel.hidden));
+  if(panel.hidden||!form)return;
+  const list=[...M.jbuffs].sort(byNo),sel=new Map((form.jb||[]).map(x=>[String(x.no),x.mode]));
+  panel.innerHTML=`<div class="jbhead"><strong>使う傑バフを選ぶ</strong><div style="display:flex;gap:8px"><button class="btn small ghost" type="button" data-jb-act="clear"${sel.size?'':' disabled'}>すべて外す</button><button class="btn small" type="button" data-jb-act="close">閉じる</button></div></div>
+    <p class="note">選んだ傑バフの攻撃力が、対象兵種の兵士攻撃力に足されます。傑バフごとに「所属時」(その傑カードが部隊にいる)か「外部」(外からかかる)を選んでください。複数選ぶと合計されます。防御力は防御部隊の計算で使います。</p>
+    <div class="jblist">${list.length?list.map(([id,d])=>{const no=String(d.no),on=sel.has(no),mode=sel.get(no)||'out';
+      return`<div class="jbrow${on?' on':''}"><label><input type="checkbox" data-jb="${esc(no)}"${on?' checked':''}><span><b>${esc(d.name)}</b><br><span class="meta">No.${esc(no)} ・ 対象:${esc(targetsLabel(d))}</span></span></label>
+      <div class="seg" role="group" aria-label="${esc(d.name)}のかかり方">
+        <button type="button" data-jb-mode="in" data-no="${esc(no)}" aria-pressed="${on&&mode==='in'}">所属時 攻+${fmt(jv(d,'atkIn'),2)}</button>
+        <button type="button" data-jb-mode="out" data-no="${esc(no)}" aria-pressed="${on&&mode==='out'}">外部 攻+${fmt(jv(d,'atkOut'),2)}</button></div></div>`}).join('')
+      :'<p class="note">傑バフマスタがまだ登録されていません。マスタ管理の「傑バフ」タブから登録してください。</p>'}</div>`;
+}
+$('jbBtn').addEventListener('click',()=>{const p=$('jbpanel');p.hidden=!p.hidden;renderJb()});
+$('jbpanel').addEventListener('click',e=>{if(!form)return;const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.jbAct==='close'){$('jbpanel').hidden=true;renderJb();$('jbBtn').focus();return}
+  if(b.dataset.jbAct==='clear'){form.jb=[];renderJb();updateResults();return}
+  if(b.dataset.jbMode){const no=b.dataset.no,mode=b.dataset.jbMode;form.jb=(form.jb||[]).filter(x=>String(x.no)!==no);form.jb.push({no,mode});renderJb();updateResults()}});
+$('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.closest('[data-jb]');if(!c)return;const no=c.dataset.jb;
+  const prev=(form.jb||[]).find(x=>String(x.no)===no);form.jb=(form.jb||[]).filter(x=>String(x.no)!==no);
+  if(c.checked)form.jb.push({no,mode:prev?.mode||'out'});renderJb();updateResults()});
 
 /* ---------- マスタ一覧 ---------- */
 const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','text'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力・素防御力','number'],['growth','攻撃・防御上昇率','number'],['hime','姫','number']];
@@ -646,7 +689,7 @@ $('uidnote').addEventListener('click',async e=>{if(e.target.id!=='uidcopy')retur
       renderCalc();if(!$('view-master').hidden)renderMaster();renderSeed();
     },fail);
   }
-  db.collection(`${BASE}/jbuffs`).onSnapshot(snap=>{M.jbuffs=new Map(snap.docs.map(d=>[d.id,d.data()]));loaded.jbuffs=true;settle();if(!$('view-master').hidden)renderMaster()},
+  db.collection(`${BASE}/jbuffs`).onSnapshot(snap=>{M.jbuffs=new Map(snap.docs.map(d=>[d.id,d.data()]));loaded.jbuffs=true;settle();if(form){renderJb();updateResults()}if(!$('view-master').hidden)renderMaster()},
     err=>{loaded.jbuffs=true;settle();status('傑バフマスタを読み込めませんでした('+(err.code||err.message)+')。Firestore のルールを最新の firestore.rules に更新してください。',true)});
   db.doc(`${BASE}/config/main`).onSnapshot(snap=>{if(snap.exists)config={people:280,...snap.data()};loaded.config=true;settle();updateResults();if(!$('view-master').hidden)renderMaster()},fail);
 })();
