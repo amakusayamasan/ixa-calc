@@ -812,3 +812,8 @@ tbody tr.editable:hover {
     transition: none !important;
   }
 }
+
+/* カードNoの重複の警告(空のときは場所を取らない) */
+#f-no-warn:empty {
+  display: none;
+}

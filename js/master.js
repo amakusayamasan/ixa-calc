@@ -256,7 +256,8 @@ function fieldHtml(d, f, label, type) {
       .join('');
     return `<div class="field">${lab}<select id="f-${f}" data-f="${f}"${type === 'flag' ? ' data-flag="1"' : ''}>${opts}</select></div>`;
   }
-  return `<div class="field">${lab}<input id="f-${f}" data-f="${f}" type="${type}" ${type === 'number' ? 'step="any"' : ''} value="${esc(d[f] ?? '')}"></div>`;
+  const warn = f === 'no' ? '<span class="msg err" id="f-no-warn" aria-live="polite"></span>' : '';
+  return `<div class="field">${lab}<input id="f-${f}" data-f="${f}" type="${type}" ${type === 'number' ? 'step="any"' : ''} value="${esc(d[f] ?? '')}">${warn}</div>`;
 }
 const checkbox = (attrs, checked, label) =>
   `<label><input type="checkbox" ${attrs}${checked ? ' checked' : ''}>${label}</label>`;
@@ -572,20 +573,32 @@ function msg(t, err) {
     m.className = 'msg ' + (err ? 'err' : 'ok');
   }
 }
+/* 同じカードNoがほかに登録されていれば、そのデータを返す(武将・傑バフ)。M は Firestore と常に同期している */
+function dupNo(coll, no, selfId) {
+  if (String(no ?? '').trim() === '') return null;
+  const id = findId(M[coll], x => String(x.no) === String(no).trim());
+  return id && id !== selfId ? M[coll].get(id) : null;
+}
+/* カードNoの欄から離れたときに、登録済みなら赤字で知らせる */
+function checkNo() {
+  const w = $('f-no-warn'),
+    el = $('f-no');
+  if (!w || !el || !draft) return;
+  const hit = dupNo(draft.coll, el.value, draft.id);
+  w.textContent = hit ? `カードNo ${el.value.trim()} は既に登録済みです(${hit.name})` : '';
+}
+$('editor').addEventListener('focusout', e => {
+  if (e.target.id === 'f-no') checkNo();
+});
 function validate(coll, d) {
   if (!String(d.name || '').trim()) return '名前を入力してください';
   if (coll === 'cards') {
     if (d.no === '' || !Number.isFinite(Number(d.no))) return 'カードNoを入力してください';
-    if (
-      findId(M.cards, x => String(x.no) === String(d.no)) &&
-      findId(M.cards, x => String(x.no) === String(d.no)) !== draft.id
-    )
-      return `カードNo ${d.no} はすでに登録されています`;
+    if (dupNo(coll, d.no, draft.id)) return `カードNo ${d.no} はすでに登録されています`;
     if (!String(d.initName ?? '').trim()) return '初期スキル名を入力してください';
   } else if (coll === 'jbuffs') {
     if (d.no === '' || !Number.isFinite(Number(d.no))) return 'カードNoを入力してください';
-    const dup = findId(M.jbuffs, x => String(x.no) === String(d.no));
-    if (dup && dup !== draft.id) return `カードNo ${d.no} はすでに登録されています`;
+    if (dupNo(coll, d.no, draft.id)) return `カードNo ${d.no} はすでに登録されています`;
   } else {
     const dup = findId(M[coll], x => x.name === d.name);
     if (dup && dup !== draft.id) return '同じ名前がすでに登録されています';
