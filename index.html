@@ -339,12 +339,14 @@ function calc(){
   /* 無尽を持つ武将の数(武将の無尽、初期スキル・追加スキル・極限スキルのどれかが無尽なら1人。本人も含む) */
   const mz=x=>N(M.skills.get(x?.id)?.muzin)>0;
   const mc=Math.min(4,sl.filter(s=>s.c&&(N(s.c.muzin)>0||N(skillByName(s.c.initName)?.d.muzin)>0||mz(s.s1)||mz(s.s2)||mz(s.lim))).length);
-  const tbOf=s=>{if(!s.t)return 1;const v=N(s.t.totalBuff)||1;return s.t===s.raw&&s.raw.tbCoef!=null?v+mc*N(s.raw.tbCoef)/100:v};
+  /* 無尽部隊では、無尽を持つ武将(傑以外)の上乗せ分は2倍 */
+  const tbMul=s=>muzinOn()&&s.c?.rarity!=='傑'&&(N(s.c?.muzin)>0||N(skillByName(s.c?.initName)?.d.muzin)>0)?2:1;
+  const tbOf=s=>{if(!s.t)return 1;const v=N(s.t.totalBuff)||1;return s.t===s.raw&&s.raw.tbCoef!=null?v+mc*N(s.raw.tbCoef)/100*tbMul(s):v};
   /* 総攻バフは全枠の武将から集めて足し算(1+各(バフ-1)の和)。火焔武闘は最後に+0.2ずつ */
   const buffs=sl.filter(s=>s.t).map(tbOf);
   const combined=1+buffs.reduce((a,b)=>a+(b-1),0);
   const buff=combined+hi*0.2,jin=N(form.jin);
-  rows.forEach((r,i)=>{if(r){r.tb=tbOf(sl[i]);r.tbMc=sl[i].t===sl[i].raw&&sl[i].raw.tbCoef!=null?mc:null;r.void=muzinVoid(sl[i].c)}});
+  rows.forEach((r,i)=>{if(r){r.tb=tbOf(sl[i]);r.tbMc=sl[i].t===sl[i].raw&&sl[i].raw.tbCoef!=null?mc:null;r.tbMul=tbMul(sl[i]);r.void=muzinVoid(sl[i].c)}});
   return{rows,base,skill,buff,lb,rei,hi,muzin:muzinOn(),total:(base*skill/100+base)*jin*buff};
 }
 /* スキル欄の下に出す効果。スキル上昇率 × 倍枠(極限は×1.2)= この枠で加算される値 */
@@ -362,7 +364,7 @@ function updateResults(){
   $('r-base').textContent=fmt(r.base,1);$('r-skill').textContent=fmt(r.skill,1);
   $('r-buff').textContent=fmt(r.buff,2);$('r-special').textContent=r.rei+' / '+r.hi;
   r.rows.forEach((x,i)=>{const el=$('calc-'+i);if(!el)return;
-    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw&&x.init!==x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}${x.tbMc!=null?`<span class="plus">(無尽${x.tbMc}人)</span>`:''}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
+    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw&&x.init!==x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}${x.tbMc!=null?`<span class="plus">(無尽${x.tbMc}人${x.tbMul>1?'・無尽×2':''})</span>`:''}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
   form.slots.forEach((_,i)=>['s1','s2','lim'].forEach(k=>{const el=$(`eff-${k}-${i}`);if(el)el.innerHTML=skillEffect(i,k)}));
   if(M.cards.size&&M.skills.size&&M.soldiers.size)store.set('ixa-form-v2',toKeys(form));
 }
@@ -585,7 +587,7 @@ function renderEditor(){
   }else if(coll==='skills'){
     const ini=toFlag(d.init)===1;
     body=`<div class="grid">${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${inp('noAdd','スキル付与','flag')}${inp('coefBy','係数の掛け方','coef')}${ini?inp('tbBy','総攻・防バフの掛け方','tbby'):''}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
-    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。${ini?'素攻・防バフ〜総攻・防バフは、このスキルを初期スキルに持つ武将に効く値です(空欄なら武将マスタの値)。':''}${ini&&tbByOf(d)==='muzin'?'総攻・防バフ = 総攻・防バフ + 無尽を持つ武将数(本人を含む、最大4) × 総攻・防バフ係数 ÷ 100。':''}</p>`+trTable(ini?[...SKILL_TR,...SKILL_INIT,...(tbByOf(d)==='muzin'?[TB_COEF]:[])]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
+    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。${ini?'素攻・防バフ〜総攻・防バフは、このスキルを初期スキルに持つ武将に効く値です(空欄なら武将マスタの値)。':''}${ini&&tbByOf(d)==='muzin'?'総攻・防バフ = 総攻・防バフ + 無尽を持つ武将数(本人を含む、最大4) × 総攻・防バフ係数 ÷ 100(無尽部隊で本人が無尽を持つときは上乗せ分が2倍)。':''}</p>`+trTable(ini?[...SKILL_TR,...SKILL_INIT,...(tbByOf(d)==='muzin'?[TB_COEF]:[])]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
   }else if(coll==='jbuffs'){
     const sold=[...M.soldiers].sort(bySoldierOrder),tg=d.targets||[],unknown=tg.filter(t=>!sold.some(([,x])=>x.name===t));
     body=`<div class="grid">${JBUFF_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div>
