@@ -539,22 +539,20 @@ function loadXLSX(){return xlsxPromise||(xlsxPromise=new Promise((ok,ng)=>{const
 function renderImport(){
   const box=$('importbox');if(!importPlan){box.innerHTML='';return}
   if(importPlan==='pick'){box.innerHTML=`<div class="import"><strong>Excelから取り込み</strong>
-    <p class="note">「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」シートを読み込みます(あるシートだけで構いません)。武将と傑バフはカードNo、スキルはスキル名、兵種は兵種名が同じものを上書きし(兵種と傑バフは、シートにないものを削除することもできます)、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
+    <p class="note">「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」シートを読み込みます(あるシートだけで構いません)。武将と傑バフはカードNo、スキルはスキル名、兵種は兵種名が同じものを上書きし、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
     <input id="xfile" type="file" accept=".xlsx,.xlsm,.xls"><div style="display:flex;gap:8px"><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;return}
   const p=importPlan;
   box.innerHTML=`<div class="import"><strong>取り込み内容の確認</strong><ul>
     <li>武将:${p.cards.length}枚(TR ${p.cards.reduce((a,c)=>a+c.trs.length,0)}行) うち新規 ${p.cards.filter(c=>!c.id).length}枚</li>
     <li>スキル:${p.skills.length}件 うち新規 ${p.skills.filter(c=>!c.id).length}件</li>
     <li>兵種:${p.soldiers.length}件 うち新規 ${p.soldiers.filter(c=>!c.id).length}件</li>
-    ${p.soldierPrune.length?`<li><label style="display:flex;gap:6px;align-items:flex-start"><input type="checkbox" id="impPrune" style="width:auto;margin-top:4px"><span>兵種データにない兵種 ${p.soldierPrune.length}件を削除する(${p.soldierPrune.map(x=>esc(x.name)).join('、')})</span></label></li>`:''}
     <li>傑バフ:${p.jbuffs.length}件 うち新規 ${p.jbuffs.filter(c=>!c.id).length}件</li>
-    ${p.jbuffPrune.length?`<li><label style="display:flex;gap:6px;align-items:flex-start"><input type="checkbox" id="impPruneJ" style="width:auto;margin-top:4px"><span>傑バフデータにない傑バフ ${p.jbuffPrune.length}件を削除する(${p.jbuffPrune.map(x=>esc(x.name)).join('、')})</span></label></li>`:''}
     ${p.people!=null?`<li>人数:${p.people}</li>`:''}${p.warn.map(w=>`<li style="color:var(--danger)">${esc(w)}</li>`).join('')}</ul>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-imp="run">取り込む</button><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;
 }
 function readSheet(XLSX,wb,name){const ws=wb.Sheets[name];if(!ws)return null;return XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true})}
 function planFrom(XLSX,wb){
-  const warn=[],plan={cards:[],skills:[],soldiers:[],soldierPrune:[],jbuffs:[],jbuffPrune:[],people:null,warn};
+  const warn=[],plan={cards:[],skills:[],soldiers:[],jbuffs:[],people:null,warn};
   const cr=readSheet(XLSX,wb,'武将データ'),sr=readSheet(XLSX,wb,'スキルデータ'),or=readSheet(XLSX,wb,'兵種データ'),jr=readSheet(XLSX,wb,'傑バフデータ');
   if(!cr&&!sr&&!or&&!jr)throw new Error('「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」のどのシートも見つかりません');
   if(cr){const h=cr[0].map(x=>String(x??'').trim()),ix=n=>h.indexOf(n);
@@ -587,8 +585,7 @@ function planFrom(XLSX,wb){
       for(const f of ['atk','def','destroy','speed']){const v=col[f]<0?null:row[col[f]];
         if(f==='atk'&&(v==null||String(v).trim()===''||!Number.isFinite(Number(v))))warn.push(`兵種「${n}」の攻撃力が数値ではありません(0として取り込みます)`);d[f]=N(v)}
       if(g.has(n))warn.push(`兵種「${n}」が2行あります(後の行を使います)`);g.set(n,d)}
-    for(const [n,d] of g)plan.soldiers.push({id:findId(M.soldiers,x=>x.name===n),data:d});
-    plan.soldierPrune=[...M.soldiers].filter(([,d])=>!g.has(d.name)).map(([id,d])=>({id,name:d.name}))}
+    for(const [n,d] of g)plan.soldiers.push({id:findId(M.soldiers,x=>x.name===n),data:d});}
   /* 傑バフデータ:カードNo・武将名・対象兵種(「、」区切り。空なら全兵種)・所属時攻撃力・所属時防御力・外部攻撃力・外部防御力。カードNoが同じものを上書き */
   if(jr&&jr.length){const h=jr[0].map(x=>String(x??'').trim()),pick=names=>{for(const n of names){const k=h.indexOf(n);if(k>=0)return k}return -1};
     const col={no:pick(['カードNo','カードNO','No']),name:pick(['武将名','カード名']),targets:pick(['対象兵種','兵種']),atkIn:pick(['所属時攻撃力']),defIn:pick(['所属時防御力','所属時防禦力']),atkOut:pick(['外部攻撃力']),defOut:pick(['外部防御力','外部防禦力'])};
@@ -602,8 +599,7 @@ function planFrom(XLSX,wb){
       const miss=d.targets.filter(t=>!findId(M.soldiers,x=>x.name===t));if(miss.length)warn.push(`傑バフ「${n}」の対象兵種「${miss.join('、')}」は兵種マスタにありません(名前のまま登録します)`);
       for(const f of JBUFF_VALS){const v=row[col[f]];if(v!=null&&String(v).trim()!==''&&!Number.isFinite(Number(v)))warn.push(`傑バフ「${n}」の${JL[f]}が数値ではありません(0として取り込みます)`);d[f]=N(v)}
       if(g.has(key))warn.push(`カードNo ${key} の傑バフが2行あります(後の行を使います)`);g.set(key,d)}
-    for(const [key,d] of g)plan.jbuffs.push({id:findId(M.jbuffs,x=>String(x.no)===key),data:d});
-    plan.jbuffPrune=[...M.jbuffs].filter(([,d])=>!g.has(String(d.no))).map(([id,d])=>({id,name:d.name}))}
+    for(const [key,d] of g)plan.jbuffs.push({id:findId(M.jbuffs,x=>String(x.no)===key),data:d});}
   plan.warn=[...new Set(warn)];return plan;
 }
 $('mimport').addEventListener('click',()=>{draft=null;renderEditor();importPlan='pick';renderImport()});
@@ -612,16 +608,12 @@ $('importbox').addEventListener('change',async e=>{if(e.target.id!=='xfile'||!e.
   catch(err){m.className='msg err';m.textContent='読み込めませんでした:'+err.message}});
 $('importbox').addEventListener('click',async e=>{const b=e.target.closest('[data-imp]');if(!b)return;
   if(b.dataset.imp==='cancel'){importPlan=null;renderImport();return}
-  const p=importPlan,m=$('impmsg');b.disabled=true;let done=0;const prune=$('impPrune')?.checked?p.soldierPrune:[],pruneJ=$('impPruneJ')?.checked?p.jbuffPrune:[];const total=p.cards.length+p.skills.length+p.soldiers.length+prune.length+p.jbuffs.length+pruneJ.length+(p.people!=null?1:0);
+  const p=importPlan,m=$('impmsg');b.disabled=true;let done=0;const total=p.cards.length+p.skills.length+p.soldiers.length+p.jbuffs.length+(p.people!=null?1:0);
   try{
     for(const c of p.cards){await db.doc(`${BASE}/cards/${c.id||'n'+c.data.no+'_'+Math.random().toString(36).slice(2,6)}`).set(c.data);m.textContent=`取り込み中 ${++done}/${total}`}
     for(const s of p.skills){await db.doc(`${BASE}/skills/${s.id||newId('s')}`).set(s.data);m.textContent=`取り込み中 ${++done}/${total}`}
     for(const o of p.soldiers){await db.doc(`${BASE}/soldiers/${o.id||newId('o')}`).set(o.data);m.textContent=`取り込み中 ${++done}/${total}`}
-    for(const x of prune){await db.doc(`${BASE}/soldiers/${x.id}`).delete();m.textContent=`取り込み中 ${++done}/${total}`}
-    if(prune.length)p.soldierPrune=[];
     for(const j of p.jbuffs){await db.doc(`${BASE}/jbuffs/${j.id||'j'+j.data.no}`).set(j.data);m.textContent=`取り込み中 ${++done}/${total}`}
-    for(const x of pruneJ){await db.doc(`${BASE}/jbuffs/${x.id}`).delete();m.textContent=`取り込み中 ${++done}/${total}`}
-    if(pruneJ.length)p.jbuffPrune=[];
     if(p.people!=null){await db.doc(`${BASE}/config/main`).set({...config,people:p.people});done++}
     importPlan=null;renderImport();status(`Excelから ${done} 件を取り込みました。`);setTimeout(()=>status(''),5000);
   }catch(err){m.className='msg err';m.textContent=`${done}件まで取り込んだところで止まりました(${err.code||err.message})。もう一度「取り込む」を押すと続きから上書きします。`;b.disabled=false}});
