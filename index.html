@@ -529,7 +529,7 @@ function renderMaster(){
       (list.length?list.map(([id,d])=>{const t=cardTrs(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side==='攻撃・防御'?'side-both':d.side==='防御'?'side-def':d.side==='攻撃'?'side-atk':''}">${esc(d.side||'')}</span></td><td class="l">${esc(d.initName||'—')}</td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="l">${trRange({trs:t})}</td><td class="num">${fmt(initBase(d,last),1)}</td><td class="num">${fmt(N(cardT(d,last.tr)?.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(15))+'</tbody>';
   }else if(mtab==='skills'){
     const maxTr=Math.max(5,...list.flatMap(([,d])=>trsOf(d).map(t=>N(t.tr))));const trs=[...Array(maxTr+1).keys()];
-    html=`<thead><tr><th class="l">スキル名</th><th class="l">種類</th><th>無尽</th><th>Xスキル</th><th>付与</th><th class="l">係数の掛け方</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
+    html=`<thead><tr><th class="l">スキル名</th><th class="l">種類</th><th>無尽</th><th>Xスキル</th><th>スキル付与</th><th class="l">係数の掛け方</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
       (list.length?list.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="l">${isInitSkill(d)?'初期スキル':'スキル'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td><td class="num">${isX(d)?'○':'—'}</td><td class="num">${toFlag(d.noAdd)?'不可':'可'}</td><td class="l">${COEF_SHORT[coefByOf(d)]}</td>${trs.map(t=>{const e=trEntry(d,t);return`<td class="num" title="${e?`素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}`:''}">${e?skillLabel(e,d):'—'}</td>`}).join('')}</tr>`).join(''):empty(trs.length+6))+'</tbody>';
   }else if(mtab==='jbuffs'){
     const jl=[...M.jbuffs].filter(([,d])=>!q||String(d.name).includes(q)||String(d.no).includes(q)||(d.targets||[]).some(t=>t.includes(q))).sort(byNo);
@@ -574,7 +574,7 @@ function renderEditor(){
     <div id="initArea" data-key="${esc(String(d.initName??'').trim())}">${initAreaHtml(d)}</div>`;
   }else if(coll==='skills'){
     const ini=toFlag(d.init)===1;
-    body=`<div class="grid">${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${inp('noAdd','付与','flag')}${inp('coefBy','係数の掛け方','coef')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
+    body=`<div class="grid">${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${inp('noAdd','スキル付与','flag')}${inp('coefBy','係数の掛け方','coef')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
     <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。${ini?'素攻・防バフ〜総攻・防バフは、このスキルを初期スキルに持つ武将に効く値です(空欄なら武将マスタの値)。':''}</p>`+trTable(ini?[...SKILL_TR,...SKILL_INIT]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
   }else if(coll==='jbuffs'){
     const sold=[...M.soldiers].sort(bySoldierOrder),tg=d.targets||[],unknown=tg.filter(t=>!sold.some(([,x])=>x.name===t));
