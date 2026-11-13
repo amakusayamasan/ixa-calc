@@ -574,7 +574,7 @@ function renderEditor(){
     <div id="initArea" data-key="${esc(String(d.initName??'').trim())}">${initAreaHtml(d)}</div>`;
   }else if(coll==='skills'){
     const ini=toFlag(d.init)===1;
-    body=`<div class="grid">${inp('init','種類','flag')}${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${inp('noAdd','付与','flag')}${inp('coefBy','係数の掛け方','coef')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
+    body=`<div class="grid">${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${inp('noAdd','付与','flag')}${inp('coefBy','係数の掛け方','coef')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
     <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。${ini?'素攻・防バフ〜総攻・防バフは、このスキルを初期スキルに持つ武将に効く値です(空欄なら武将マスタの値)。':''}</p>`+trTable(ini?[...SKILL_TR,...SKILL_INIT]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
   }else if(coll==='jbuffs'){
     const sold=[...M.soldiers].sort(bySoldierOrder),tg=d.targets||[],unknown=tg.filter(t=>!sold.some(([,x])=>x.name===t));
@@ -583,7 +583,7 @@ function renderEditor(){
     ${unknown.length?`<p class="msg err">兵種マスタにない兵種が指定されています:${unknown.map(esc).join('、')}(このまま残ります)</p>`:''}</div>
     <p class="note">傑バフがあると、対象兵種の攻撃力・防御力にこの値が足されます。「所属時」はこの傑カードが部隊に入っているとき、「外部」は部隊の外からかかるときの値です。</p>`;
   }else body=`<div class="grid">${SOLDIER_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div><p class="note">攻撃力は攻撃部隊、防御力は防御部隊の計算に使います。</p>`;
-  box.innerHTML=`<form class="editor" id="edform" novalidate><strong>${id?esc(d.name)+' を編集':(coll==='skills'&&toFlag(d.init)?'初期スキル':LABEL[coll])+'を追加'}</strong>${body}
+  box.innerHTML=`<form class="editor" id="edform" novalidate><strong>${coll==='skills'?(id?`${esc(d.name)} を編集(${toFlag(d.init)?'初期スキル':'スキル'})`:(toFlag(d.init)?'初期スキル':'スキル')+'を追加'):id?esc(d.name)+' を編集':LABEL[coll]+'を追加'}</strong>${body}
     <div class="actions"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">保存</button><button class="btn ghost" type="button" data-act="close">閉じる</button></div>
     ${id?'<button class="btn danger" type="button" data-act="delete">削除</button>':''}</div><p class="msg" id="edmsg"></p></form>`;
 }
