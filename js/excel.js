@@ -1,4 +1,5 @@
 // Excelの取り込み・ダウンロード
+// 使うファイル:core.js、fields.js、skills.js、master.js、admin.js(調べ方:node tests/deps.js)
 /* ---------- Excel取り込み ---------- */
 let xlsxPromise = null;
 function loadXLSX() {

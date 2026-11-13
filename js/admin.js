@@ -1,4 +1,5 @@
 // 管理者の書き込み(最終更新者・変更履歴)、不要データの削除、初期データ投入、ログイン表示
+// 使うファイル:core.js、fields.js、skills.js、cards.js、calc.js、master.js、excel.js(調べ方:node tests/deps.js)
 /* 変更履歴:保存・削除のたびに logs/{id} へ追記する(ルールで追記のみ・書き換え不可)。マスタの書き込みと同じバッチで書くので、
    履歴が書けないときはマスタも書き換わらない */
 const COLL_JA = { cards: '武将', skills: 'スキル', soldiers: '兵種', jbuffs: '傑バフ', config: '設定' };

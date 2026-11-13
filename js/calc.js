@@ -1,4 +1,5 @@
 // 火力の計算
+// 使うファイル:core.js、skills.js、cards.js、calc-view.js(調べ方:node tests/deps.js)
 /* ステ振り:攻撃振りは 攻撃 = 素攻撃力 + 攻撃上昇率×690、兵法振りは 攻撃 = 素攻撃力 */
 function calc() {
   const sl = form.slots.map((s, i) => ({ ...s, ...slotEff(i) }));

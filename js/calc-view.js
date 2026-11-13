@@ -1,4 +1,5 @@
 // 部隊計算画面(編成の保存、武将・スキルの候補、画面の描画、傑バフの選択)
+// 使うファイル:core.js、fields.js、skills.js、cards.js、calc.js(調べ方:node tests/deps.js)
 /* 端末への記憶はIDではなく「カードNo・スキル名・兵種名」で持つ */
 function toKeys(f) {
   return {
@@ -44,14 +45,7 @@ function fromKeys(f) {
     })),
   };
 }
-const byName = (a, b) =>
-  String(a[1].name).localeCompare(String(b[1].name), 'ja', { numeric: true }) || N(a[1].no) - N(b[1].no);
 /* 武将検索。同じ武将(カード名が同じもの。パラレルも含む)は他の枠で選べない */
-const kana = s =>
-  String(s ?? '')
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
 function cardItems(i, q) {
   const taken = new Set(
     form.slots

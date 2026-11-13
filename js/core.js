@@ -1,4 +1,5 @@
 // 定数・共有の状態・小さな道具(どのファイルからも使う)
+// 使うファイル:なし(調べ方:node tests/deps.js)
 const BASE = 'master/v2';
 const SLOT_NAMES = ['部隊長', '小隊長1', '小隊長2', '小隊長3'];
 const SP = { rei: '黎天列光', hi: '火焔武闘' };
@@ -108,3 +109,26 @@ const button = (label, attrs = '', cls = 'btn') =>
   `<button class="${cls}" type="button"${attrs ? ' ' + attrs : ''}>${label}</button>`;
 /* 横に並べるボタンの列 */
 const buttonRow = (...btns) => `<div style="display:flex;gap:8px;flex-wrap:wrap">${btns.join('')}</div>`;
+
+/* ---------- どのファイルからも使う小さな道具 ---------- */
+const toFlag = v => {
+  if (v == null) return 0;
+  const t = String(v).trim();
+  if (t === '' || t === '0' || /^(false|no|なし|いいえ|×|✕|-|—)$/i.test(t) || /(ではない|しない)$/.test(t))
+    return 0;
+  return 1;
+};
+const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const byName = (a, b) =>
+  String(a[1].name).localeCompare(String(b[1].name), 'ja', { numeric: true }) || N(a[1].no) - N(b[1].no);
+/* 検索用に、ひらがな・カタカナ・全角半角の違いをそろえる */
+const kana = s =>
+  String(s ?? '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+const hasV = v => v != null && String(v).trim() !== '';
+const findId = (map, pred) => {
+  for (const [id, d] of map) if (pred(d)) return id;
+  return '';
+};

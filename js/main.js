@@ -1,4 +1,5 @@
 // 画面の切り替えと起動(Firebase への接続・マスタの読み込み)
+// 使うファイル:core.js、calc.js、calc-view.js、master.js、excel.js、admin.js(調べ方:node tests/deps.js)
 /* ---------- 画面切替・起動 ---------- */
 $('mtabs').addEventListener('click', e => {
   const b = e.target.closest('button');

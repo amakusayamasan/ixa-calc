@@ -1,4 +1,5 @@
 // マスタ管理画面(一覧・編集パネル・保存)
+// 使うファイル:core.js、legacy.js、fields.js、skills.js、cards.js、admin.js(調べ方:node tests/deps.js)
 /* ---------- マスタ一覧の列 ----------
    各列は [見出し, 左寄せか, セルの中身(d)=>HTML, 追加の属性(d)=>文字列] */
 const sideChip = side =>
@@ -628,7 +629,6 @@ function clean(coll, d) {
   if (d.order != null) o.order = N(d.order);
   return o;
 }
-const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 $('editor').addEventListener('submit', async e => {
   e.preventDefault();
   syncDraft();
