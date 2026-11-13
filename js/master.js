@@ -81,6 +81,7 @@ const soldierList = q =>
     .filter(([, d]) => !q || String(d.name).includes(q) || String(d.branch || '').includes(q))
     .sort(bySoldierOrder);
 
+const PEOPLE_FORMULA = 'スキル上昇率 = 素スキル上昇率 + 係数×人数';
 function renderMaster() {
   $('madd').hidden = !isOwner || mtab === 'skills';
   $('maddSkill').hidden = $('maddInit').hidden = !isOwner || mtab !== 'skills';
@@ -102,8 +103,10 @@ function renderMaster() {
   pp.hidden = mtab !== 'skills';
   if (mtab === 'skills')
     pp.innerHTML = isOwner
-      ? `<label class="label" for="peopleIn">人数(スキル上昇率 = 素スキル上昇率 + 係数×人数)</label><input id="peopleIn" type="number" value="${esc(config.people)}"><button id="peopleSave" class="btn small ghost" type="button">人数を保存</button><span id="peopleMsg" class="msg"></span>`
-      : `<span class="label">人数</span><b class="num">${fmt(N(config.people))}</b><span class="note">スキル上昇率 = 素スキル上昇率 + 係数×人数</span>`;
+      ? `<label class="label" for="peopleIn">人数(${PEOPLE_FORMULA})</label>` +
+        `<input id="peopleIn" type="number" value="${esc(config.people)}">` +
+        '<button id="peopleSave" class="btn small ghost" type="button">人数を保存</button><span id="peopleMsg" class="msg"></span>'
+      : `<span class="label">人数</span><b class="num">${fmt(N(config.people))}</b><span class="note">${PEOPLE_FORMULA}</span>`;
   const q = $('msearch').value.trim();
   const ed = isOwner ? 'editable' : '';
   const list = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q)).sort(byName);
@@ -409,23 +412,27 @@ function initAreaHtml(d) {
     : '';
   return `<div class="field"><p class="note" id="initNote">${note}</p>${btn}</div>`;
 }
-function trTable(cols, trs, computed, clabel, ro) {
-  return `<div class="field"><span class="label">TRごとの値</span><div class="trtable"><table><thead><tr>${cols.map(c => `<th class="l">${c[1]}</th>`).join('')}${computed ? `<th>${clabel}</th>` : ''}<th></th></tr></thead><tbody>
-  ${trs
+/* TRごとの値の入力表。cols=[項目, 見出し]の配列、computed=右端に出す計算値(スキル上昇率) */
+function trTable(cols, trs, computed, clabel) {
+  const head = `${cols.map(c => `<th class="l">${c[1]}</th>`).join('')}${computed ? `<th>${clabel}</th>` : ''}<th></th>`;
+  const cell = (t, r, f, l) =>
+    `<td class="l"><input class="${f === 'tr' ? 'tr' : ''}" type="number" step="any" data-t="${r}:${f}" aria-label="${l}" value="${esc(t[f] ?? '')}"></td>`;
+  const rmBtn = r =>
+    button(
+      '行を削除',
+      `data-act="rmtr" data-r="${r}"${trs.length < 2 ? ' disabled' : ''}`,
+      'btn small danger',
+    );
+  const rows = trs
     .map(
       (t, r) =>
-        `<tr>${cols
-          .map(([f, l]) => {
-            const v = ro ? ro(f, t) : null;
-            return v != null
-              ? `<td class="num computed" title="スキルマスタの値">${v}</td>`
-              : `<td class="l"><input class="${f === 'tr' ? 'tr' : ''}" type="number" step="any" data-t="${r}:${f}" aria-label="${l}" value="${esc(t[f] ?? '')}"></td>`;
-          })
-          .join(
-            '',
-          )}${computed ? `<td class="num computed" data-c="${r}">${computed(t)}</td>` : ''}<td><button class="btn small danger" type="button" data-act="rmtr" data-r="${r}"${trs.length < 2 ? ' disabled' : ''}>行を削除</button></td></tr>`,
+        `<tr>${cols.map(([f, l]) => cell(t, r, f, l)).join('')}${
+          computed ? `<td class="num computed" data-c="${r}">${computed(t)}</td>` : ''
+        }<td>${rmBtn(r)}</td></tr>`,
     )
-    .join('')}
+    .join('');
+  return `<div class="field"><span class="label">TRごとの値</span><div class="trtable"><table><thead><tr>${head}</tr></thead><tbody>
+  ${rows}
   </tbody></table></div><button class="btn small ghost" type="button" data-act="addtr" style="align-self:start">TRを追加(前の行をコピー)</button></div>`;
 }
 $('editor').addEventListener('change', e => {
