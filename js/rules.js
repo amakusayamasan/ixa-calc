@@ -157,16 +157,14 @@ function initBase(c, t) {
 /* 武将のTRごとの値は、初期スキル(スキルマスタ)のTRから作る。
    初期スキルがスキルマスタにない武将だけ、以前武将マスタに登録したTRの値(なければTR0・バフ1)を使う */
 const hasV = v => v != null && String(v).trim() !== '';
-const CARD_DEFAULT_TR = { tr: 0, initSkill: 0, statBuff: 1, mulNormal: 1, mulLimit: 1, totalBuff: 1 };
 function cardTrs(c) {
   if (!c) return [];
   const sk = skillByName(c.initName),
     st = sk ? trsOf(sk.d) : [];
   if (st.length)
     return st.map(e => {
-      const old = trEntry(c, e.tr),
-        o = { tr: N(e.tr), initSkill: N(old?.initSkill) };
-      for (const [f] of SKILL_INIT) o[f] = hasV(e[f]) ? N(e[f]) : old && hasV(old[f]) ? N(old[f]) : 1;
+      const o = { tr: N(e.tr), initSkill: legacyInitSkill(c, e.tr) };
+      for (const [f] of SKILL_INIT) o[f] = hasV(e[f]) ? N(e[f]) : legacyCardValue(c, e.tr, f);
       /* 防御スキルの素防バフ・総防バフは攻撃部隊では使わない(倍枠は共通) */
       if (hasV(e.troopAdd)) o.troopAdd = N(e.troopAdd);
       {
@@ -180,22 +178,17 @@ function cardTrs(c) {
       } else if (tbByOf(sk.d) === 'muzin') o.tbCoef = N(e.tbCoef);
       return o;
     });
-  const t = trsOf(c);
-  return t.length ? t : [{ ...CARD_DEFAULT_TR }];
+  return legacyCardTrs(c);
 }
 const cardV = c => c && { ...c, trs: cardTrs(c) };
 function cardT(c, tr) {
   return cardTrs(c).find(t => N(t.tr) === N(tr));
 }
-const initLinked = (c, tr) => {
-  const sk = skillByName(c?.initName);
-  return !!(sk && trEntry(sk.d, tr));
-};
 /* 武将が無尽を持つか:初期スキル(スキルマスタ)の無尽で決める。初期スキルがスキルマスタにない武将だけ、以前の武将マスタの無尽を使う */
 const cardMuzin = c => {
   if (!c) return 0;
   const sk = skillByName(c.initName);
-  return sk ? N(sk.d.muzin) : N(c.muzin);
+  return sk ? N(sk.d.muzin) : legacyCardMuzin(c);
 };
 function initEff(c, t) {
   if (t?.loOff) return 0;
@@ -331,14 +324,6 @@ const CARD_FIELDS = [
   ['hime', '姫', 'check'],
   ['kengou', '剣豪', 'check'],
 ];
-const CARD_TR = [
-  ['tr', 'TR'],
-  ['initSkill', '初期スキル'],
-  ['statBuff', '素攻・防バフ'],
-  ['mulNormal', '倍枠通常'],
-  ['mulLimit', '倍枠極限'],
-  ['totalBuff', '総攻・防バフ'],
-];
 const SKILL_TR = [
   ['tr', 'TR'],
   ['base', '素スキル上昇率'],
@@ -353,12 +338,8 @@ const SKILL_INIT = [
   ['totalBuff', '総攻・防バフ'],
 ];
 /* スキルの種類:0=スキル(通常枠・極限枠に付けるもの)、1=初期スキル(武将が最初から持つもの)。
-   init が未設定の古いデータは、素攻・防バフ〜総攻・防バフが入っているか、初期スキル名に使われていれば初期スキルとみなす */
-const isInitSkill = d =>
-  d.init != null && d.init !== ''
-    ? toFlag(d.init) === 1
-    : (d.trs || []).some(t => SKILL_INIT.some(([f]) => t[f] != null && t[f] !== '')) ||
-      [...M.cards.values()].some(c => String(c.initName ?? '').trim() === String(d.name ?? '').trim());
+   init が未設定の古いデータは legacy.js で推定する */
+const isInitSkill = d => (d.init != null && d.init !== '' ? toFlag(d.init) === 1 : legacyIsInitSkill(d));
 const LABEL = { cards: '武将', skills: 'スキル', soldiers: '兵種', jbuffs: '傑バフ' };
 /* 傑バフ:レアリティ「傑」の武将が持つ、兵種の攻撃力・防御力への加算値。カードNoで識別する
    その傑カードが部隊に所属しているときの値(atkIn/defIn)と、外からかかるときの値(atkOut/defOut)を持つ */
@@ -382,7 +363,7 @@ const splitTargets = v => [
 ];
 const targetsLabel = d => (d.targets && d.targets.length ? d.targets.join('、') : '全兵種');
 /* 以前の形(atk/def だけ)で保存されたものは、所属時の値として扱う */
-const jv = (d, f) => N(d[f] ?? (f === 'atkIn' ? d.atk : f === 'defIn' ? d.def : 0));
+const jv = (d, f) => N(d[f] ?? legacyJbuffValue(d, f));
 const byNo = (a, b) => N(a[1].no) - N(b[1].no) || byName(a, b);
 /* 兵種:攻撃力は攻撃部隊、防御力は防御部隊の計算に使う。order は取り込んだシートの行順 */
 const SOLDIER_FIELDS = [

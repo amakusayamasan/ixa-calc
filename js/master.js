@@ -81,6 +81,13 @@ const soldierList = q =>
     .filter(([, d]) => !q || String(d.name).includes(q) || String(d.branch || '').includes(q))
     .sort(bySoldierOrder);
 
+/* 古い形式のデータが残っていれば、件数と名前を出す(legacy.js) */
+function legacyNote() {
+  const u = legacyUsage();
+  if (!u.n) return '';
+  const names = [...u.cards, ...u.skills, ...u.jbuffs];
+  return ` ※古い形式のデータが${u.n}件あります(計算には使えています。「不要データを削除」や、初期スキルの登録・保存し直しで今の形式になります):${names.slice(0, 8).join('、')}${names.length > 8 ? ' ほか' : ''}`;
+}
 const PEOPLE_FORMULA = 'スキル上昇率 = 素スキル上昇率 + 係数×人数';
 function renderMaster() {
   $('madd').hidden = !isOwner || mtab === 'skills';
@@ -95,6 +102,7 @@ function renderMaster() {
       : [];
   $('mnote').textContent = isOwner
     ? '行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。' +
+      legacyNote() +
       (mzDiff.length
         ? ` ※無尽は初期スキルで判定します。以前武将マスタで無尽ありにしていた次の武将は、初期スキルの無尽が0です。スキルマスタで無尽を入れてください:${mzDiff.join('、')}`
         : '')
@@ -653,18 +661,11 @@ $('editor').addEventListener('submit', async e => {
     openEditor('skills', null, 'init');
     draft.data.name = iname;
     /* 以前武将マスタに登録したTRの値があれば、それを最初の値にする */
-    const old = trsOf(data);
-    if (old.length)
-      (delete draft.data.effs,
-        (draft.data.trs = old.map(t => ({
-          tr: N(t.tr),
-          base: N(t.initSkill),
-          coef: 0,
-          statBuff: N(t.statBuff),
-          mulNormal: N(t.mulNormal),
-          mulLimit: N(t.mulLimit),
-          totalBuff: N(t.totalBuff),
-        }))));
+    const old = legacyInitTrs(data);
+    if (old.length) {
+      delete draft.data.effs;
+      draft.data.trs = old;
+    }
     renderEditor();
     msg(
       `初期スキルを追加してください。(武将「${data.name}」は保存しました。初期スキル「${iname}」がスキルマスタにありません)`,
