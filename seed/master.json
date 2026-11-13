@@ -10,56 +10,8 @@
    "rarity": "天",
    "side": "攻撃",
    "troops": 7740,
-   "trs": [
-    {
-     "initSkill": 700,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 2.5,
-     "totalBuff": 1,
-     "tr": 0
-    },
-    {
-     "initSkill": 850,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 2.5,
-     "totalBuff": 1,
-     "tr": 1
-    },
-    {
-     "initSkill": 850,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 2.6,
-     "totalBuff": 1,
-     "tr": 2
-    },
-    {
-     "initSkill": 1090,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 2.7,
-     "totalBuff": 1,
-     "tr": 3
-    },
-    {
-     "initSkill": 1450,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 2.8,
-     "totalBuff": 1,
-     "tr": 4
-    },
-    {
-     "initSkill": 1450,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 3,
-     "totalBuff": 1,
-     "tr": 5
-    }
-   ]
+   "initName": "飛天ノ閃剣",
+   "kengou": 0
   },
   "n10053": {
    "baseStat": 2550,
@@ -71,56 +23,8 @@
    "rarity": "天",
    "side": "攻撃",
    "troops": 7980,
-   "trs": [
-    {
-     "initSkill": 770,
-     "mulLimit": 2,
-     "mulNormal": 2,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 0
-    },
-    {
-     "initSkill": 1030,
-     "mulLimit": 2,
-     "mulNormal": 2,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 1
-    },
-    {
-     "initSkill": 1410,
-     "mulLimit": 2,
-     "mulNormal": 2,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 2
-    },
-    {
-     "initSkill": 1929,
-     "mulLimit": 2,
-     "mulNormal": 2,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 3
-    },
-    {
-     "initSkill": 2830,
-     "mulLimit": 2,
-     "mulNormal": 2,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 4
-    },
-    {
-     "initSkill": 4400,
-     "mulLimit": 2,
-     "mulNormal": 2,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 5
-    }
-   ]
+   "initName": "炎統極刃",
+   "kengou": 0
   },
   "n10066": {
    "baseStat": 2580,
@@ -132,56 +36,8 @@
    "rarity": "天",
    "side": "攻撃",
    "troops": 8000,
-   "trs": [
-    {
-     "initSkill": 500,
-     "mulLimit": 1,
-     "mulNormal": 2.5,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 0
-    },
-    {
-     "initSkill": 540,
-     "mulLimit": 1,
-     "mulNormal": 2.6,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 1
-    },
-    {
-     "initSkill": 600,
-     "mulLimit": 1,
-     "mulNormal": 2.7,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 2
-    },
-    {
-     "initSkill": 670,
-     "mulLimit": 1,
-     "mulNormal": 2.8,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 3
-    },
-    {
-     "initSkill": 750,
-     "mulLimit": 1,
-     "mulNormal": 2.9,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 4
-    },
-    {
-     "initSkill": 840,
-     "mulLimit": 1,
-     "mulNormal": 3,
-     "statBuff": 1,
-     "totalBuff": 1,
-     "tr": 5
-    }
-   ]
+   "initName": "壬生ノ狼牙",
+   "kengou": 0
   },
   "n1286": {
    "baseStat": 1320,
@@ -193,56 +49,8 @@
    "rarity": "天",
    "side": "攻撃",
    "troops": 9230,
-   "trs": [
-    {
-     "initSkill": 0,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 1,
-     "totalBuff": 1.3,
-     "tr": 0
-    },
-    {
-     "initSkill": 0,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 1,
-     "totalBuff": 1.31,
-     "tr": 1
-    },
-    {
-     "initSkill": 0,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 1,
-     "totalBuff": 1.33,
-     "tr": 2
-    },
-    {
-     "initSkill": 0,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 1,
-     "totalBuff": 1.35,
-     "tr": 3
-    },
-    {
-     "initSkill": 0,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 1,
-     "totalBuff": 1.37,
-     "tr": 4
-    },
-    {
-     "initSkill": 0,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 1,
-     "totalBuff": 1.4,
-     "tr": 5
-    }
-   ]
+   "initName": "雄飛新世",
+   "kengou": 0
   },
   "n31286": {
    "baseStat": 1320,
@@ -254,16 +62,8 @@
    "rarity": "パラレル天",
    "side": "攻撃",
    "troops": 9230,
-   "trs": [
-    {
-     "initSkill": 0,
-     "mulLimit": 1,
-     "mulNormal": 1,
-     "statBuff": 1,
-     "totalBuff": 1.5,
-     "tr": 6
-    }
-   ]
+   "initName": "雄飛新世",
+   "kengou": 0
   }
  },
  "skills": {
@@ -300,7 +100,12 @@
      "coef": 13.5,
      "tr": 5
     }
-   ]
+   ],
+   "init": 0,
+   "side": "攻撃",
+   "effs": {
+    "dup": false
+   }
   },
   "s001": {
    "name": "万物神勇",
@@ -335,7 +140,12 @@
      "coef": 12,
      "tr": 5
     }
-   ]
+   ],
+   "init": 0,
+   "side": "攻撃",
+   "effs": {
+    "dup": false
+   }
   },
   "s002": {
    "name": "勇冠三軍",
@@ -370,7 +180,258 @@
      "coef": 15,
      "tr": 5
     }
-   ]
+   ],
+   "init": 0,
+   "side": "攻撃",
+   "effs": {
+    "dup": false
+   }
+  },
+  "si0": {
+   "name": "飛天ノ閃剣",
+   "init": 1,
+   "side": "攻撃",
+   "noAdd": 1,
+   "coefBy": "people",
+   "muzin": 0,
+   "xskill": 0,
+   "noMimic": 0,
+   "trs": [
+    {
+     "tr": 0,
+     "base": 700,
+     "coef": 0,
+     "statBuff": 2.5
+    },
+    {
+     "tr": 1,
+     "base": 850,
+     "coef": 0,
+     "statBuff": 2.5
+    },
+    {
+     "tr": 2,
+     "base": 850,
+     "coef": 0,
+     "statBuff": 2.6
+    },
+    {
+     "tr": 3,
+     "base": 1090,
+     "coef": 0,
+     "statBuff": 2.7
+    },
+    {
+     "tr": 4,
+     "base": 1450,
+     "coef": 0,
+     "statBuff": 2.8
+    },
+    {
+     "tr": 5,
+     "base": 1450,
+     "coef": 0,
+     "statBuff": 3
+    }
+   ],
+   "effs": {
+    "stat": true,
+    "mul": false,
+    "total": false,
+    "troop": false,
+    "self": false,
+    "leader": true
+   },
+   "tbBy": "fixed"
+  },
+  "si1": {
+   "name": "炎統極刃",
+   "init": 1,
+   "side": "攻撃",
+   "noAdd": 1,
+   "coefBy": "people",
+   "muzin": 0,
+   "xskill": 0,
+   "noMimic": 0,
+   "trs": [
+    {
+     "tr": 0,
+     "base": 770,
+     "coef": 0,
+     "mulNormal": 2,
+     "mulLimit": 2
+    },
+    {
+     "tr": 1,
+     "base": 1030,
+     "coef": 0,
+     "mulNormal": 2,
+     "mulLimit": 2
+    },
+    {
+     "tr": 2,
+     "base": 1410,
+     "coef": 0,
+     "mulNormal": 2,
+     "mulLimit": 2
+    },
+    {
+     "tr": 3,
+     "base": 1929,
+     "coef": 0,
+     "mulNormal": 2,
+     "mulLimit": 2
+    },
+    {
+     "tr": 4,
+     "base": 2830,
+     "coef": 0,
+     "mulNormal": 2,
+     "mulLimit": 2
+    },
+    {
+     "tr": 5,
+     "base": 4400,
+     "coef": 0,
+     "mulNormal": 2,
+     "mulLimit": 2
+    }
+   ],
+   "effs": {
+    "stat": false,
+    "mul": true,
+    "total": false,
+    "troop": false,
+    "self": false,
+    "leader": false
+   },
+   "tbBy": "fixed"
+  },
+  "si2": {
+   "name": "壬生ノ狼牙",
+   "init": 1,
+   "side": "攻撃",
+   "noAdd": 1,
+   "coefBy": "people",
+   "muzin": 0,
+   "xskill": 0,
+   "noMimic": 0,
+   "trs": [
+    {
+     "tr": 0,
+     "base": 500,
+     "coef": 0,
+     "mulNormal": 2.5,
+     "mulLimit": 1
+    },
+    {
+     "tr": 1,
+     "base": 540,
+     "coef": 0,
+     "mulNormal": 2.6,
+     "mulLimit": 1
+    },
+    {
+     "tr": 2,
+     "base": 600,
+     "coef": 0,
+     "mulNormal": 2.7,
+     "mulLimit": 1
+    },
+    {
+     "tr": 3,
+     "base": 670,
+     "coef": 0,
+     "mulNormal": 2.8,
+     "mulLimit": 1
+    },
+    {
+     "tr": 4,
+     "base": 750,
+     "coef": 0,
+     "mulNormal": 2.9,
+     "mulLimit": 1
+    },
+    {
+     "tr": 5,
+     "base": 840,
+     "coef": 0,
+     "mulNormal": 3,
+     "mulLimit": 1
+    }
+   ],
+   "effs": {
+    "stat": false,
+    "mul": true,
+    "total": false,
+    "troop": false,
+    "self": false,
+    "leader": false
+   },
+   "tbBy": "fixed"
+  },
+  "si3": {
+   "name": "雄飛新世",
+   "init": 1,
+   "side": "攻撃",
+   "noAdd": 1,
+   "coefBy": "people",
+   "muzin": 0,
+   "xskill": 0,
+   "noMimic": 0,
+   "trs": [
+    {
+     "tr": 0,
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 1.3
+    },
+    {
+     "tr": 1,
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 1.31
+    },
+    {
+     "tr": 2,
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 1.33
+    },
+    {
+     "tr": 3,
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 1.35
+    },
+    {
+     "tr": 4,
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 1.37
+    },
+    {
+     "tr": 5,
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 1.4
+    },
+    {
+     "tr": 6,
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 1.5
+    }
+   ],
+   "effs": {
+    "stat": false,
+    "mul": false,
+    "total": true,
+    "troop": false,
+    "self": false,
+    "leader": false
+   },
+   "tbBy": "fixed"
   }
  },
  "soldiers": {
