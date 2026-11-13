@@ -122,6 +122,8 @@ tbody tr.editable:hover{background:var(--accent-weak)}
 .jbvals .jbon{color:var(--accent);font-weight:700}
 @media (max-width:640px){.jbvals{align-items:flex-start}}
 .plus{color:var(--brass);font-weight:700;margin-left:4px}
+.alloc{display:flex;align-items:center;gap:8px;margin-top:6px}
+.alloc .seg button{padding:3px 12px;font-size:12px}
 .mz{display:inline-block;font-size:11px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;margin-left:4px}
 .muzin.on{color:var(--accent)}
 .voidnote{grid-column:1/-1;font-size:11px;color:var(--danger);text-align:left!important}
@@ -191,7 +193,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     </div>
 
     <div class="slots" id="slots"></div>
-    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は 素攻撃力 + 上昇率×690、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
+    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
   </section>
 
   <section id="view-master" class="view" hidden>
@@ -276,6 +278,7 @@ const jbInUnit=()=>{if(!form)return[];const nos=new Set(form.slots.map(s=>M.card
 const jbHits=(d,sname)=>!(d.targets&&d.targets.length)||(sname&&d.targets.includes(sname));
 function jbBonus(sname){if(!sname)return 0;
   return jbInUnit().reduce((a,d)=>a+(jbHits(d,sname)?jv(d,'atkIn'):0),0)+jbOuter().reduce((a,d)=>a+(jbHits(d,sname)?jv(d,'atkOut'):0),0)}
+/* ステ振り:攻撃振りは 攻撃 = 素攻撃力 + 上昇率×690、兵法振りは 攻撃 = 素攻撃力 */
 function calc(){
   const sl=form.slots.map(s=>{const c=M.cards.get(s.card),raw=trEntry(c,s.tr);return{...s,c,raw,t:effT(c,raw)}});
   const names=sl.flatMap(s=>[s.s1,s.s2,s.lim]).map(x=>M.skills.get(x.id)?.name).filter(Boolean);
@@ -285,7 +288,7 @@ function calc(){
   const rows=sl.map((s,i)=>{
     if(!s.c||!s.t)return null;
     /* 黎天列光:1つにつき部隊の全武将の兵数 +2000(部隊で2つまで) */
-    const troops=N(s.c.troops)+rei*REI_TROOPS,atk=cardAtk(s.c);
+    const troops=N(s.c.troops)+rei*REI_TROOPS,atk=s.alloc==='hei'?N(s.c.baseStat):cardAtk(s.c);
     const sname=M.soldiers.get(s.soldier)?.name,jb=jbBonus(sname),satk=N(M.soldiers.get(s.soldier)?.atk)+jb;
     const b=satk*troops*1.4+atk*1.4*lb;
     const init=initEff(s.c,s.t);
@@ -319,11 +322,11 @@ function updateResults(){
   if(M.cards.size&&M.skills.size&&M.soldiers.size)store.set('ixa-form-v2',toKeys(form));
 }
 /* 端末への記憶はIDではなく「カードNo・スキル名・兵種名」で持つ */
-function toKeys(f){return{jin:f.jin,jb:(f.jb||[]).map(String),slots:f.slots.map(s=>({card:String(M.cards.get(s.card)?.no??''),tr:s.tr,soldier:M.soldiers.get(s.soldier)?.name||'',
+function toKeys(f){return{jin:f.jin,jb:(f.jb||[]).map(String),slots:f.slots.map(s=>({card:String(M.cards.get(s.card)?.no??''),tr:s.tr,alloc:s.alloc==='hei'?'hei':'atk',soldier:M.soldiers.get(s.soldier)?.name||'',
   s1:[M.skills.get(s.s1.id)?.name||'',s.s1.tr],s2:[M.skills.get(s.s2.id)?.name||'',s.s2.tr],lim:[M.skills.get(s.lim.id)?.name||'',s.lim.tr]}))}}
 function fromKeys(f){if(!f||typeof f!=='object')f=SAMPLE;if(!Array.isArray(f.slots)||f.slots.length!==4)f={...f,slots:SAMPLE.slots};
   const sk=(v)=>{const [n,tr]=Array.isArray(v)?v:['',0];return{id:n?findId(M.skills,d=>d.name===n):'',tr:N(tr)}};
-  return{jin:f.jin??1.05,jb:Array.isArray(f.jb)?[...new Set(f.jb.filter(x=>typeof x!=='object'||x.mode!=='in').map(x=>String(typeof x==='object'?x.no:x)))]:[],slots:f.slots.map(s=>({card:findId(M.cards,d=>String(d.no)===String(s.card)),tr:N(s.tr),soldier:findId(M.soldiers,d=>d.name===s.soldier),s1:sk(s.s1),s2:sk(s.s2),lim:sk(s.lim)}))}}
+  return{jin:f.jin??1.05,jb:Array.isArray(f.jb)?[...new Set(f.jb.filter(x=>typeof x!=='object'||x.mode!=='in').map(x=>String(typeof x==='object'?x.no:x)))]:[],slots:f.slots.map(s=>({card:findId(M.cards,d=>String(d.no)===String(s.card)),tr:N(s.tr),alloc:s.alloc==='hei'?'hei':'atk',soldier:findId(M.soldiers,d=>d.name===s.soldier),s1:sk(s.s1),s2:sk(s.s2),lim:sk(s.lim)}))}}
 const byName=(a,b)=>String(a[1].name).localeCompare(String(b[1].name),'ja',{numeric:true})||N(a[1].no)-N(b[1].no);
 /* 武将検索。同じ武将(カード名が同じもの。パラレルも含む)は他の枠で選べない */
 const kana=s=>String(s??'').normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
@@ -398,7 +401,9 @@ function renderCalc(){
     <h3><span>${SLOT_NAMES[i]}</span></h3>
     <div class="field"><label class="label" for="card-${i}">武将</label><div class="pair">
       ${comboBox(i,'card',M.cards.get(s.card)?.name||'','武将名・カードNoで検索')}
-      <select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card?'':' disabled'}>${trOpts(M.cards.get(s.card),s.tr)}</select></div>${s.card?`<span class="note" id="cardmeta-${i}">${esc(M.cards.get(s.card)?.rarity||'')} No.${esc(M.cards.get(s.card)?.no)} ・ コスト${fmt(N(M.cards.get(s.card)?.cost),1)}</span>`:''}</div>
+      <select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card?'':' disabled'}>${trOpts(M.cards.get(s.card),s.tr)}</select></div>${s.card?`<span class="note" id="cardmeta-${i}">${esc(M.cards.get(s.card)?.rarity||'')} No.${esc(M.cards.get(s.card)?.no)} ・ コスト${fmt(N(M.cards.get(s.card)?.cost),1)}</span>`:''}
+      <div class="alloc"><span class="label">ステ振り</span><div class="seg" role="group" aria-label="ステ振り">
+        <button type="button" data-alloc="atk" data-i="${i}" aria-pressed="${s.alloc!=='hei'}">攻撃</button><button type="button" data-alloc="hei" data-i="${i}" aria-pressed="${s.alloc==='hei'}">兵法</button></div></div></div>
     <div class="field"><label class="label" for="soldier-${i}">兵種</label><select id="soldier-${i}" data-i="${i}" data-k="soldier">${soldierOpts(s.soldier)}</select></div>
     ${skillRow(i,'s1','追加スキル',s.s1)}${skillRow(i,'s2','追加スキル2',s.s2)}${skillRow(i,'lim','極限スキル',s.lim)}
     <div class="calc" id="calc-${i}"></div></div>`).join('');
@@ -406,6 +411,8 @@ function renderCalc(){
 }
 /* TRが無いときは、いちばん高いTRに合わせる */
 const fitTr=(d,tr)=>{const t=trsOf(d);if(!t.length)return 0;return trEntry(d,tr)?N(tr):N(t[t.length-1].tr)};
+$('slots').addEventListener('click',e=>{const b=e.target.closest('[data-alloc]');if(!b||!form)return;const s=form.slots[+b.dataset.i];s.alloc=b.dataset.alloc;
+  for(const x of b.parentElement.children)x.setAttribute('aria-pressed',String(x===b));updateResults()});
 $('slots').addEventListener('change',e=>{const t=e.target,k=t.dataset.k;if(!k)return;const s=form.slots[+t.dataset.i];
   if(k==='tr'){s.tr=N(t.value)}
   else if(k==='soldier'){s.soldier=t.value}
