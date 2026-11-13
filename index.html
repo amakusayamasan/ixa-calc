@@ -591,9 +591,8 @@ function renderEditor(){
 function initAreaHtml(d){const sk=skillByName(d.initName),st=sk?trsOf(sk.d):[],name=String(d.initName??'').trim();
   const note=!name?'初期スキル名が未入力です。TRと初期スキルの値は、スキルマスタの初期スキルから使います。'
     :sk&&st.length?`TRと初期スキルの値(初期スキル・素攻・防バフ・倍枠通常・倍枠極限・総攻・防バフ)は、スキルマスタの「${esc(sk.d.name)}」(${trRange(sk.d)})から使います。変えるときはスキルマスタで編集してください。`
-    :`「${esc(name)}」はスキルマスタにありません。スキルマスタの「初期スキル追加」で登録してください。`;
-  const old=trsOf(d).length&&name&&!sk;
-  return `<div class="field"><p class="note" id="initNote">${note}</p>${old?`<button class="btn small ghost" type="button" data-act="initToSkill" style="align-self:start">以前登録したTRの値で「${esc(name)}」をスキルマスタに登録</button>`:''}</div>`}
+    :`「${esc(name)}」はスキルマスタにありません。保存すると、初期スキル追加画面に進みます。`;
+  return `<div class="field"><p class="note" id="initNote">${note}</p></div>`}
 function trTable(cols,trs,computed,clabel,ro){
   return `<div class="field"><span class="label">TRごとの値</span><div class="trtable"><table><thead><tr>${cols.map(c=>`<th class="l">${c[1]}</th>`).join('')}${computed?`<th>${clabel}</th>`:''}<th></th></tr></thead><tbody>
   ${trs.map((t,r)=>`<tr>${cols.map(([f,l])=>{const v=ro?ro(f,t):null;return v!=null?`<td class="num computed" title="スキルマスタの値">${v}</td>`:`<td class="l"><input class="${f==='tr'?'tr':''}" type="number" step="any" data-t="${r}:${f}" aria-label="${l}" value="${esc(t[f]??'')}"></td>`}).join('')}${computed?`<td class="num computed" data-c="${r}">${computed(t)}</td>`:''}<td><button class="btn small danger" type="button" data-act="rmtr" data-r="${r}"${trs.length<2?' disabled':''}>行を削除</button></td></tr>`).join('')}
@@ -601,17 +600,13 @@ function trTable(cols,trs,computed,clabel,ro){
 $('editor').addEventListener('change',e=>{if(draft&&e.target.id==='f-init'){syncDraft();const d=draft.data;
     /* 初期スキルに切り替えたら、空の素攻・防バフ〜総攻・防バフに1を入れる */
     if(toFlag(d.init))d.trs.forEach(t=>{for(const [f] of SKILL_INIT)if(t[f]==null||t[f]==='')t[f]=1});renderEditor();return}
-  if(!draft||e.target.id!=='f-initName')return;syncDraft();const a=$('initArea'),key=String(draft.data.initName??'').trim();
-  /* 名前が変わったときだけ描き直す(同じ名前で描き直すと、押そうとしたボタンが消えてしまうため) */
-  if(a&&a.dataset.key!==key){a.dataset.key=key;a.innerHTML=initAreaHtml(draft.data)}});
+});
 $('editor').addEventListener('input',()=>{if(!draft)return;syncDraft();const d=draft.data;
+  /* 初期スキル名の案内は入力中に更新する(保存ボタンを押す瞬間に画面がずれないように) */
+  if(draft.coll==='cards'){const a=$('initArea'),key=String(d.initName??'').trim();if(a&&a.dataset.key!==key){a.dataset.key=key;a.innerHTML=initAreaHtml(d)}}
   if(draft.coll==='cards'&&$('atkPreview'))$('atkPreview').textContent=fmt(cardAtk(d));
   if(draft.coll==='skills')d.trs.forEach((t,r)=>{const c=document.querySelector(`[data-c="${r}"]`);if(c)c.textContent=skillLabel(t,d)})});
 $('editor').addEventListener('click',async e=>{const b=e.target.closest('[data-act]');if(!b||!draft)return;const act=b.dataset.act;
-  if(act==='initToSkill'){syncDraft();const d=draft.data,name=String(d.initName??'').trim();if(!name||skillByName(name))return;
-    const data={init:1,name,muzin:0,xskill:0,coefBy:'people',noAdd:1,trs:trsOf({trs:d.trs.map(t=>({tr:N(t.tr),base:N(t.initSkill),coef:0,statBuff:N(t.statBuff),mulNormal:N(t.mulNormal),mulLimit:N(t.mulLimit),totalBuff:N(t.totalBuff)}))})};
-    try{b.disabled=true;await db.doc(`${BASE}/skills/${newId('s')}`).set(data);const a=$('initArea');if(a)a.innerHTML=initAreaHtml(draft.data);msg(`「${name}」をスキルマスタに登録しました(素スキル上昇率=今の値、係数=0、付与できない、素攻・防バフ〜総攻・防バフ=今の値)。係数などはスキルマスタで直してください。`)}
-    catch(err){b.disabled=false;msg('登録できませんでした('+(err.code||err.message)+')',true)}return}
   if(act==='close'){draft=null;renderEditor();return}
   if(act==='addtr'){syncDraft();const last=draft.data.trs[draft.data.trs.length-1]||{};draft.data.trs.push({...last,tr:N(last.tr)+1});renderEditor();return}
   if(act==='rmtr'){syncDraft();draft.data.trs.splice(+b.dataset.r,1);renderEditor();return}
@@ -638,7 +633,14 @@ function clean(coll,d){
 const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 $('editor').addEventListener('submit',async e=>{e.preventDefault();syncDraft();const {coll}=draft;const err=validate(coll,draft.data);if(err)return msg(err,true);
   const data=clean(coll,draft.data);const id=draft.id||(coll==='cards'?'n'+data.no+'_'+Math.random().toString(36).slice(2,6):coll==='jbuffs'?'j'+data.no:newId(coll[0]));
-  try{await db.doc(`${BASE}/${coll}/${id}`).set(data);draft.id=id;draft.data=structuredClone(data);renderEditor();msg('保存しました')}catch(er){msg('保存できませんでした('+(er.code||er.message)+')',true)}});
+  try{await db.doc(`${BASE}/${coll}/${id}`).set(data);draft.id=id;draft.data=structuredClone(data);renderEditor();msg('保存しました')}catch(er){msg('保存できませんでした('+(er.code||er.message)+')',true);return}
+  /* 武将の初期スキル名がスキルマスタにないときは、その名前で初期スキル追加画面を開く */
+  const iname=coll==='cards'?String(data.initName??'').trim():'';
+  if(iname&&!skillByName(iname)){$('mtabs').querySelector('[data-m=skills]').click();openEditor('skills',null,'init');draft.data.name=iname;
+    /* 以前武将マスタに登録したTRの値があれば、それを最初の値にする */
+    const old=trsOf(data);if(old.length)draft.data.trs=old.map(t=>({tr:N(t.tr),base:N(t.initSkill),coef:0,statBuff:N(t.statBuff),mulNormal:N(t.mulNormal),mulLimit:N(t.mulLimit),totalBuff:N(t.totalBuff)}));
+    renderEditor();
+    msg(`初期スキルを追加してください。(武将「${data.name}」は保存しました。初期スキル「${iname}」がスキルマスタにありません)`,true)}});
 
 /* ---------- Excel取り込み ---------- */
 let xlsxPromise=null;
