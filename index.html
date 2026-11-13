@@ -266,15 +266,19 @@ const nowStamp=()=>({updatedBy:me?.uid||'',updatedName:myName(),updatedAt:(windo
 /* 変更履歴:保存・削除のたびに logs/{id} へ追記する(ルールで追記のみ・書き換え不可)。マスタの書き込みと同じバッチで書くので、
    履歴が書けないときはマスタも書き換わらない */
 const COLL_JA={cards:'武将',skills:'スキル',soldiers:'兵種',jbuffs:'傑バフ',config:'設定'};
-const plain=v=>v==null?null:JSON.parse(JSON.stringify(v,(k,x)=>['updatedAt','updatedBy','updatedName'].includes(k)?undefined:x));
-function addLog(batch,action,coll,docId,before,after){const ts=(window.firebase?.firestore?.FieldValue?.serverTimestamp?.())||new Date();
-  batch.set(db.doc(`logs/${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`),{at:ts,by:me?.uid||'',name:myName(),action,coll:COLL_JA[coll]||coll,docId,
+const plain=v=>v==null?null:JSON.parse(JSON.stringify(v,(k,x)=>['updatedAt','updatedBy','updatedName','logId'].includes(k)?undefined:x));
+/* ルールで、マスタの書き込みには同じバッチの履歴が必須:
+   ・保存:マスタの logId と同じIDの履歴  ・削除:del_{区分}_{ID}_{消すデータの logId(なければ noid)} の履歴 */
+const newLogId=()=>`${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
+function addLog(batch,action,coll,docId,before,after,logId){const ts=(window.firebase?.firestore?.FieldValue?.serverTimestamp?.())||new Date();
+  batch.set(db.doc(`logs/${logId}`),{at:ts,by:me?.uid||'',name:myName(),action,coll:COLL_JA[coll]||coll,docId,
     label:String((after||before)?.name??(coll==='config'?'人数':docId)),before:plain(before),after:plain(after)})}
-/* マスタ1件の書き込み(after=null なら削除)と履歴を、まとめて書く */
-async function writeWithLog(action,coll,docId,after){const path=coll==='config'?`${BASE}/config/${docId}`:`${BASE}/${coll}/${docId}`;
-  const before=coll==='config'?config:M[coll]?.get(docId)||null;const batch=db.batch();
-  if(after)batch.set(db.doc(path),{...after,...nowStamp()});else batch.delete(db.doc(path));
-  addLog(batch,action,coll,docId,before,after);await batch.commit()}
+/* マスタ1件を書く(after=null なら削除)。履歴と同じバッチに入れる */
+function putWithLog(batch,action,coll,docId,after,before){const path=`${BASE}/${coll}/${docId}`;
+  if(before===undefined)before=coll==='config'?config:M[coll]?.get(docId)||null;
+  if(after){const id=newLogId();batch.set(db.doc(path),{...after,...nowStamp(),logId:id});addLog(batch,action,coll,docId,before,after,id)}
+  else{batch.delete(db.doc(path));addLog(batch,action,coll,docId,before,null,`del_${coll}_${docId}_${before?.logId||'noid'}`)}}
+async function writeWithLog(action,coll,docId,after){const batch=db.batch();putWithLog(batch,action,coll,docId,after);await batch.commit()}
 const logErr=err=>err?.code==='permission-denied'?'権限がありません。Firebase のルールに変更履歴(logs)の設定が入っているか確認してください':(err?.code||err?.message);
 /* 表示名が未登録なら保存させない */
 function needName(){if(myName())return false;
@@ -716,7 +720,7 @@ $('editor').addEventListener('click',async e=>{const b=e.target.closest('[data-a
   if(act==='addtr'){syncDraft();const last=draft.data.trs[draft.data.trs.length-1]||{};draft.data.trs.push({...last,tr:N(last.tr)+1});renderEditor();return}
   if(act==='rmtr'){syncDraft();draft.data.trs.splice(+b.dataset.r,1);renderEditor();return}
   if(act==='delete'){if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='本当に削除する';return}
-    try{await writeWithLog('削除',draft.coll,draft.id,null);draft=null;renderEditor()}catch(err){msg('削除できませんでした('+logErr(err)+')',true)}}
+    if(needName())return;try{await writeWithLog('削除',draft.coll,draft.id,null);draft=null;renderEditor()}catch(err){msg('削除できませんでした('+logErr(err)+')',true)}}
 });
 function msg(t,err){const m=$('edmsg');if(m){m.textContent=t;m.className='msg '+(err?'err':'ok')}}
 function validate(coll,d){
@@ -893,7 +897,7 @@ $('cleanbox').addEventListener('click',async e=>{const b=e.target.closest('[data
   const p=cleaning,m=$('clmsg');b.disabled=true;m.className='msg';m.textContent='削除しています…';
   const before=form?Math.round(calc().total):null;
   try{const ops=[...p.cards.map(x=>['cards',x]),...p.skills.map(x=>['skills',x]),...p.jbuffs.map(x=>['jbuffs',x])];
-    for(let i=0;i<ops.length;i+=200){const batch=db.batch();for(const [coll,x] of ops.slice(i,i+200)){batch.set(db.doc(`${BASE}/${coll}/${x.id}`),{...x.data,...nowStamp()});addLog(batch,'不要データ削除',coll,x.id,M[coll].get(x.id),x.data)}await batch.commit()}
+    for(let i=0;i<ops.length;i+=200){const batch=db.batch();for(const [coll,x] of ops.slice(i,i+200))putWithLog(batch,'不要データ削除',coll,x.id,x.data);await batch.commit()}
     cleaning=null;renderClean();setTimeout(()=>{const after=form?Math.round(calc().total):null;
       status(`不要データを削除しました(武将${p.cards.length}・スキル${p.skills.length}・傑バフ${p.jbuffs.length})。`+(before!=null?(before===after?'計算結果は変わっていません。':`計算結果が変わりました(${fmt(before)} → ${fmt(after)})。お知らせください。`):''));setTimeout(()=>status(''),8000)},500)}
   catch(err){b.disabled=false;m.className='msg err';m.textContent='削除できませんでした('+logErr(err)+')'}});
@@ -925,10 +929,11 @@ function renderSeed(){const box=$('seedbox');
 $('seedbox').addEventListener('click',async e=>{if(e.target.id!=='seedRun')return;const b=e.target,m=$('seedMsg');b.disabled=true;m.className='msg';m.textContent='投入しています…';
   try{const r=await fetch('seed/master.json',{cache:'no-store'});if(!r.ok)throw new Error('seed/master.json を読み込めません');const d=await r.json();
     const batch=db.batch();let n=0;
-    for(const coll of ['cards','skills','soldiers'])for(const [id,v] of Object.entries(d[coll]||{})){batch.set(db.doc(`${BASE}/${coll}/${id}`),v);n++}
-    if(d.config&&d.config.main){batch.set(db.doc(`${BASE}/config/main`),d.config.main);n++}
+    if(needName()){b.disabled=false;return}
+    for(const coll of ['cards','skills','soldiers'])for(const [id,v] of Object.entries(d[coll]||{})){putWithLog(batch,'初期データ投入',coll,id,v,null);n++}
+    if(d.config&&d.config.main){putWithLog(batch,'初期データ投入','config','main',d.config.main,null);n++}
     await batch.commit();status(`初期データ ${n} 件を登録しました。`);setTimeout(()=>status(''),5000)}
-  catch(err){b.disabled=false;m.className='msg err';m.textContent='投入できませんでした('+(err.code||err.message)+')'}});
+  catch(err){b.disabled=false;m.className='msg err';m.textContent='投入できませんでした('+logErr(err)+')'}});
 
 /* ---------- Firebase:管理者ログインとデータの読み込み ---------- */
 function setRole(user){
