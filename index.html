@@ -198,7 +198,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     </div>
 
     <div class="slots" id="slots"></div>
-    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。傑カードには追加スキル・極限スキルを付けられません。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
+    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。傑カードには追加スキル・極限スキルを付けられません。傑カードは無尽のルールの対象外で、初期スキルはそのまま発動します。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
   </section>
 
   <section id="view-master" class="view" hidden>
@@ -268,10 +268,11 @@ function skillVal(sel){const s=M.skills.get(sel.id);if(!s)return 0;const t=trEnt
 /* 無尽でスキル効果が何倍になるか(k: s1 / s2 / lim) */
 function muzinMul(sel,k){if(!muzinOn())return 1;if(k==='lim')return 2;const s=M.skills.get(sel.id);return s&&N(s.muzin)>0?2:1}
 /* 初期スキルの効果(無尽を反映) */
-function initEff(c,t){const v=N(t?.initSkill);if(!muzinOn())return v;return N(c?.muzin)>0?v*2:0}
+/* 傑カードは無尽のルールの対象外:初期スキルはそのまま発動し、バフや倍枠も無効にならない */
+function initEff(c,t){const v=N(t?.initSkill);if(!muzinOn()||c?.rarity==='傑')return v;return N(c?.muzin)>0?v*2:0}
 /* 無尽が有効で、初期スキルに無尽がない武将は、初期スキル由来の効果がすべて無効:
    総攻バフ・素攻バフ・倍枠通常・倍枠極限を1(等倍)として扱う */
-const muzinVoid=c=>muzinOn()&&!!c&&!(N(c.muzin)>0);
+const muzinVoid=c=>muzinOn()&&!!c&&c.rarity!=='傑'&&!(N(c.muzin)>0);
 function effT(c,t){if(!t)return t;if(!muzinVoid(c))return t;return{...t,statBuff:1,totalBuff:1,mulNormal:1,mulLimit:1}}
 /* 傑バフ
    ・所属時:その傑カード(カードNoが同じ武将)が部隊長・小隊長のどこかの枠にいれば自動でかかる
@@ -324,7 +325,7 @@ function updateResults(){
   $('r-base').textContent=fmt(r.base,1);$('r-skill').textContent=fmt(r.skill,1);
   $('r-buff').textContent=fmt(r.buff,2);$('r-special').textContent=r.rei+' / '+r.hi;
   r.rows.forEach((x,i)=>{const el=$('calc-'+i);if(!el)return;
-    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
+    el.innerHTML=x?`<span>兵数</span><span class="num">${fmt(x.troops)}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb?`<span class="plus">(傑+${fmt(x.jb,2)})</span>`:''}</span><span>素攻</span><span class="num">${fmt(x.b,1)}</span><span>初期スキル</span><span class="num">${fmt(x.init,1)}${r.muzin&&x.initRaw&&x.init!==x.initRaw?`<span class="plus">(${x.init?'無尽×2':'無尽なしで無効'})</span>`:''}</span><span>スキル小計</span><span class="num">${fmt(x.sk,1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb,2)}</span>`:'<span>武将とTRを選んでください</span><span></span>'});
   form.slots.forEach((_,i)=>['s1','s2','lim'].forEach(k=>{const el=$(`eff-${k}-${i}`);if(el)el.innerHTML=skillEffect(i,k)}));
   if(M.cards.size&&M.skills.size&&M.soldiers.size)store.set('ixa-form-v2',toKeys(form));
 }
