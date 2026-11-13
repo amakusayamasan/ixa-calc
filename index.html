@@ -214,6 +214,8 @@ tbody tr.editable:hover{background:var(--accent-weak)}
         <input id="msearch" class="search" type="search" placeholder="名前で絞り込み">
         <button id="mimport" class="btn ghost" type="button" hidden>Excelから取り込み</button>
         <button id="madd" class="btn" type="button" hidden>新規追加</button>
+        <button id="maddSkill" class="btn" type="button" hidden>スキル追加</button>
+        <button id="maddInit" class="btn" type="button" hidden>初期スキル追加</button>
       </div>
     </div>
     <div id="people" class="people" hidden></div>
@@ -478,7 +480,7 @@ $('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.clos
 
 /* ---------- マスタ一覧 ---------- */
 /* flag は 0/1 の選択。姫:0=姫ではない 1=姫。無尽は数値(0=なし、1以上=あり) */
-const FLAG_LABELS={hime:['姫ではない','姫'],xskill:['該当しない','Xスキル'],noAdd:['付与できる','付与できない']};
+const FLAG_LABELS={init:['スキル','初期スキル'],hime:['姫ではない','姫'],xskill:['該当しない','Xスキル'],noAdd:['付与できる','付与できない']};
 const RARITIES=['覇・パラレル天','パラレル天','覇・天','天','極','傑'];
 const toFlag=v=>{if(v==null)return 0;const t=String(v).trim();if(t===''||t==='0'||/^(false|no|なし|いいえ|×|✕|-|—)$/i.test(t))return 0;return 1};
 const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','rarity'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['initName','初期スキル名','text'],['troops','兵数','number'],['baseStat','素攻撃力','number'],['baseDef','素防御力','number'],['growth','攻撃上昇率','number'],['growthDef','防御上昇率','number'],['hime','姫','flag'],['muzin','無尽(0:なし、1以上:あり)','number']];
@@ -486,6 +488,9 @@ const CARD_TR=[['tr','TR'],['initSkill','初期スキル'],['statBuff','素攻�
 const SKILL_TR=[['tr','TR'],['base','素スキル上昇率'],['coef','係数']];
 /* 初期スキルとしての効果(素攻・防バフ、倍枠、総攻・防バフ)。空欄なら武将マスタの値を使う */
 const SKILL_INIT=[['statBuff','素攻・防バフ'],['mulNormal','倍枠通常'],['mulLimit','倍枠極限'],['totalBuff','総攻・防バフ']];
+/* スキルの種類:0=スキル(通常枠・極限枠に付けるもの)、1=初期スキル(武将が最初から持つもの)。
+   init が未設定の古いデータは、素攻・防バフ〜総攻・防バフが入っているか、初期スキル名に使われていれば初期スキルとみなす */
+const isInitSkill=d=>d.init!=null&&d.init!==''?toFlag(d.init)===1:(d.trs||[]).some(t=>SKILL_INIT.some(([f])=>t[f]!=null&&t[f]!==''))||[...M.cards.values()].some(c=>String(c.initName??'').trim()===String(d.name??'').trim());
 const LABEL={cards:'武将',skills:'スキル',soldiers:'兵種',jbuffs:'傑バフ'};
 /* 傑バフ:レアリティ「傑」の武将が持つ、兵種の攻撃力・防御力への加算値。カードNoで識別する
    その傑カードが部隊に所属しているときの値(atkIn/defIn)と、外からかかるときの値(atkOut/defOut)を持つ */
@@ -502,7 +507,7 @@ const SOLDIER_FIELDS=[['name','兵種名','text'],['branch','兵科','text'],['a
 const bySoldierOrder=(a,b)=>N(a[1].order??9999)-N(b[1].order??9999)||byName(a,b);
 const trRange=d=>{const t=trsOf(d);return t.length?`TR${N(t[0].tr)}〜${N(t[t.length-1].tr)}`:'TRなし'};
 function renderMaster(){
-  $('madd').hidden=!isOwner;$('mimport').hidden=!isOwner;
+  $('madd').hidden=!isOwner||mtab==='skills';$('maddSkill').hidden=$('maddInit').hidden=!isOwner||mtab!=='skills';$('mimport').hidden=!isOwner;
   $('mnote').textContent=isOwner?'行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。':'マスタの編集は管理者のみです。管理者は右上の「管理者ログイン」からログインしてください。ここでは内容を確認できます。';
   const pp=$('people');pp.hidden=mtab!=='skills';
   if(mtab==='skills')pp.innerHTML=isOwner?`<label class="label" for="peopleIn">人数(スキル上昇率 = 素スキル上昇率 + 係数×人数)</label><input id="peopleIn" type="number" value="${esc(config.people)}"><button id="peopleSave" class="btn small ghost" type="button">人数を保存</button><span id="peopleMsg" class="msg"></span>`
@@ -516,8 +521,8 @@ function renderMaster(){
       (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side==='攻撃・防御'?'side-both':d.side==='防御'?'side-def':d.side==='攻撃'?'side-atk':''}">${esc(d.side||'')}</span></td><td class="l">${esc(d.initName||'—')}</td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(initBase(d,last),1)}</td><td class="num">${fmt(N(cardT(d,last.tr)?.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(15))+'</tbody>';
   }else if(mtab==='skills'){
     const maxTr=Math.max(5,...list.flatMap(([,d])=>trsOf(d).map(t=>N(t.tr))));const trs=[...Array(maxTr+1).keys()];
-    html=`<thead><tr><th class="l">スキル名</th><th>無尽</th><th>Xスキル</th><th>付与</th><th class="l">係数の掛け方</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
-      (list.length?list.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td><td class="num">${isX(d)?'○':'—'}</td><td class="num">${toFlag(d.noAdd)?'不可':'可'}</td><td class="l">${COEF_SHORT[coefByOf(d)]}</td>${trs.map(t=>{const e=trEntry(d,t);return`<td class="num" title="${e?`素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}`:''}">${e?skillLabel(e,d):'—'}</td>`}).join('')}</tr>`).join(''):empty(trs.length+5))+'</tbody>';
+    html=`<thead><tr><th class="l">スキル名</th><th class="l">種類</th><th>無尽</th><th>Xスキル</th><th>付与</th><th class="l">係数の掛け方</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
+      (list.length?list.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="l">${isInitSkill(d)?'初期スキル':'スキル'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td><td class="num">${isX(d)?'○':'—'}</td><td class="num">${toFlag(d.noAdd)?'不可':'可'}</td><td class="l">${COEF_SHORT[coefByOf(d)]}</td>${trs.map(t=>{const e=trEntry(d,t);return`<td class="num" title="${e?`素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}`:''}">${e?skillLabel(e,d):'—'}</td>`}).join('')}</tr>`).join(''):empty(trs.length+6))+'</tbody>';
   }else if(mtab==='jbuffs'){
     const jl=[...M.jbuffs].filter(([,d])=>!q||String(d.name).includes(q)||String(d.no).includes(q)||(d.targets||[]).some(t=>t.includes(q))).sort(byNo);
     html=`<thead><tr><th>カードNo</th><th class="l">武将名</th><th class="l">対象兵種</th><th>所属時攻撃力</th><th>所属時防御力</th><th>外部攻撃力</th><th>外部防御力</th></tr></thead><tbody>`+(jl.length?jl.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="num">${esc(d.no)}</td><td class="l">${esc(d.name)}</td><td class="l" style="white-space:normal;min-width:140px">${esc(targetsLabel(d))}</td>${JBUFF_VALS.map(f=>`<td class="num">+${fmt(jv(d,f),2)}</td>`).join('')}</tr>`).join(''):empty(7))+'</tbody>';
@@ -529,11 +534,13 @@ function renderMaster(){
 }
 
 /* ---------- 編集パネル ---------- */
-function openEditor(coll,id){
+function openEditor(coll,id,kind){
   const d=id?structuredClone(M[coll].get(id)):null;
   if(coll==='cards'&&d&&d.muzin==null)d.muzin=0;
   if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',initName:'',troops:'',baseStat:'',baseDef:'',growth:'',growthDef:'',hime:0,muzin:0,trs:[{tr:0,initSkill:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}};
-  else if(coll==='skills')draft={coll,id,data:d?{...d,muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d)}:{name:'',muzin:0,xskill:0,noAdd:0,coefBy:'people',trs:[{tr:0,base:0,coef:0}]}};
+  else if(coll==='skills')draft={coll,id,data:d?{...d,init:isInitSkill(d)?1:0,muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d)}
+    :kind==='init'?{init:1,name:'',muzin:0,xskill:0,noAdd:1,coefBy:'people',trs:[{tr:0,base:0,coef:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}
+    :{init:0,name:'',muzin:0,xskill:0,noAdd:0,coefBy:'people',trs:[{tr:0,base:0,coef:0}]}};
   else if(coll==='jbuffs'){if(d){for(const f of JBUFF_VALS)d[f]=jv(d,f);d.targets=d.targets||[]}draft={coll,id,data:d||{no:'',name:'',targets:[],atkIn:'',defIn:'',atkOut:'',defOut:''}}}
   else draft={coll,id,data:d||{name:'',branch:'',atk:'',def:'',destroy:'',speed:''}};
   draft.data.trs&&(draft.data.trs=trsOf(draft.data));
@@ -558,8 +565,9 @@ function renderEditor(){
     <datalist id="skillNames">${[...M.skills.values()].map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
     <div id="initArea" data-key="${esc(String(d.initName??'').trim())}">${initAreaHtml(d)}</div>`;
   }else if(coll==='skills'){
-    body=`<div class="grid">${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${inp('noAdd','付与','flag')}${inp('coefBy','係数の掛け方','coef')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
-    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。素攻・防バフ〜総攻・防バフは、このスキルを初期スキルに持つ武将に効く値です(空欄なら武将マスタの値)。</p>`+trTable([...SKILL_TR,...SKILL_INIT],d.trs,t=>skillLabel(t,d),'スキル上昇率');
+    const ini=toFlag(d.init)===1;
+    body=`<div class="grid">${inp('init','種類','flag')}${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${inp('noAdd','付与','flag')}${inp('coefBy','係数の掛け方','coef')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
+    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。${ini?'素攻・防バフ〜総攻・防バフは、このスキルを初期スキルに持つ武将に効く値です(空欄なら武将マスタの値)。':''}</p>`+trTable(ini?[...SKILL_TR,...SKILL_INIT]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
   }else if(coll==='jbuffs'){
     const sold=[...M.soldiers].sort(bySoldierOrder),tg=d.targets||[],unknown=tg.filter(t=>!sold.some(([,x])=>x.name===t));
     body=`<div class="grid">${JBUFF_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div>
@@ -567,7 +575,7 @@ function renderEditor(){
     ${unknown.length?`<p class="msg err">兵種マスタにない兵種が指定されています:${unknown.map(esc).join('、')}(このまま残ります)</p>`:''}</div>
     <p class="note">傑バフがあると、対象兵種の攻撃力・防御力にこの値が足されます。「所属時」はこの傑カードが部隊に入っているとき、「外部」は部隊の外からかかるときの値です。</p>`;
   }else body=`<div class="grid">${SOLDIER_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div><p class="note">攻撃力は攻撃部隊、防御力は防御部隊の計算に使います。</p>`;
-  box.innerHTML=`<form class="editor" id="edform" novalidate><strong>${id?esc(d.name)+' を編集':LABEL[coll]+'を追加'}</strong>${body}
+  box.innerHTML=`<form class="editor" id="edform" novalidate><strong>${id?esc(d.name)+' を編集':(coll==='skills'&&toFlag(d.init)?'初期スキル':LABEL[coll])+'を追加'}</strong>${body}
     <div class="actions"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">保存</button><button class="btn ghost" type="button" data-act="close">閉じる</button></div>
     ${id?'<button class="btn danger" type="button" data-act="delete">削除</button>':''}</div><p class="msg" id="edmsg"></p></form>`;
 }
@@ -582,7 +590,10 @@ function trTable(cols,trs,computed,clabel,ro){
   return `<div class="field"><span class="label">TRごとの値</span><div class="trtable"><table><thead><tr>${cols.map(c=>`<th class="l">${c[1]}</th>`).join('')}${computed?`<th>${clabel}</th>`:''}<th></th></tr></thead><tbody>
   ${trs.map((t,r)=>`<tr>${cols.map(([f,l])=>{const v=ro?ro(f,t):null;return v!=null?`<td class="num computed" title="スキルマスタの値">${v}</td>`:`<td class="l"><input class="${f==='tr'?'tr':''}" type="number" step="any" data-t="${r}:${f}" aria-label="${l}" value="${esc(t[f]??'')}"></td>`}).join('')}${computed?`<td class="num computed" data-c="${r}">${computed(t)}</td>`:''}<td><button class="btn small danger" type="button" data-act="rmtr" data-r="${r}"${trs.length<2?' disabled':''}>行を削除</button></td></tr>`).join('')}
   </tbody></table></div><button class="btn small ghost" type="button" data-act="addtr" style="align-self:start">TRを追加(前の行をコピー)</button></div>`}
-$('editor').addEventListener('change',e=>{if(!draft||e.target.id!=='f-initName')return;syncDraft();const a=$('initArea'),key=String(draft.data.initName??'').trim();
+$('editor').addEventListener('change',e=>{if(draft&&e.target.id==='f-init'){syncDraft();const d=draft.data;
+    /* 初期スキルに切り替えたら、空の素攻・防バフ〜総攻・防バフに1を入れる */
+    if(toFlag(d.init))d.trs.forEach(t=>{for(const [f] of SKILL_INIT)if(t[f]==null||t[f]==='')t[f]=1});renderEditor();return}
+  if(!draft||e.target.id!=='f-initName')return;syncDraft();const a=$('initArea'),key=String(draft.data.initName??'').trim();
   /* 名前が変わったときだけ描き直す(同じ名前で描き直すと、押そうとしたボタンが消えてしまうため) */
   if(a&&a.dataset.key!==key){a.dataset.key=key;a.innerHTML=initAreaHtml(draft.data)}});
 $('editor').addEventListener('input',()=>{if(!draft)return;syncDraft();const d=draft.data;
@@ -590,8 +601,8 @@ $('editor').addEventListener('input',()=>{if(!draft)return;syncDraft();const d=d
   if(draft.coll==='skills')d.trs.forEach((t,r)=>{const c=document.querySelector(`[data-c="${r}"]`);if(c)c.textContent=skillLabel(t,d)})});
 $('editor').addEventListener('click',async e=>{const b=e.target.closest('[data-act]');if(!b||!draft)return;const act=b.dataset.act;
   if(act==='initToSkill'){syncDraft();const d=draft.data,name=String(d.initName??'').trim();if(!name||skillByName(name))return;
-    const data={name,muzin:0,xskill:0,coefBy:'people',noAdd:0,trs:trsOf({trs:d.trs.map(t=>({tr:N(t.tr),base:N(t.initSkill),coef:0,statBuff:N(t.statBuff),mulNormal:N(t.mulNormal),mulLimit:N(t.mulLimit),totalBuff:N(t.totalBuff)}))})};
-    try{b.disabled=true;await db.doc(`${BASE}/skills/${newId('s')}`).set(data);const a=$('initArea');if(a)a.innerHTML=initAreaHtml(draft.data);msg(`「${name}」をスキルマスタに登録しました(素スキル上昇率=今の値、係数=0、素攻・防バフ〜総攻・防バフ=今の値)。係数などはスキルマスタで直してください。`)}
+    const data={init:1,name,muzin:0,xskill:0,coefBy:'people',noAdd:1,trs:trsOf({trs:d.trs.map(t=>({tr:N(t.tr),base:N(t.initSkill),coef:0,statBuff:N(t.statBuff),mulNormal:N(t.mulNormal),mulLimit:N(t.mulLimit),totalBuff:N(t.totalBuff)}))})};
+    try{b.disabled=true;await db.doc(`${BASE}/skills/${newId('s')}`).set(data);const a=$('initArea');if(a)a.innerHTML=initAreaHtml(draft.data);msg(`「${name}」をスキルマスタに登録しました(素スキル上昇率=今の値、係数=0、付与できない、素攻・防バフ〜総攻・防バフ=今の値)。係数などはスキルマスタで直してください。`)}
     catch(err){b.disabled=false;msg('登録できませんでした('+(err.code||err.message)+')',true)}return}
   if(act==='close'){draft=null;renderEditor();return}
   if(act==='addtr'){syncDraft();const last=draft.data.trs[draft.data.trs.length-1]||{};draft.data.trs.push({...last,tr:N(last.tr)+1});renderEditor();return}
@@ -612,7 +623,7 @@ function validate(coll,d){
 }
 function clean(coll,d){
   if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='flag'?toFlag(d[f]):t==='number'?N(d[f]):String(d[f]??'').trim();o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
-  if(coll==='skills')return{name:String(d.name).trim(),muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d),trs:trsOf({trs:d.trs.map(t=>{const o=Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])]));for(const [f] of SKILL_INIT)if(t[f]!=null&&t[f]!=='')o[f]=N(t[f]);return o})})};
+  if(coll==='skills')return{init:toFlag(d.init),name:String(d.name).trim(),muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d),trs:trsOf({trs:d.trs.map(t=>{const o=Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])]));if(toFlag(d.init))for(const [f] of SKILL_INIT)if(t[f]!=null&&t[f]!=='')o[f]=N(t[f]);return o})})};
   if(coll==='jbuffs'){const o={};for(const [f,,t] of JBUFF_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();o.targets=[...new Set((d.targets||[]).map(x=>String(x).trim()).filter(Boolean))];return o}
   const o={};for(const [f,,t] of SOLDIER_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();if(d.order!=null)o.order=N(d.order);return o;
 }
@@ -669,7 +680,7 @@ function planFrom(XLSX,wb){
       if(ix('係数の掛け方')>=0&&row[ix('係数の掛け方')]!=null&&String(row[ix('係数の掛け方')]).trim()!==''){const v=String(row[ix('係数の掛け方')]).trim();g.get(n).coefBy=/同/.test(v)||v==='same'?'same':/X|Ｘ/i.test(v)||v==='x'?'x':'people'}const s=g.get(n),tr={tr:N(row[ix('TR')]),base:ix('素スキル上昇率')<0?0:N(row[ix('素スキル上昇率')]),coef:N(row[ix('係数')])};
       for(const [f,l] of SKILL_INIT){const c=ix(l);if(c>=0&&row[c]!=null&&String(row[c]).trim()!=='')tr[f]=N(row[c]);else{const old=M.skills.get(findId(M.skills,d=>d.name===n)||''),oe=old&&trEntry(old,tr.tr);if(oe&&oe[f]!=null)tr[f]=oe[f]}}
       s.trs=s.trs.filter(t=>t.tr!==tr.tr);s.trs.push(tr)}
-    for(const [n,s] of g){s.trs=trsOf(s);const id=findId(M.skills,d=>d.name===n);if(s.muzin==null)s.muzin=id?N(M.skills.get(id).muzin):0;if(s.xskill==null)s.xskill=id?toFlag(M.skills.get(id).xskill):0;if(s.noAdd==null)s.noAdd=id?toFlag(M.skills.get(id).noAdd):0;if(s.coefBy==null)s.coefBy=id?coefByOf(M.skills.get(id)):'people';plan.skills.push({id,data:s})}}
+    for(const [n,s] of g){s.trs=trsOf(s);const id=findId(M.skills,d=>d.name===n);if(s.muzin==null)s.muzin=id?N(M.skills.get(id).muzin):0;if(s.xskill==null)s.xskill=id?toFlag(M.skills.get(id).xskill):0;if(s.noAdd==null)s.noAdd=id?toFlag(M.skills.get(id).noAdd):0;if(s.coefBy==null)s.coefBy=id?coefByOf(M.skills.get(id)):'people';s.init=id?(isInitSkill(M.skills.get(id))?1:0):(s.trs.some(t=>SKILL_INIT.some(([f])=>t[f]!=null))?1:0);plan.skills.push({id,data:s})}}
   /* 兵種データ:兵科・兵種・攻撃力・防禦力・破壊・速度。兵種名が同じものを上書き。列名は表記ゆれも受け付ける */
   if(or&&or.length){const h=or[0].map(x=>String(x??'').trim()),pick=names=>{for(const n of names){const k=h.indexOf(n);if(k>=0)return k}return -1};
     const col={name:pick(['兵種','兵種名']),branch:pick(['兵科']),atk:pick(['攻撃力','兵士攻撃力']),def:pick(['防禦力','防御力','兵士防御力','兵士防禦力']),destroy:pick(['破壊']),speed:pick(['速度'])};
@@ -717,6 +728,8 @@ $('importbox').addEventListener('click',async e=>{const b=e.target.closest('[dat
 $('mtabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mtab=b.dataset.m;draft=null;importPlan=null;[...$('mtabs').children].forEach(x=>x.setAttribute('aria-pressed',x===b));renderEditor();renderImport();renderMaster()});
 $('msearch').addEventListener('input',renderMaster);
 $('madd').addEventListener('click',()=>{importPlan=null;renderImport();openEditor(mtab,null)});
+$('maddSkill').addEventListener('click',()=>{importPlan=null;renderImport();openEditor('skills',null,'skill')});
+$('maddInit').addEventListener('click',()=>{importPlan=null;renderImport();openEditor('skills',null,'init')});
 $('mtable').addEventListener('click',e=>{const tr=e.target.closest('tr[data-id]');if(!tr||!isOwner)return;importPlan=null;renderImport();openEditor(mtab,tr.dataset.id)});
 $('people').addEventListener('click',async e=>{if(e.target.id!=='peopleSave')return;const v=Number($('peopleIn').value),m=$('peopleMsg');
   if(!Number.isFinite(v)||v<=0){m.className='msg err';m.textContent='人数は正の数で入力してください';return}
