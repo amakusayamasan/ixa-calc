@@ -145,6 +145,12 @@ function openCombo(i, k, q) {
   combo = { i, k, items, active: !q && cur >= 0 ? cur : items.findIndex(x => !x.off) };
   drawCombo();
 }
+/* 候補一覧の1行。武将はレアリティで色分けする */
+function comboOptionHtml(i, k, x, n, active, sel) {
+  const cls = `${x.off ? 'off' : ''}${n === active ? ' active' : ''}${k === 'card' ? ' rar ' + rarClass(x.d.rarity) : ''}`;
+  return `<li role="option" id="opt-${k}-${i}-${n}" data-pick="${esc(x.id)}" class="${cls}" aria-selected="${x.id === sel}" aria-disabled="${x.off}">
+    <span>${esc(x.d.name)}</span><span class="meta">${metaOf(k, x)}</span></li>`;
+}
 function drawCombo() {
   if (!combo) return;
   const { i, k, items, active } = combo,
@@ -158,15 +164,7 @@ function drawCombo() {
   list.innerHTML =
     clear +
     (items.length
-      ? items
-          .map(
-            (
-              x,
-              n,
-            ) => `<li role="option" id="opt-${k}-${i}-${n}" data-pick="${esc(x.id)}" class="${x.off ? 'off' : ''}${n === active ? ' active' : ''}${k === 'card' ? ' rar ' + rarClass(x.d.rarity) : ''}" aria-selected="${x.id === sel}" aria-disabled="${x.off}">
-    <span>${esc(x.d.name)}</span><span class="meta">${metaOf(k, x)}</span></li>`,
-          )
-          .join('')
+      ? items.map((x, n) => comboOptionHtml(i, k, x, n, active, sel)).join('')
       : '<li class="none">見つかりません</li>');
   list.hidden = false;
   input.setAttribute('aria-expanded', 'true');
@@ -264,14 +262,25 @@ $('slots').addEventListener('focusout', e => {
   if (c && combo && combo.i === c.i && combo.k === c.k) closeCombo(true);
 });
 const isJCard = id => M.cards.get(id)?.rarity === '傑';
-const comboBox = (
-  i,
-  k,
-  value,
-  ph,
-  off,
-) => `<div class="combo${k === 'soldier' ? ' solo' : ''}" data-i="${i}" data-c="${k}"><input id="${inputId(i, k)}" class="combo-in" data-i="${i}" data-c="${k}"${off ? ' disabled' : ''} type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId(i, k)}" autocomplete="off" placeholder="${ph}" value="${esc(value)}">
+/* 検索できる入力欄(武将・スキル)。入力欄と候補一覧のセット */
+function comboBox(i, k, value, ph, off) {
+  const attrs = [
+    `id="${inputId(i, k)}"`,
+    'class="combo-in"',
+    `data-i="${i}"`,
+    `data-c="${k}"${off ? ' disabled' : ''}`,
+    'type="text"',
+    'role="combobox"',
+    'aria-autocomplete="list"',
+    'aria-expanded="false"',
+    `aria-controls="${listId(i, k)}"`,
+    'autocomplete="off"',
+    `placeholder="${ph}"`,
+    `value="${esc(value)}"`,
+  ].join(' ');
+  return `<div class="combo${k === 'soldier' ? ' solo' : ''}" data-i="${i}" data-c="${k}"><input ${attrs}>
   <ul id="${listId(i, k)}" class="combo-list" role="listbox" aria-label="${KIND[k]}の候補" hidden></ul></div>`;
+}
 function soldierOpts(sel) {
   return (
     '<option value="">— 兵種 —</option>' +
@@ -307,6 +316,13 @@ function renderCalc() {
   $('jin').value = form.jin;
   if (!form.jb) form.jb = [];
   renderJb();
+  fixForm(form);
+  box.innerHTML = form.slots.map((s, i) => slotHtml(s, i)).join('');
+  updateResults();
+}
+/* 編成をルールに合わせて直す(画面を描く前に毎回) */
+function fixForm(form) {
+  /* 同じ名前の武将は1部隊に1枚まで */
   {
     const seen = new Set();
     for (const s of form.slots) {
@@ -318,15 +334,19 @@ function renderCalc() {
   }
   /* 傑カードは通常枠・極限枠にスキルを付けられない */
   for (const s of form.slots) if (isJCard(s.card)) for (const k of SKILL_KEYS) s[k] = { id: '', tr: 0 };
+  /* Xスキルは極限枠に付けられない */
   for (const s of form.slots) if (s.lim.id && isX(M.skills.get(s.lim.id))) s.lim = { id: '', tr: 0 };
+  /* 付与できないスキルは外す */
   for (const s of form.slots)
     for (const k of SKILL_KEYS) if (s[k].id && toFlag(M.skills.get(s[k].id)?.noAdd)) s[k] = { id: '', tr: 0 };
+  /* 自分の初期スキルと同じスキルは付けられない */
   for (const s of form.slots) {
     const init = initNameOf(s.card);
     if (init)
       for (const k of SKILL_KEYS)
         if (s[k].id && String(M.skills.get(s[k].id)?.name ?? '').trim() === init) s[k] = { id: '', tr: 0 };
   }
+  /* 同じスキルは1人の武将に1つまで */
   for (const s of form.slots) {
     const used = new Set();
     for (const k of SKILL_KEYS) {
@@ -336,30 +356,36 @@ function renderCalc() {
       else used.add(id);
     }
   }
-  const skillRow = (
-    i,
-    k,
-    label,
-    s,
-    off,
-  ) => `<div class="field"><label class="label" for="${k}-${i}">${label}</label><div class="pair">
-    ${comboBox(i, k, M.skills.get(s.id)?.name || '', off ? '傑は付与不可' : 'なし', off)}
-    <select id="${k}tr-${i}" data-i="${i}" data-k="${k}tr" aria-label="${label}のTR"${s.id && !off ? '' : ' disabled'}>${trOpts(M.skills.get(s.id), s.tr)}</select></div><p class="eff" id="eff-${k}-${i}" aria-live="polite"></p></div>`;
-  box.innerHTML = form.slots
-    .map(
-      (s, i) => `<div class="slot${i === 0 ? ' leader' : ''}">
+}
+/* 追加スキル・極限スキルの欄(スキルの検索・TR・効果)。off=傑なので付けられない */
+function skillRow(i, k, label, s, off) {
+  const sk = M.skills.get(s.id);
+  const tr = `<select id="${k}tr-${i}" data-i="${i}" data-k="${k}tr" aria-label="${label}のTR"${s.id && !off ? '' : ' disabled'}>${trOpts(sk, s.tr)}</select>`;
+  return `<div class="field"><label class="label" for="${k}-${i}">${label}</label><div class="pair">
+    ${comboBox(i, k, sk?.name || '', off ? '傑は付与不可' : 'なし', off)}
+    ${tr}</div><p class="eff" id="eff-${k}-${i}" aria-live="polite"></p></div>`;
+}
+/* 部隊計算画面の1枠(部隊長・小隊長) */
+function slotHtml(s, i) {
+  const c = M.cards.get(s.card),
+    jc = isJCard(s.card);
+  const cardTr = `<select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card ? '' : ' disabled'}>${trOpts(cardV(c), s.tr)}</select>`;
+  const meta = s.card
+    ? `<span class="note" id="cardmeta-${i}">${esc(c?.rarity || '')} No.${esc(c?.no)}${initNameOf(s.card) ? ` ・ 初期:${esc(initNameOf(s.card))}` : ''}</span>`
+    : '';
+  const allocBtn = (v, label, pressed) =>
+    `<button type="button" data-alloc="${v}" data-i="${i}" aria-pressed="${pressed}">${label}</button>`;
+  const soldier = `<select id="soldier-${i}" data-i="${i}" data-k="soldier">${soldierOpts(s.soldier)}</select>`;
+  return `<div class="slot${i === 0 ? ' leader' : ''}">
     <h3><span>${SLOT_NAMES[i]}</span></h3>
     <div class="field"><label class="label" for="card-${i}">武将</label><div class="pair">
-      ${comboBox(i, 'card', M.cards.get(s.card)?.name || '', '武将名・カードNoで検索')}
-      <select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card ? '' : ' disabled'}>${trOpts(cardV(M.cards.get(s.card)), s.tr)}</select></div>${s.card ? `<span class="note" id="cardmeta-${i}">${esc(M.cards.get(s.card)?.rarity || '')} No.${esc(M.cards.get(s.card)?.no)}${initNameOf(s.card) ? ` ・ 初期:${esc(initNameOf(s.card))}` : ''}</span>` : ''}
+      ${comboBox(i, 'card', c?.name || '', '武将名・カードNoで検索')}
+      ${cardTr}</div>${meta}
       <div class="alloc"><span class="label">ステ振り</span><div class="seg" role="group" aria-label="ステ振り">
-        <button type="button" data-alloc="atk" data-i="${i}" aria-pressed="${s.alloc !== 'hei'}">攻撃</button><button type="button" data-alloc="hei" data-i="${i}" aria-pressed="${s.alloc === 'hei'}">兵法</button></div></div></div>
-    <div class="field"><label class="label" for="soldier-${i}">兵種</label><select id="soldier-${i}" data-i="${i}" data-k="soldier">${soldierOpts(s.soldier)}</select></div>
-    ${skillRow(i, 's1', '追加スキル', s.s1, isJCard(s.card))}${skillRow(i, 's2', '追加スキル2', s.s2, isJCard(s.card))}${skillRow(i, 'lim', '極限スキル', s.lim, isJCard(s.card))}
-    <div class="calc" id="calc-${i}"></div></div>`,
-    )
-    .join('');
-  updateResults();
+        ${allocBtn('atk', '攻撃', s.alloc !== 'hei')}${allocBtn('hei', '兵法', s.alloc === 'hei')}</div></div></div>
+    <div class="field"><label class="label" for="soldier-${i}">兵種</label>${soldier}</div>
+    ${skillRow(i, 's1', '追加スキル', s.s1, jc)}${skillRow(i, 's2', '追加スキル2', s.s2, jc)}${skillRow(i, 'lim', '極限スキル', s.lim, jc)}
+    <div class="calc" id="calc-${i}"></div></div>`;
 }
 /* TRが無いときは、いちばん高いTRに合わせる */
 const fitTr = (d, tr) => {
