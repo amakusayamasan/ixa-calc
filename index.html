@@ -302,10 +302,12 @@ function cardTrs(c){if(!c)return[];const sk=skillByName(c.initName),st=sk?trsOf(
 const cardV=c=>c&&{...c,trs:cardTrs(c)};
 function cardT(c,tr){return cardTrs(c).find(t=>N(t.tr)===N(tr))}
 const initLinked=(c,tr)=>{const sk=skillByName(c?.initName);return !!(sk&&trEntry(sk.d,tr))};
-function initEff(c,t){const v=initBase(c,t);if(!muzinOn()||c?.rarity==='傑')return v;return N(c?.muzin)>0?v*2:0}
+/* 武将が無尽を持つか:初期スキル(スキルマスタ)の無尽で決める。初期スキルがスキルマスタにない武将だけ、以前の武将マスタの無尽を使う */
+const cardMuzin=c=>{if(!c)return 0;const sk=skillByName(c.initName);return sk?N(sk.d.muzin):N(c.muzin)};
+function initEff(c,t){const v=initBase(c,t);if(!muzinOn()||c?.rarity==='傑')return v;return cardMuzin(c)>0?v*2:0}
 /* 無尽が有効で、初期スキルに無尽がない武将は、初期スキル由来の効果がすべて無効:
    総攻バフ・素攻バフ・倍枠通常・倍枠極限を1(等倍)として扱う */
-const muzinVoid=c=>muzinOn()&&!!c&&c.rarity!=='傑'&&!(N(c.muzin)>0);
+const muzinVoid=c=>muzinOn()&&!!c&&c.rarity!=='傑'&&!(cardMuzin(c)>0);
 function effT(c,t){if(!t)return t;if(!muzinVoid(c))return t;return{...t,statBuff:1,totalBuff:1,mulNormal:1,mulLimit:1}}
 /* 傑バフ
    ・所属時:その傑カード(カードNoが同じ武将)が部隊長・小隊長のどこかの枠にいれば自動でかかる
@@ -338,9 +340,9 @@ function calc(){
   });
   /* 無尽を持つ武将の数(武将の無尽、初期スキル・追加スキル・極限スキルのどれかが無尽なら1人。本人も含む) */
   const mz=x=>N(M.skills.get(x?.id)?.muzin)>0;
-  const mc=Math.min(4,sl.filter(s=>s.c&&(N(s.c.muzin)>0||N(skillByName(s.c.initName)?.d.muzin)>0||mz(s.s1)||mz(s.s2)||mz(s.lim))).length);
+  const mc=Math.min(4,sl.filter(s=>s.c&&(cardMuzin(s.c)>0||mz(s.s1)||mz(s.s2)||mz(s.lim))).length);
   /* 無尽部隊では、無尽を持つ武将(傑以外)の上乗せ分は2倍 */
-  const tbMul=s=>muzinOn()&&s.c?.rarity!=='傑'&&(N(s.c?.muzin)>0||N(skillByName(s.c?.initName)?.d.muzin)>0)?2:1;
+  const tbMul=s=>muzinOn()&&s.c?.rarity!=='傑'&&cardMuzin(s.c)>0?2:1;
   const tbOf=s=>{if(!s.t)return 1;const v=N(s.t.totalBuff)||1;return s.t===s.raw&&s.raw.tbCoef!=null?v+mc*N(s.raw.tbCoef)/100*tbMul(s):v};
   /* 総攻バフは全枠の武将から集めて足し算(1+各(バフ-1)の和)。火焔武闘は最後に+0.2ずつ */
   const buffs=sl.filter(s=>s.t).map(tbOf);
@@ -501,7 +503,7 @@ $('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.clos
 const FLAG_LABELS={init:['スキル','初期スキル'],hime:['姫ではない','姫'],xskill:['該当しない','Xスキル'],noAdd:['付与できる','付与できない']};
 const RARITIES=['覇・パラレル天','パラレル天','覇・天','天','極','傑'];
 const toFlag=v=>{if(v==null)return 0;const t=String(v).trim();if(t===''||t==='0'||/^(false|no|なし|いいえ|×|✕|-|—)$/i.test(t))return 0;return 1};
-const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','rarity'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['initName','初期スキル名','text'],['troops','兵数','number'],['baseStat','素攻撃力','number'],['baseDef','素防御力','number'],['growth','攻撃上昇率','number'],['growthDef','防御上昇率','number'],['hime','姫','flag'],['muzin','無尽(0:なし、1以上:あり)','number']];
+const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','rarity'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['initName','初期スキル名','text'],['troops','兵数','number'],['baseStat','素攻撃力','number'],['baseDef','素防御力','number'],['growth','攻撃上昇率','number'],['growthDef','防御上昇率','number'],['hime','姫','flag']];
 const CARD_TR=[['tr','TR'],['initSkill','初期スキル'],['statBuff','素攻・防バフ'],['mulNormal','倍枠通常'],['mulLimit','倍枠極限'],['totalBuff','総攻・防バフ']];
 const SKILL_TR=[['tr','TR'],['base','素スキル上昇率'],['coef','係数']];
 /* 初期スキルとしての効果(素攻・防バフ、倍枠、総攻・防バフ)。空欄なら武将マスタの値を使う */
@@ -527,7 +529,8 @@ const bySoldierOrder=(a,b)=>N(a[1].order??9999)-N(b[1].order??9999)||byName(a,b)
 const trRange=d=>{const t=trsOf(d);return t.length?`TR${N(t[0].tr)}〜${N(t[t.length-1].tr)}`:'TRなし'};
 function renderMaster(){
   $('madd').hidden=!isOwner||mtab==='skills';$('maddSkill').hidden=$('maddInit').hidden=!isOwner||mtab!=='skills';$('mimport').hidden=!isOwner;
-  $('mnote').textContent=isOwner?'行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。':'マスタの編集は管理者のみです。管理者は右上の「管理者ログイン」からログインしてください。ここでは内容を確認できます。';
+  const mzDiff=isOwner&&mtab==='cards'?[...M.cards.values()].filter(c=>N(c.muzin)>0&&skillByName(c.initName)&&!(cardMuzin(c)>0)).map(c=>`${c.name}(初期スキル「${c.initName}」)`):[];
+  $('mnote').textContent=isOwner?'行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。'+(mzDiff.length?` ※無尽は初期スキルで判定します。以前武将マスタで無尽ありにしていた次の武将は、初期スキルの無尽が0です。スキルマスタで無尽を入れてください:${mzDiff.join('、')}`:''):'マスタの編集は管理者のみです。管理者は右上の「管理者ログイン」からログインしてください。ここでは内容を確認できます。';
   const pp=$('people');pp.hidden=mtab!=='skills';
   if(mtab==='skills')pp.innerHTML=isOwner?`<label class="label" for="peopleIn">人数(スキル上昇率 = 素スキル上昇率 + 係数×人数)</label><input id="peopleIn" type="number" value="${esc(config.people)}"><button id="peopleSave" class="btn small ghost" type="button">人数を保存</button><span id="peopleMsg" class="msg"></span>`
     :`<span class="label">人数</span><b class="num">${fmt(N(config.people))}</b><span class="note">スキル上昇率 = 素スキル上昇率 + 係数×人数</span>`;
@@ -537,7 +540,7 @@ function renderMaster(){
   let html='';
   if(mtab==='cards'){
     html=`<thead><tr><th class="l">カード名</th><th class="l">初期スキル名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>素防御力</th><th>攻撃上昇率</th><th>防御上昇率</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th><th>無尽</th></tr></thead><tbody>`+
-      (list.length?list.map(([id,d])=>{const t=cardTrs(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side==='攻撃・防御'?'side-both':d.side==='防御'?'side-def':d.side==='攻撃'?'side-atk':''}">${esc(d.side||'')}</span></td><td class="l">${esc(d.initName||'—')}</td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="l">${trRange({trs:t})}</td><td class="num">${fmt(initBase(d,last),1)}</td><td class="num">${fmt(N(cardT(d,last.tr)?.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(15))+'</tbody>';
+      (list.length?list.map(([id,d])=>{const t=cardTrs(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side==='攻撃・防御'?'side-both':d.side==='防御'?'side-def':d.side==='攻撃'?'side-atk':''}">${esc(d.side||'')}</span></td><td class="l">${esc(d.initName||'—')}</td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="l">${trRange({trs:t})}</td><td class="num">${fmt(initBase(d,last),1)}</td><td class="num">${fmt(N(cardT(d,last.tr)?.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${cardMuzin(d)>0?fmt(cardMuzin(d),2):'—'}</td></tr>`}).join(''):empty(15))+'</tbody>';
   }else if(mtab==='skills'){
     const maxTr=Math.max(5,...list.flatMap(([,d])=>trsOf(d).map(t=>N(t.tr))));const trs=[...Array(maxTr+1).keys()];
     html=`<thead><tr><th class="l">スキル名</th><th class="l">種類</th><th>無尽</th><th>Xスキル</th><th>スキル付与</th><th class="l">係数の掛け方</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
@@ -555,8 +558,7 @@ function renderMaster(){
 /* ---------- 編集パネル ---------- */
 function openEditor(coll,id,kind){
   const d=id?structuredClone(M[coll].get(id)):null;
-  if(coll==='cards'&&d&&d.muzin==null)d.muzin=0;
-  if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',initName:'',troops:'',baseStat:'',baseDef:'',growth:'',growthDef:'',hime:0,muzin:0}};
+  if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',initName:'',troops:'',baseStat:'',baseDef:'',growth:'',growthDef:'',hime:0}};
   else if(coll==='skills')draft={coll,id,data:d?{...d,init:isInitSkill(d)?1:0,muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d)}
     :kind==='init'?{init:1,name:'',muzin:0,xskill:0,noAdd:1,coefBy:'people',trs:[{tr:0,base:0,coef:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}
     :{init:0,name:'',muzin:0,xskill:0,noAdd:0,coefBy:'people',trs:[{tr:0,base:0,coef:0}]}};
@@ -641,7 +643,8 @@ function validate(coll,d){
   return'';
 }
 function clean(coll,d){
-  if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='flag'?toFlag(d[f]):t==='number'?N(d[f]):String(d[f]??'').trim();if(Array.isArray(d.trs)&&d.trs.length)o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
+  if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='flag'?toFlag(d[f]):t==='number'?N(d[f]):String(d[f]??'').trim();if(N(d.muzin)>0)o.muzin=N(d.muzin);/* 以前の武将マスタの無尽(初期スキルがスキルマスタにない武将だけ使う) */
+    if(Array.isArray(d.trs)&&d.trs.length)o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
   if(coll==='skills')return{init:toFlag(d.init),name:String(d.name).trim(),muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d),trs:trsOf({trs:d.trs.map(t=>{const o=Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])]));if(toFlag(d.init)){for(const [f] of SKILL_INIT)if(t[f]!=null&&t[f]!=='')o[f]=N(t[f]);if(tbByOf(d)==='muzin')o.tbCoef=N(t.tbCoef)}return o})}),...(toFlag(d.init)?{tbBy:tbByOf(d)}:{})};
   if(coll==='jbuffs'){const o={};for(const [f,,t] of JBUFF_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();o.targets=[...new Set((d.targets||[]).map(x=>String(x).trim()).filter(Boolean))];return o}
   const o={};for(const [f,,t] of SOLDIER_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();if(d.order!=null)o.order=N(d.order);return o;
@@ -682,7 +685,7 @@ function planFrom(XLSX,wb){
   if(!cr&&!sr&&!or&&!jr)throw new Error('「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」のどのシートも見つかりません');
   if(cr){const h=cr[0].map(x=>String(x??'').trim()),ix=n=>{if(Array.isArray(n)){for(const x of n){const k=h.indexOf(x);if(k>=0)return k}return -1}return h.indexOf(n)};
     const need=['カードNo','カード名','TR'];for(const n of need)if(ix(n)<0)throw new Error(`武将データに「${n}」列がありません`);
-    const col={no:'カードNo',rarity:'レアリティ',cost:'武将コスト',side:'攻撃or防御',name:'カード名',initName:'初期スキル名',troops:'兵数',baseStat:['素攻撃力','素攻撃力・素防御力'],baseDef:['素防御力'],growth:['攻撃上昇率','攻撃・防御上昇率','上昇率'],growthDef:['防御上昇率'],hime:'姫',muzin:'無尽',
+    const col={no:'カードNo',rarity:'レアリティ',cost:'武将コスト',side:'攻撃or防御',name:'カード名',initName:'初期スキル名',troops:'兵数',baseStat:['素攻撃力','素攻撃力・素防御力'],baseDef:['素防御力'],growth:['攻撃上昇率','攻撃・防御上昇率','上昇率'],growthDef:['防御上昇率'],hime:'姫',
       tr:'TR',initSkill:'初期スキル',statBuff:'素攻・防バフ',mulNormal:'倍枠通常',mulLimit:'倍枠極限',totalBuff:'総攻・防バフ'};
     const g=new Map();
     for(const row of cr.slice(1)){const v=k=>ix(col[k])<0?null:row[ix(col[k])];if(v('no')==null||v('name')==null)continue;
