@@ -600,49 +600,8 @@ function validate(coll, d) {
   return '';
 }
 function clean(coll, d) {
-  if (coll === 'cards') {
-    const o = {};
-    for (const [f, , t] of CARD_FIELDS)
-      o[f] =
-        t === 'flag' || t === 'check' ? toFlag(d[f]) : t === 'number' ? N(d[f]) : String(d[f] ?? '').trim();
-    if (N(d.muzin) > 0)
-      o.muzin = N(d.muzin); /* 以前の武将マスタの無尽(初期スキルがスキルマスタにない武将だけ使う) */
-    if (Array.isArray(d.trs) && d.trs.length)
-      o.trs = trsOf({ trs: d.trs.map(t => Object.fromEntries(CARD_TR.map(([f]) => [f, N(t[f])]))) });
-    return o;
-  }
-  if (coll === 'skills')
-    return {
-      init: toFlag(d.init),
-      side: skillSide(d),
-      ...(coefByOf(d) === 'same' && toFlag(d.coefMaxTr) ? { coefMaxTr: 1 } : {}),
-      ...(!toFlag(d.init) && isMimic(d) ? { mimic: mimicOf(d) } : {}),
-      ...(toFlag(d.init) ? { noMimic: toFlag(d.noMimic) } : {}),
-      name: String(d.name).trim(),
-      muzin: N(d.muzin),
-      xskill: toFlag(d.init) ? 0 : toFlag(d.xskill),
-      noAdd: toFlag(d.noAdd),
-      coefBy: coefByOf(d),
-      trs: trsOf({
-        trs: d.trs.map(t => {
-          const o = Object.fromEntries(SKILL_TR.map(([f]) => [f, N(t[f])]));
-          if (!toFlag(d.init) && isMimic(d)) {
-            o.mimicRate = N(t.mimicRate);
-            o.coef = 0;
-          }
-          if (!toFlag(d.init) && dupOn(d) && hasV(t.dupMax)) o.dupMax = N(t.dupMax);
-          if (toFlag(d.init)) {
-            const ef = effsOf(d);
-            for (const [k, , fs] of EFFS) if (ef[k]) for (const f of fs) if (hasV(t[f])) o[f] = N(t[f]);
-            if (ef.total && tbByOf(d) === 'muzin') o.tbCoef = N(t.tbCoef);
-          }
-          return o;
-        }),
-      }),
-      ...(toFlag(d.init)
-        ? { tbBy: effsOf(d).total ? tbByOf(d) : 'fixed', effs: effsOf(d) }
-        : { effs: { dup: dupOn(d) } }),
-    };
+  if (coll === 'cards') return normalizeCard(d);
+  if (coll === 'skills') return normalizeSkill(d);
   if (coll === 'jbuffs') {
     const o = {};
     for (const [f, , t] of JBUFF_FIELDS) o[f] = t === 'number' ? N(d[f]) : String(d[f] ?? '').trim();

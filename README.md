@@ -8,6 +8,35 @@
 
 | ファイル | 内容 |
 | --- | --- |
+| `index.html` | 画面の骨組み(HTML)。CSS と JS を読み込むだけ |
+| `css/style.css` | 見た目 |
+| `js/core.js` | 定数・共有の状態・小さな道具(数値の整形など) |
+| `js/rules.js` | **武将・スキルのルール**(項目の定義、初期スキルの特殊効果、模倣、重複上限、傑バフ、保存するときの形) |
+| `js/calc.js` | 火力の計算と、武将ごとの内訳 |
+| `js/calc-view.js` | 部隊計算画面(編成の保存、武将・スキルの候補、傑バフの選択) |
+| `js/master.js` | マスタ管理画面(一覧の列、編集パネル、保存) |
+| `js/excel.js` | Excel の取り込み・ダウンロード |
+| `js/admin.js` | 管理者の書き込み(最終更新者・変更履歴)、不要データの削除、初期データ投入 |
+| `js/main.js` | 画面の切り替えと起動(Firebase への接続・マスタの読み込み) |
+| `firebase-config.js` | Firebase の接続設定 |
+| `firestore.rules` | データを守るセキュリティルール(Firebase に貼り付ける) |
+| `seed/master.json` | 初期データ |
+| `tests/` | 回帰テスト(下記) |
+
+JS は上の表の順に読み込みます(`index.html` の `<script>` の順)。ルールを変えるときは、まず `js/rules.js` を見てください。
+
+### 回帰テスト
+
+計算や画面の動きが変わっていないかを確かめるテストです。Firebase と SheetJS は模擬版(`tests/stub.js`・`tests/fakexlsx.js`)に差し替えて動かします(Node.js と Playwright が必要)。
+
+```
+python3 -m http.server 8765        # リポジトリのフォルダで
+node tests/regress.js > after.json # 別のターミナルで
+```
+
+変更の前と後で出力(`after.json`)が同じなら、計算結果・表示・保存されるデータは変わっていません。
+
+--- | --- |
 | `index.html` | ツール本体(計算画面・マスタ管理) |
 | `firebase-config.js` | Firebase の接続設定(手順2で書き換える) |
 | `firestore.rules` | データを守るセキュリティルール(手順3で Firebase に貼り付ける) |

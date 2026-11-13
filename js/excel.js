@@ -387,9 +387,7 @@ function finishSkill(s, old) {
   if (!s.init)
     s.trs = s.trs.map(t => {
       const o = { ...t };
-      for (const [f] of SKILL_INIT) delete o[f];
-      delete o.troopAdd;
-      delete o.tbCoef;
+      for (const f of INIT_TR_FIELDS()) delete o[f];
       return o;
     });
 }
