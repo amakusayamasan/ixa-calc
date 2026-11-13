@@ -401,7 +401,7 @@ function renderJb(){const btn=$('jbBtn'),panel=$('jbpanel');const out=form?jbOut
   btn.setAttribute('aria-expanded',String(!panel.hidden));
   if(panel.hidden||!form)return;
   const list=[...M.jbuffs].sort(byNo),sel=new Set((form.jb||[]).map(String)),innNos=new Set(inn.map(d=>String(d.no)));
-  panel.innerHTML=`<div class="jbhead"><strong>外部からかける傑バフを選ぶ</strong><div style="display:flex;gap:8px"><button class="btn small ghost" type="button" data-jb-act="clear"${sel.size?'':' disabled'}>外部をすべて外す</button><button class="btn small" type="button" data-jb-act="close">閉じる</button></div></div>
+  panel.innerHTML=`<div class="jbhead"><strong>外部からかける傑バフを選ぶ</strong><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small ghost" type="button" data-jb-act="all"${list.length&&list.some(([,d])=>!sel.has(String(d.no)))?'':' disabled'}>外部をすべてつける</button><button class="btn small ghost" type="button" data-jb-act="clear"${sel.size?'':' disabled'}>外部をすべて外す</button><button class="btn small" type="button" data-jb-act="close">閉じる</button></div></div>
     <p class="note">チェックした傑バフの「外部」の攻撃力が、対象兵種の兵士攻撃力に足されます。その傑カードが部隊長・小隊長の枠にいる場合は「所属時」の攻撃力が自動で足され、外部にもチェックがあれば両方を合計します。防御力は防御部隊の計算で使います。</p>
     <div class="jblist">${list.length?list.map(([id,d])=>{const no=String(d.no),on=sel.has(no),inU=innNos.has(no);
       return`<div class="jbrow${on||inU?' on':''}"><label><input type="checkbox" data-jb="${esc(no)}"${on?' checked':''}><span><b>${esc(d.name)}</b><br><span class="meta">No.${esc(no)} ・ 対象:${esc(targetsLabel(d))}</span></span></label>
@@ -411,7 +411,8 @@ function renderJb(){const btn=$('jbBtn'),panel=$('jbpanel');const out=form?jbOut
 $('jbBtn').addEventListener('click',()=>{const p=$('jbpanel');p.hidden=!p.hidden;renderJb()});
 $('jbpanel').addEventListener('click',e=>{if(!form)return;const b=e.target.closest('button');if(!b)return;
   if(b.dataset.jbAct==='close'){$('jbpanel').hidden=true;renderJb();$('jbBtn').focus();return}
-  if(b.dataset.jbAct==='clear'){form.jb=[];renderJb();updateResults()}});
+  if(b.dataset.jbAct==='clear'){form.jb=[];renderJb();updateResults()}
+  if(b.dataset.jbAct==='all'){form.jb=[...M.jbuffs.values()].sort((a,b)=>N(a.no)-N(b.no)).map(d=>String(d.no));renderJb();updateResults()}});
 $('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.closest('[data-jb]');if(!c)return;const no=c.dataset.jb;
   form.jb=(form.jb||[]).map(String).filter(x=>x!==no);if(c.checked)form.jb.push(no);renderJb();updateResults()});
 
