@@ -1,0 +1,2780 @@
+const BASE = 'master/v2';
+const SLOT_NAMES = ['部隊長', '小隊長1', '小隊長2', '小隊長3'];
+const SP = { rei: '黎天列光', hi: '火焔武闘' };
+/* 無尽:部隊長がこのカードNoのとき、無尽の効果がかかる
+   ・初期スキル:武将マスタの無尽が1以上なら2倍、0なら0(無効)
+   ・極限スキル:全員2倍(無尽が付与される)
+   ・追加スキル:スキルマスタの無尽が1以上のスキルは2倍 */
+const MUZIN_LEADER_NO = '1274';
+const muzinOn = () => !!form && String(M.cards.get(form.slots[0].card)?.no ?? '') === MUZIN_LEADER_NO;
+const REI_TROOPS = 2000;
+const STAT_FACTOR = 690;
+const SAMPLE = {
+  jin: 1.05,
+  slots: [
+    { card: '10052', tr: 5, soldier: '焙烙火矢', s1: ['', 0], s2: ['', 0], lim: ['', 0] },
+    {
+      card: '1286',
+      tr: 5,
+      soldier: '焙烙火矢',
+      s1: ['天地超克', 0],
+      s2: ['勇冠三軍', 0],
+      lim: ['万物神勇', 0],
+    },
+    {
+      card: '10053',
+      tr: 5,
+      soldier: '焙烙火矢',
+      s1: ['勇冠三軍', 5],
+      s2: ['万物神勇', 5],
+      lim: ['天地超克', 5],
+    },
+    {
+      card: '10066',
+      tr: 5,
+      soldier: '焙烙火矢',
+      s1: ['天地超克', 0],
+      s2: ['万物神勇', 0],
+      lim: ['勇冠三軍', 0],
+    },
+  ],
+};
+const M = { cards: new Map(), skills: new Map(), soldiers: new Map(), jbuffs: new Map() };
+/* 最終更新者:管理者ごとの表示名は、Firebase コンソールで admins/{ユーザーID} の name フィールドに登録する。
+   保存のたびに 表示名・ユーザーID・日時 を記録する */
+let me = null,
+  adminName = '';
+const myName = () => adminName;
+const nowStamp = () => ({
+  updatedBy: me?.uid || '',
+  updatedName: myName(),
+  updatedAt: window.firebase?.firestore?.FieldValue?.serverTimestamp?.() || new Date(),
+});
+/* 変更履歴:保存・削除のたびに logs/{id} へ追記する(ルールで追記のみ・書き換え不可)。マスタの書き込みと同じバッチで書くので、
+   履歴が書けないときはマスタも書き換わらない */
+const COLL_JA = { cards: '武将', skills: 'スキル', soldiers: '兵種', jbuffs: '傑バフ', config: '設定' };
+const plain = v =>
+  v == null
+    ? null
+    : JSON.parse(
+        JSON.stringify(v, (k, x) =>
+          ['updatedAt', 'updatedBy', 'updatedName', 'logId'].includes(k) ? undefined : x,
+        ),
+      );
+/* ルールで、マスタの書き込みには同じバッチの履歴が必須:
+   ・保存:マスタの logId と同じIDの履歴  ・削除:del_{区分}_{ID}_{消すデータの logId(なければ noid)} の履歴 */
+const newLogId = () => `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+function addLog(batch, action, coll, docId, before, after, logId) {
+  const ts = window.firebase?.firestore?.FieldValue?.serverTimestamp?.() || new Date();
+  batch.set(db.doc(`logs/${logId}`), {
+    at: ts,
+    by: me?.uid || '',
+    name: myName(),
+    action,
+    coll: COLL_JA[coll] || coll,
+    docId,
+    label: String((after || before)?.name ?? (coll === 'config' ? '人数' : docId)),
+    before: plain(before),
+    after: plain(after),
+  });
+}
+/* マスタ1件を書く(after=null なら削除)。履歴と同じバッチに入れる */
+function putWithLog(batch, action, coll, docId, after, before) {
+  const path = `${BASE}/${coll}/${docId}`;
+  if (before === undefined) before = coll === 'config' ? config : M[coll]?.get(docId) || null;
+  if (after) {
+    const id = newLogId();
+    batch.set(db.doc(path), { ...after, ...nowStamp(), logId: id });
+    addLog(batch, action, coll, docId, before, after, id);
+  } else {
+    batch.delete(db.doc(path));
+    addLog(batch, action, coll, docId, before, null, `del_${coll}_${docId}_${before?.logId || 'noid'}`);
+  }
+}
+async function writeWithLog(action, coll, docId, after) {
+  const batch = db.batch();
+  putWithLog(batch, action, coll, docId, after);
+  await batch.commit();
+}
+const logErr = err =>
+  err?.code === 'permission-denied'
+    ? '権限がありません。Firebase のルールに変更履歴(logs)の設定が入っているか確認してください'
+    : err?.code || err?.message;
+/* 表示名が未登録なら保存させない */
+function needName() {
+  if (myName()) return false;
+  msgAny(
+    `表示名が登録されていないため保存できません。Firebase コンソールの admins コレクションで、ドキュメント「${me?.uid || ''}」に、フィールド name(文字列)で表示名を追加してから、サイトを読み込み直してください。`,
+  );
+  return true;
+}
+const msgAny = t => {
+  const el = $('edmsg') || $('impmsg') || $('peopleMsg');
+  if (el) {
+    el.className = 'msg err';
+    el.textContent = t;
+  } else status(t, true);
+};
+const loaded = { cards: false, skills: false, soldiers: false, jbuffs: false, config: false };
+let config = { people: 280 };
+let db = null,
+  isOwner = false,
+  mtab = 'cards',
+  draft = null,
+  form = null,
+  importPlan = null;
+const $ = id => document.getElementById(id);
+const esc = s =>
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
+const N = v => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+const fmt = (n, d = 0) =>
+  Number.isFinite(n) ? n.toLocaleString('ja-JP', { maximumFractionDigits: d }) : '—';
+function jp(n) {
+  if (!Number.isFinite(n)) return '';
+  const v = Math.round(n),
+    oku = Math.floor(v / 1e8),
+    man = Math.floor((v % 1e8) / 1e4);
+  return (oku ? oku + '億' : '') + (man ? man + '万' : '');
+}
+const store = {
+  get(k) {
+    try {
+      return JSON.parse(localStorage.getItem(k));
+    } catch (e) {
+      return null;
+    }
+  },
+  set(k, v) {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+    } catch (e) {}
+  },
+};
+function status(text, warn) {
+  const s = $('status');
+  s.hidden = !text;
+  s.textContent = text || '';
+  s.className = 'banner' + (warn ? ' warn' : '');
+}
+const allLoaded = () => loaded.cards && loaded.skills && loaded.soldiers;
+const trsOf = d => [...(d?.trs || [])].sort((a, b) => N(a.tr) - N(b.tr));
+const trEntry = (d, tr) => (d?.trs || []).find(t => N(t.tr) === N(tr));
+const cardAtk = c => N(c.baseStat) + N(c.growth) * STAT_FACTOR;
+/* スキル上昇率 = 素スキル上昇率 + 係数 × n
+   n はスキルごとの「係数の掛け方」で決まる:人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 */
+const COEF_BY = { people: '人数', same: '部隊内の同じスキルの数', x: '部隊内のXスキルの数' };
+const COEF_SHORT = { people: '人数', same: '同スキル数', x: 'Xスキル数' };
+/* 初期スキルの総攻・防バフの掛け方:固定、または 総攻・防バフ + 無尽を持つ武将数 × 総攻・防バフ係数 ÷ 100 × 無尽2倍 */
+const TB_BY = { fixed: '固定', muzin: '無尽を持つ武将数' };
+const tbByOf = d => (TB_BY[d?.tbBy] ? d.tbBy : 'fixed');
+const coefByOf = d => (COEF_BY[d?.coefBy] ? d.coefBy : 'people');
+const isX = d => toFlag(d?.xskill) === 1;
+/* スキルの攻防:攻撃 / 防御 / 攻撃・防御。値は1組だけ持ち、攻撃部隊では「防御」スキルの値を使わない(未設定は攻撃) */
+const SIDES = ['攻撃', '防御', '攻撃・防御'];
+const skillSide = d => (SIDES.includes(d?.side) ? d.side : '攻撃');
+const forAtk = d => skillSide(d) !== '防御';
+const sw = d => ({ 攻撃: '攻', 防御: '防', '攻撃・防御': '攻・防' })[skillSide(d)];
+/* 攻防に合わせた初期スキル列の名前(素攻バフ/素防バフ/素攻・防バフ など) */
+/* 初期スキルの効果のチェック:素攻バフ・倍枠(通常・極限)・総攻バフ・兵数加算。チェックした効果の列だけTR表に出す。
+   未保存の古いデータは、値が入っているか(1以外か)で判定する */
+const EFFS = [
+  ['stat', '素攻バフ', ['statBuff']],
+  ['mul', '倍枠', ['mulNormal', 'mulLimit']],
+  ['total', '総攻バフ', ['totalBuff']],
+  ['troop', '兵数加算', ['troopAdd']],
+];
+const effsOf = d => {
+  if (d?.effs) return { ...d.effs };
+  const tr = d?.trs || [],
+    ne1 = f => tr.some(t => hasV(t[f]) && N(t[f]) !== 1);
+  return {
+    stat: ne1('statBuff'),
+    mul: ne1('mulNormal') || ne1('mulLimit'),
+    total: ne1('totalBuff') || tbByOf(d) === 'muzin',
+    troop: tr.some(t => N(t.troopAdd) !== 0),
+    self: false,
+    leader: false,
+  };
+};
+const effLabel = (d, k) =>
+  k === 'stat' ? `素${sw(d)}バフ` : k === 'total' ? `総${sw(d)}バフ` : EFFS.find(x => x[0] === k)[1];
+const initCols = d => {
+  const e = effsOf(d),
+    cols = [...SKILL_INIT, TROOP_ADD].map(([f, l]) => [
+      f,
+      f === 'statBuff' ? `素${sw(d)}バフ` : f === 'totalBuff' ? `総${sw(d)}バフ` : l,
+    ]);
+  return cols.filter(([f]) => EFFS.some(([k, , fs]) => e[k] && fs.includes(f)));
+};
+/* 兵数加算:この初期スキルを持つ武将がいると、同じ部隊の他の武将の兵数に足す */
+const TROOP_ADD = ['troopAdd', '兵数加算'];
+const skillValue = (t, n) => N(t.base) + N(t.coef) * (n == null ? N(config.people) : n);
+/* 部隊の編成から n を数える。人数のときは null(=設定の人数) */
+/* 部隊内で同じスキルを使っているところのTR(追加・極限スキルと、同じ初期スキルを持つ武将) */
+function sameUses(id) {
+  const out = [];
+  if (!form || !id) return out;
+  form.slots.forEach(s => {
+    for (const k of ['s1', 's2', 'lim']) if (s[k].id === id) out.push(N(s[k].tr));
+    const c = M.cards.get(s.card);
+    if (c && skillByName(c.initName)?.id === id) out.push(N(s.tr));
+  });
+  return out;
+}
+/* 係数を部隊内のTRの最大値から取るか(係数の掛け方が「同じスキルの数」のとき) */
+const coefMax = d => coefByOf(d) === 'same' && toFlag(d?.coefMaxTr) === 1;
+const maxTrOf = id => {
+  const u = sameUses(id);
+  return u.length ? Math.max(...u) : null;
+};
+/* 部隊の中でのスキル上昇率:素スキル上昇率(自分のTR) + 係数(最大TRを参照するなら部隊内の最大TRの係数) × 数 */
+function skillValueIn(t, d, id) {
+  const n = coefN(d, id);
+  if (!coefMax(d) || n == null) return skillValue(t, n);
+  const mt = maxTrOf(id),
+    e = mt != null && trEntry(d, mt);
+  return N(t.base) + N(e ? e.coef : t.coef) * n;
+}
+function coefN(d, id) {
+  const by = coefByOf(d);
+  if (by === 'people' || !form) return null;
+  if (by === 'same') return sameUses(id).length;
+  return Math.min(
+    8,
+    form.slots.reduce((a, s) => a + ['s1', 's2'].filter(k => isX(M.skills.get(s[k].id))).length, 0),
+  );
+}
+/* 編成がない場面(マスタ一覧など)での表示 */
+/* 模倣スキル:自模倣=自分の初期スキル、他真似=部隊長の初期スキル。部隊の中で計算した初期スキルの値(無尽×2後)× 模倣倍率。
+   部隊長に付けた他真似は0。特殊効果は模倣しない。極限枠でも ×1.2 はかけない */
+const MIMIC = { none: 'なし', self: '自模倣', leader: '他真似(部隊長)' };
+const mimicOf = d => (MIMIC[d?.mimic] ? d.mimic : 'none');
+const isMimic = d => mimicOf(d) !== 'none';
+/* 模倣元の初期スキルの値。初期スキルが「模倣できない」なら0 */
+const mimicBlocked = i => {
+  const c = M.cards.get(form?.slots[i]?.card);
+  return toFlag(skillByName(c?.initName)?.d.noMimic) === 1;
+};
+function slotInit(i) {
+  const s = form?.slots[i];
+  if (!s || mimicBlocked(i)) return 0;
+  const { c, t } = slotEff(i);
+  return c && t ? initEff(c, t) : 0;
+}
+const mimicSrc = (d, i) => (mimicOf(d) === 'self' ? i : i === 0 ? null : 0);
+function skillLabel(t, d) {
+  if (isMimic(d)) return `${N(t.base) ? fmt(N(t.base), 1) + '+' : ''}模倣×${fmt(N(t.mimicRate), 2)}`;
+  return skillLabelBase(t, d);
+}
+function skillLabelBase(t, d) {
+  const by = coefByOf(d);
+  return by === 'people'
+    ? fmt(skillValue(t), 1)
+    : `${fmt(N(t.base), 1)}+${fmt(N(t.coef), 2)}×${COEF_SHORT[by]}`;
+}
+const findId = (map, pred) => {
+  for (const [id, d] of map) if (pred(d)) return id;
+  return '';
+};
+
+/* ---------- 計算 ---------- */
+function skillVal(sel, i) {
+  const s = M.skills.get(sel.id);
+  if (!s || !forAtk(s)) return 0;
+  const t = trEntry(s, sel.tr);
+  if (!t) return 0;
+  if (!isMimic(s)) return skillValueIn(t, s, sel.id);
+  const v = N(t.base);
+  /* 模倣スキル = 素スキル上昇率 + 模倣倍率 × 模倣元の初期スキル。部隊長に付けた他真似は0 */
+  const src = mimicSrc(s, i);
+  return src == null ? 0 : v + N(t.mimicRate) * slotInit(src);
+}
+const limX = sel => (isMimic(M.skills.get(sel.id)) ? 1 : 1.2);
+/* 無尽でスキル効果が何倍になるか(k: s1 / s2 / lim) */
+function muzinMul(sel, k) {
+  if (!muzinOn()) return 1;
+  if (k === 'lim') return 2;
+  const s = M.skills.get(sel.id);
+  return s && N(s.muzin) > 0 ? 2 : 1;
+}
+/* 初期スキルの効果(無尽を反映) */
+/* 傑カードは無尽のルールの対象外:初期スキルはそのまま発動し、バフや倍枠も無効にならない */
+/* 初期スキルの元の値:初期スキル名がスキルマスタにあれば、武将のTRと同じTRのスキル上昇率。なければ武将マスタのTRごとの値 */
+const skillByName = n => {
+  const k = String(n ?? '').trim();
+  if (!k) return null;
+  const id = findId(M.skills, d => String(d.name).trim() === k);
+  return id ? { id, d: M.skills.get(id) } : null;
+};
+function initBase(c, t) {
+  const sk = skillByName(c?.initName);
+  if (sk && !forAtk(sk.d)) return 0;
+  if (sk) {
+    const e = trEntry(sk.d, t?.tr);
+    if (e) return skillValueIn(e, sk.d, sk.id);
+  }
+  return N(t?.initSkill);
+}
+/* 武将のTRごとの値は、初期スキル(スキルマスタ)のTRから作る。
+   初期スキルがスキルマスタにない武将だけ、以前武将マスタに登録したTRの値(なければTR0・バフ1)を使う */
+const hasV = v => v != null && String(v).trim() !== '';
+const CARD_DEFAULT_TR = { tr: 0, initSkill: 0, statBuff: 1, mulNormal: 1, mulLimit: 1, totalBuff: 1 };
+function cardTrs(c) {
+  if (!c) return [];
+  const sk = skillByName(c.initName),
+    st = sk ? trsOf(sk.d) : [];
+  if (st.length)
+    return st.map(e => {
+      const old = trEntry(c, e.tr),
+        o = { tr: N(e.tr), initSkill: N(old?.initSkill) };
+      for (const [f] of SKILL_INIT) o[f] = hasV(e[f]) ? N(e[f]) : old && hasV(old[f]) ? N(old[f]) : 1;
+      /* 防御スキルの素防バフ・総防バフは攻撃部隊では使わない(倍枠は共通) */
+      if (hasV(e.troopAdd)) o.troopAdd = N(e.troopAdd);
+      {
+        const ef = sk.d.effs || {};
+        if (ef.leader) o.leaderOnly = true;
+        if (ef.self) o.selfStat = true;
+      }
+      if (!forAtk(sk.d)) {
+        o.statBuff = 1;
+        o.totalBuff = 1;
+      } else if (tbByOf(sk.d) === 'muzin') o.tbCoef = N(e.tbCoef);
+      return o;
+    });
+  const t = trsOf(c);
+  return t.length ? t : [{ ...CARD_DEFAULT_TR }];
+}
+const cardV = c => c && { ...c, trs: cardTrs(c) };
+function cardT(c, tr) {
+  return cardTrs(c).find(t => N(t.tr) === N(tr));
+}
+const initLinked = (c, tr) => {
+  const sk = skillByName(c?.initName);
+  return !!(sk && trEntry(sk.d, tr));
+};
+/* 武将が無尽を持つか:初期スキル(スキルマスタ)の無尽で決める。初期スキルがスキルマスタにない武将だけ、以前の武将マスタの無尽を使う */
+const cardMuzin = c => {
+  if (!c) return 0;
+  const sk = skillByName(c.initName);
+  return sk ? N(sk.d.muzin) : N(c.muzin);
+};
+function initEff(c, t) {
+  if (t?.loOff) return 0;
+  const v = initBase(c, t);
+  if (!muzinOn() || c?.rarity === '傑') return v;
+  return cardMuzin(c) > 0 ? v * 2 : 0;
+}
+/* 無尽が有効で、初期スキルに無尽がない武将は、初期スキル由来の効果がすべて無効:
+   総攻バフ・素攻バフ・倍枠通常・倍枠極限を1(等倍)として扱う */
+const muzinVoid = c => muzinOn() && !!c && c.rarity !== '傑' && !(cardMuzin(c) > 0);
+/* 部隊長限定の初期スキル:部隊長の枠にいないときは、初期スキルの効果(スキル上昇率・バフ・倍枠・兵数加算)がすべて出ない */
+function slotEff(i) {
+  const s = form?.slots[i];
+  const c = s && M.cards.get(s.card),
+    raw = c && cardT(c, s.tr);
+  let t = c && effT(c, raw);
+  if (t && raw?.leaderOnly && i !== 0)
+    t = { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1, loOff: true };
+  return { c, raw, t };
+}
+function effT(c, t) {
+  if (!t) return t;
+  if (!muzinVoid(c)) return t;
+  return { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1 };
+}
+/* 傑バフ
+   ・所属時:その傑カード(カードNoが同じ武将)が部隊長・小隊長のどこかの枠にいれば自動でかかる
+   ・外部:傑バフボタンで選んだものがかかる
+   ・両方当てはまれば、所属時と外部の値をすべて合計する。対象兵種が空なら全兵種に効く */
+const jbFind = no => {
+  const id = findId(M.jbuffs, d => String(d.no) === String(no));
+  return id ? M.jbuffs.get(id) : null;
+};
+/* 外部からかけられるのは、外部攻撃力が0より大きい傑バフだけ */
+const jbHasOuter = d => jv(d, 'atkOut') > 0;
+const jbOuter = () => (form?.jb || []).map(no => jbFind(no)).filter(d => d && jbHasOuter(d));
+const jbInUnit = () => {
+  if (!form) return [];
+  const nos = new Set(
+    form.slots
+      .map(s => M.cards.get(s.card)?.no)
+      .filter(v => v != null)
+      .map(String),
+  );
+  return [...M.jbuffs.values()].filter(d => nos.has(String(d.no)));
+};
+const jbHits = (d, sname) => !(d.targets && d.targets.length) || (sname && d.targets.includes(sname));
+function jbBonus(sname) {
+  if (!sname) return 0;
+  return (
+    jbInUnit().reduce((a, d) => a + (jbHits(d, sname) ? jv(d, 'atkIn') : 0), 0) +
+    jbOuter().reduce((a, d) => a + (jbHits(d, sname) ? jv(d, 'atkOut') : 0), 0)
+  );
+}
+/* 重複上限(スキルの特殊効果のチェック「重複上限」):部隊内で同じスキルが付いていても、効果が出るのは
+   倍枠などをかけたあとの実際の上昇値が高い順に、上限の数まで。数(Xスキルの数・同じスキルの数)は全部数える。
+   特殊効果(黎天列光・火焔武闘)は倍枠で変わらないので、上限の数まで */
+const dupOn = d => (d?.effs?.dup != null ? !!d.effs.dup : (d?.trs || []).some(t => hasV(t.dupMax)));
+function dupInstances(id) {
+  const out = [];
+  if (!form) return out;
+  form.slots.forEach((s, i) => {
+    for (const k of ['s1', 's2', 'lim']) if (s[k].id === id) out.push({ i, k, sel: s[k] });
+  });
+  return out;
+}
+function dupLimit(d, inst) {
+  if (!dupOn(d)) return null;
+  const ls = inst.map(x => N(trEntry(d, x.sel.tr)?.dupMax)).filter(v => v > 0);
+  return ls.length ? Math.max(...ls) : null;
+}
+/* 効果を出さない枠の集合("i:k") */
+function dupDropped() {
+  const drop = new Set();
+  if (!form) return drop;
+  const ids = new Set(form.slots.flatMap(s => [s.s1.id, s.s2.id, s.lim.id]).filter(Boolean));
+  for (const id of ids) {
+    const d = M.skills.get(id),
+      inst = dupInstances(id),
+      L = dupLimit(d, inst);
+    if (L == null || inst.length <= L) continue;
+    const val = x => {
+      const t = slotEff(x.i).t;
+      const m = !t ? 1 : x.k === 'lim' ? N(t.mulLimit) * limX(x.sel) : N(t.mulNormal);
+      return skillVal(x.sel, x.i) * muzinMul(x.sel, x.k) * m;
+    };
+    inst
+      .map((x, n) => ({ x, n, v: val(x) }))
+      .sort((a, b) => b.v - a.v || a.n - b.n)
+      .slice(L)
+      .forEach(({ x }) => drop.add(x.i + ':' + x.k));
+  }
+  return drop;
+}
+/* 特殊効果の数:重複上限があればその数まで、なければ従来どおり2つまで */
+function spCount(name) {
+  const id = findId(M.skills, d => d.name === name);
+  if (!id || !form) return 0;
+  const inst = dupInstances(id),
+    L = dupLimit(M.skills.get(id), inst);
+  return Math.min(L ?? 2, inst.length);
+}
+/* ステ振り:攻撃振りは 攻撃 = 素攻撃力 + 攻撃上昇率×690、兵法振りは 攻撃 = 素攻撃力 */
+function calc() {
+  const sl = form.slots.map((s, i) => ({ ...s, ...slotEff(i) }));
+  const rei = spCount(SP.rei),
+    hi = spCount(SP.hi),
+    drop = dupDropped(),
+    dv = (sel, i, k) => (drop.has(i + ':' + k) ? 0 : skillVal(sel, i));
+  /* 素攻バフ:どの枠の武将の素攻バフも部隊全員に。「本人のみ」の素攻バフは本人だけに。
+     いくつもかかるときは掛け算。部隊長限定の武将は部隊長の枠でだけ効く */
+  const sbv = s => (s.t ? N(s.t.statBuff) || 1 : 1);
+  const lb = sl.reduce((a, s) => a * (s.raw?.selfStat ? 1 : sbv(s)), 1);
+  const sbOf = s => lb * (s.raw?.selfStat ? sbv(s) : 1);
+  let base = 0,
+    skill = 0;
+  const rows = sl.map((s, i) => {
+    if (!s.c || !s.t) return null;
+    /* 黎天列光:1つにつき部隊の全武将の兵数 +2000(部隊で2つまで) */
+    /* 他の武将の初期スキルの兵数加算(無尽部隊で無尽を持たない武将でも効く。スキル上昇率だけが無効) */
+    const tadd = sl.reduce(
+      (a, o, j) => (j !== i && o.c && o.raw && !o.t?.loOff ? a + N(o.raw.troopAdd) : a),
+      0,
+    );
+    const troops = N(s.c.troops) + rei * REI_TROOPS + tadd,
+      atk = s.alloc === 'hei' ? N(s.c.baseStat) : cardAtk(s.c);
+    const sname = M.soldiers.get(s.soldier)?.name,
+      jb = jbBonus(sname),
+      satk = N(M.soldiers.get(s.soldier)?.atk) + jb;
+    const sb = sbOf(s),
+      b = satk * troops * 1.4 + atk * 1.4 * sb;
+    const init = initEff(s.c, s.t);
+    const sk =
+      init +
+      (dv(s.s1, i, 's1') * muzinMul(s.s1, 's1') + dv(s.s2, i, 's2') * muzinMul(s.s2, 's2')) *
+        N(s.t.mulNormal) +
+      dv(s.lim, i, 'lim') * muzinMul(s.lim, 'lim') * N(s.t.mulLimit) * limX(s.lim);
+    base += b;
+    skill += sk;
+    return { sb, lo: !!s.t?.loOff, tadd, troops, atk, satk, jb, b, sk, init, initRaw: initBase(s.c, s.t) };
+  });
+  /* 無尽を持つ武将の数(武将の無尽、初期スキル・追加スキル・極限スキルのどれかが無尽なら1人。本人も含む) */
+  const mz = x => N(M.skills.get(x?.id)?.muzin) > 0;
+  const mc = Math.min(
+    4,
+    sl.filter(s => s.c && (cardMuzin(s.c) > 0 || mz(s.s1) || mz(s.s2) || mz(s.lim))).length,
+  );
+  /* 無尽部隊では、無尽を持つ武将(傑以外)の上乗せ分は2倍 */
+  const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c) > 0 ? 2 : 1);
+  const tbOf = s => {
+    if (!s.t) return 1;
+    const v = N(s.t.totalBuff) || 1;
+    return s.t === s.raw && s.raw.tbCoef != null ? v + ((mc * N(s.raw.tbCoef)) / 100) * tbMul(s) : v;
+  };
+  /* 総攻バフは全枠の武将から集めて足し算(1+各(バフ-1)の和)。火焔武闘は最後に+0.2ずつ */
+  const buffs = sl.filter(s => s.t).map(tbOf);
+  const combined = 1 + buffs.reduce((a, b) => a + (b - 1), 0);
+  const buff = combined + hi * 0.2,
+    jin = N(form.jin);
+  rows.forEach((r, i) => {
+    if (r) {
+      r.tb = tbOf(sl[i]);
+      r.tbMc = sl[i].t === sl[i].raw && sl[i].raw.tbCoef != null ? mc : null;
+      r.tbMul = tbMul(sl[i]);
+      r.void = muzinVoid(sl[i].c);
+    }
+  });
+  return {
+    rows,
+    base,
+    skill,
+    buff,
+    lb,
+    rei,
+    hi,
+    muzin: muzinOn(),
+    total: ((base * skill) / 100 + base) * jin * buff,
+  };
+}
+/* スキル欄の下に出す効果。スキル上昇率 × 倍枠(極限は×1.2)= この枠で加算される値 */
+const SPECIAL_EFFECT = {
+  黎天列光: '全武将の兵数 +2,000(重複上限まで)',
+  火焔武闘: '総攻バフ +0.2(重複上限まで)',
+};
+function skillEffect(i, k) {
+  const sel = form.slots[i][k],
+    sk = M.skills.get(sel.id);
+  if (!sk) return '';
+  const t = trEntry(sk, sel.tr);
+  if (!t) return 'このTRの値が登録されていません';
+  if (!forAtk(sk)) return '防御スキルのため、攻撃部隊では効果なし';
+  if (dupDropped().has(i + ':' + k)) return `効果 <b>0</b> <span class="mz cn">重複上限のため効果なし</span>`;
+  const mm = isMimic(sk),
+    cn = mm ? null : coefN(sk, sel.id),
+    cc = M.cards.get(form.slots[i].card),
+    v = skillVal(sel, i),
+    ct = slotEff(i).t;
+  const mtag = mm
+    ? mimicSrc(sk, i) == null
+      ? ' <span class="mz cn">部隊長には無効</span>'
+      : mimicBlocked(mimicSrc(sk, i))
+        ? ' <span class="mz cn">模倣できない初期スキル</span>'
+        : ` <span class="mz cn">${N(t.base) ? '素' + fmt(N(t.base), 1) + ' + ' : ''}${mimicOf(sk) === 'self' ? '自分' : '部隊長'}の初期${fmt(slotInit(mimicSrc(sk, i)), 1)}×${fmt(N(t.mimicRate), 2)}</span>`
+    : '';
+  const mz = muzinMul(sel, k),
+    tag =
+      (mz > 1 ? ' <span class="mz">無尽×2</span>' : '') +
+      (cn != null
+        ? ` <span class="mz cn">${COEF_SHORT[coefByOf(sk)]}${cn}${coefMax(sk) ? `・係数TR${maxTrOf(sel.id)}` : ''}</span>`
+        : '') +
+      mtag,
+    sp = SPECIAL_EFFECT[sk.name] ? `<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name])}</span>` : '';
+  if (!ct) return `効果 <b>${fmt(v * mz, 1)}</b>${tag}${sp}`;
+  const mul = k === 'lim' ? N(ct.mulLimit) * limX(sel) : N(ct.mulNormal);
+  return `効果 <b>${fmt(v * mz * mul, 1)}</b>${tag}${sp}`;
+}
+function updateResults() {
+  if (!form) return;
+  const r = calc();
+  $('r-total').textContent = fmt(r.total);
+  $('r-total-jp').textContent = jp(r.total);
+  $('r-base').textContent = fmt(r.base, 1);
+  $('r-skill').textContent = fmt(r.skill, 1);
+  $('r-buff').textContent = fmt(r.buff, 2);
+  $('r-special').textContent = r.rei + ' / ' + r.hi;
+  r.rows.forEach((x, i) => {
+    const el = $('calc-' + i);
+    if (!el) return;
+    el.innerHTML = x
+      ? `<span>兵数</span><span class="num">${fmt(x.troops)}${x.tadd ? `<span class="plus">(兵数加算+${fmt(x.tadd)})</span>` : ''}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb ? `<span class="plus">(傑+${fmt(x.jb, 2)})</span>` : ''}</span><span>素攻</span><span class="num">${fmt(x.b, 1)}${x.sb !== 1 ? `<span class="plus">(素攻バフ×${fmt(x.sb, 2)})</span>` : ''}</span><span>初期スキル</span><span class="num">${fmt(x.init, 1)}${x.lo ? '<span class="plus">(部隊長限定のため無効)</span>' : ''}${!x.lo && r.muzin && x.initRaw && x.init !== x.initRaw ? `<span class="plus">(${x.init ? '無尽×2' : '無尽なしで無効'})</span>` : ''}</span><span>スキル小計</span><span class="num">${fmt(x.sk, 1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb, 2)}${x.tbMc != null ? `<span class="plus">(無尽${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''})</span>` : ''}</span>`
+      : '<span>武将とTRを選んでください</span><span></span>';
+  });
+  form.slots.forEach((_, i) =>
+    ['s1', 's2', 'lim'].forEach(k => {
+      const el = $(`eff-${k}-${i}`);
+      if (el) el.innerHTML = skillEffect(i, k);
+    }),
+  );
+  if (M.cards.size && M.skills.size && M.soldiers.size) store.set('ixa-form-v2', toKeys(form));
+}
+/* 端末への記憶はIDではなく「カードNo・スキル名・兵種名」で持つ */
+function toKeys(f) {
+  return {
+    jin: f.jin,
+    jb: (f.jb || []).map(String),
+    slots: f.slots.map(s => ({
+      card: String(M.cards.get(s.card)?.no ?? ''),
+      tr: s.tr,
+      alloc: s.alloc === 'hei' ? 'hei' : 'atk',
+      soldier: M.soldiers.get(s.soldier)?.name || '',
+      s1: [M.skills.get(s.s1.id)?.name || '', s.s1.tr],
+      s2: [M.skills.get(s.s2.id)?.name || '', s.s2.tr],
+      lim: [M.skills.get(s.lim.id)?.name || '', s.lim.tr],
+    })),
+  };
+}
+function fromKeys(f) {
+  if (!f || typeof f !== 'object') f = SAMPLE;
+  if (!Array.isArray(f.slots) || f.slots.length !== 4) f = { ...f, slots: SAMPLE.slots };
+  const sk = v => {
+    const [n, tr] = Array.isArray(v) ? v : ['', 0];
+    return { id: n ? findId(M.skills, d => d.name === n) : '', tr: N(tr) };
+  };
+  return {
+    jin: f.jin ?? 1.05,
+    jb: Array.isArray(f.jb)
+      ? [
+          ...new Set(
+            f.jb
+              .filter(x => typeof x !== 'object' || x.mode !== 'in')
+              .map(x => String(typeof x === 'object' ? x.no : x)),
+          ),
+        ]
+      : [],
+    slots: f.slots.map(s => ({
+      card: findId(M.cards, d => String(d.no) === String(s.card)),
+      tr: N(s.tr),
+      alloc: s.alloc === 'hei' ? 'hei' : 'atk',
+      soldier: findId(M.soldiers, d => d.name === s.soldier),
+      s1: sk(s.s1),
+      s2: sk(s.s2),
+      lim: sk(s.lim),
+    })),
+  };
+}
+const byName = (a, b) =>
+  String(a[1].name).localeCompare(String(b[1].name), 'ja', { numeric: true }) || N(a[1].no) - N(b[1].no);
+/* 武将検索。同じ武将(カード名が同じもの。パラレルも含む)は他の枠で選べない */
+const kana = s =>
+  String(s ?? '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+function cardItems(i, q) {
+  const taken = new Set(
+    form.slots
+      .filter((_, j) => j !== i)
+      .map(s => M.cards.get(s.card)?.name)
+      .filter(Boolean),
+  );
+  const words = kana(q).split(/\s+/).filter(Boolean),
+    sel = form.slots[i].card;
+  return [...M.cards]
+    .filter(([, d]) => d.side !== '防御')
+    .sort(byName)
+    .filter(([, d]) => {
+      const hay = kana(`${d.name} ${d.rarity} No.${d.no} ${d.no}`);
+      return words.every(w => hay.includes(w));
+    })
+    .map(([id, d]) => ({ id, d, off: id !== sel && taken.has(d.name) }));
+}
+/* スキル検索。同じスキルは複数の枠で使える */
+function soldierItems(q) {
+  const words = kana(q).split(/\s+/).filter(Boolean);
+  return [...M.soldiers]
+    .sort(byName)
+    .filter(([, d]) => words.every(w => kana(d.name).includes(w)))
+    .map(([id, d]) => ({ id, d, off: false }));
+}
+/* 同じ武将の中では、同じスキルを2つ以上の欄に入れられない(他の武将とは重なってよい) */
+const SKILL_KEYS = ['s1', 's2', 'lim'];
+/* 初期スキル名(武将マスタ)。同じ名前のスキルは、その武将の追加スキル・極限スキルに付けられない */
+const initNameOf = id => String(M.cards.get(id)?.initName ?? '').trim();
+function skillItems(i, k, q) {
+  const words = kana(q).split(/\s+/).filter(Boolean);
+  const taken = new Set(
+      SKILL_KEYS.filter(x => x !== k)
+        .map(x => form.slots[i][x].id)
+        .filter(Boolean),
+    ),
+    init = initNameOf(form.slots[i].card);
+  /* 付与できないスキルと、防御スキル(攻撃部隊では効果なし)は候補に出さない */
+  return [...M.skills]
+    .sort(byName)
+    .filter(([, d]) => toFlag(d.noAdd) !== 1 && forAtk(d))
+    .filter(([, d]) => words.every(w => kana(d.name).includes(w)))
+    .map(([id, d]) => {
+      const xl = k === 'lim' && isX(d),
+        il = !!init && String(d.name).trim() === init,
+        na = toFlag(d.noAdd) === 1;
+      return {
+        id,
+        d,
+        off: taken.has(id) || xl || il || na,
+        why: na
+          ? '付与できないスキル'
+          : il
+            ? 'この武将の初期スキル'
+            : xl
+              ? 'Xスキルは極限枠に付けられません'
+              : 'この武将で使用中',
+      };
+    });
+}
+/* 検索欄は「枠番号 i」と「種類 k(card / s1 / s2 / lim)」で区別する */
+const KIND = { card: '武将', soldier: '兵種', s1: '追加スキル', s2: '追加スキル2', lim: '極限スキル' };
+const inputId = (i, k) => `${k}-${i}`,
+  listId = (i, k) => `list-${k}-${i}`,
+  trId = (i, k) => (k === 'card' ? `cardtr-${i}` : k === 'soldier' ? '' : `${k}tr-${i}`);
+const selOf = (i, k) =>
+  k === 'card' ? form.slots[i].card : k === 'soldier' ? form.slots[i].soldier : form.slots[i][k].id;
+const mapOf = k => (k === 'card' ? M.cards : k === 'soldier' ? M.soldiers : M.skills);
+const nameOf = (i, k) => mapOf(k).get(selOf(i, k))?.name || '';
+const rarClass = r => {
+  const v = String(r || '');
+  return v === '傑' ? 'rar-ketsu' : v === '極' ? 'rar-goku' : 'rar-ten';
+};
+function metaOf(k, x) {
+  if (k === 'soldier') return `兵士攻撃力 ${fmt(N(x.d.atk), 2)}`;
+  if (k === 'card')
+    return `${esc(x.d.rarity || '')} No.${esc(x.d.no)} ・ ${trRange(cardV(x.d))}${x.off ? ' ・ 他の枠で使用中' : ''}`;
+  const t = trsOf(x.d),
+    last = t[t.length - 1];
+  return `${isX(x.d) ? 'Xスキル ・ ' : ''}${trRange(x.d)}${last ? ` ・ TR${N(last.tr)}で ${skillLabel(last, x.d)}` : ''}${x.off ? ' ・ ' + x.why : ''}`;
+}
+let combo = null;
+function openCombo(i, k, q) {
+  const input = $(inputId(i, k)),
+    list = $(listId(i, k));
+  if (!input || !list) return;
+  if (combo && (combo.i !== i || combo.k !== k)) closeCombo(true);
+  const items = k === 'card' ? cardItems(i, q) : k === 'soldier' ? soldierItems(q) : skillItems(i, k, q);
+  const cur = items.findIndex(x => x.id === selOf(i, k));
+  combo = { i, k, items, active: !q && cur >= 0 ? cur : items.findIndex(x => !x.off) };
+  drawCombo();
+}
+function drawCombo() {
+  if (!combo) return;
+  const { i, k, items, active } = combo,
+    list = $(listId(i, k)),
+    input = $(inputId(i, k));
+  if (!list) return;
+  const sel = selOf(i, k),
+    clear = sel
+      ? `<li role="option" class="clear" data-pick="">${['s1', 's2', 'lim'].includes(k) ? 'なしにする' : '選択を外す'}</li>`
+      : '';
+  list.innerHTML =
+    clear +
+    (items.length
+      ? items
+          .map(
+            (
+              x,
+              n,
+            ) => `<li role="option" id="opt-${k}-${i}-${n}" data-pick="${esc(x.id)}" class="${x.off ? 'off' : ''}${n === active ? ' active' : ''}${k === 'card' ? ' rar ' + rarClass(x.d.rarity) : ''}" aria-selected="${x.id === sel}" aria-disabled="${x.off}">
+    <span>${esc(x.d.name)}</span><span class="meta">${metaOf(k, x)}</span></li>`,
+          )
+          .join('')
+      : '<li class="none">見つかりません</li>');
+  list.hidden = false;
+  input.setAttribute('aria-expanded', 'true');
+  if (active >= 0) {
+    input.setAttribute('aria-activedescendant', `opt-${k}-${i}-${active}`);
+    $(`opt-${k}-${i}-${active}`)?.scrollIntoView({ block: 'nearest' });
+  } else input.removeAttribute('aria-activedescendant');
+}
+function closeCombo(restore) {
+  if (!combo) return;
+  const { i, k } = combo,
+    list = $(listId(i, k)),
+    input = $(inputId(i, k));
+  combo = null;
+  if (list) list.hidden = true;
+  if (input) {
+    input.setAttribute('aria-expanded', 'false');
+    if (restore) input.value = nameOf(i, k);
+  }
+}
+function pick(i, k, id) {
+  closeCombo(false);
+  const s = form.slots[i];
+  if (k === 'card') {
+    s.card = id;
+    s.tr = fitTr(cardV(M.cards.get(id)), s.tr);
+  } else if (k === 'soldier') {
+    s.soldier = id;
+  } else {
+    s[k].id = id;
+    s[k].tr = fitTr(M.skills.get(id), s[k].tr);
+  }
+  renderCalc();
+  const next = id ? trId(i, k) && $(trId(i, k)) : $(inputId(i, k));
+  next && next.focus();
+}
+function moveActive(step) {
+  const { items } = combo;
+  if (!items.length) return;
+  let n = combo.active;
+  for (let c = 0; c < items.length; c++) {
+    n = (n + step + items.length) % items.length;
+    if (!items[n].off) break;
+  }
+  combo.active = n;
+  drawCombo();
+}
+const comboOf = t =>
+  t.classList && t.classList.contains('combo-in') ? { i: +t.dataset.i, k: t.dataset.c } : null;
+$('slots').addEventListener('focusin', e => {
+  const c = comboOf(e.target);
+  if (!c) return;
+  e.target.select();
+  openCombo(c.i, c.k, '');
+});
+$('slots').addEventListener('input', e => {
+  const c = comboOf(e.target);
+  if (c) openCombo(c.i, c.k, e.target.value);
+});
+$('slots').addEventListener('keydown', e => {
+  const c = comboOf(e.target);
+  if (!c) return;
+  if (!combo) {
+    if (e.key === 'ArrowDown') {
+      openCombo(c.i, c.k, '');
+      e.preventDefault();
+    }
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    moveActive(1);
+    e.preventDefault();
+  } else if (e.key === 'ArrowUp') {
+    moveActive(-1);
+    e.preventDefault();
+  } else if (e.key === 'Enter') {
+    const x = combo.items[combo.active];
+    e.preventDefault();
+    if (x && !x.off) pick(c.i, c.k, x.id);
+  } else if (e.key === 'Escape') {
+    closeCombo(true);
+    e.preventDefault();
+  }
+});
+$('slots').addEventListener('mousedown', e => {
+  const li = e.target.closest('li[data-pick]');
+  if (!li) return;
+  e.preventDefault();
+  if (li.classList.contains('off')) return;
+  const box = li.closest('.combo');
+  pick(+box.dataset.i, box.dataset.c, li.dataset.pick);
+});
+$('slots').addEventListener('focusout', e => {
+  const c = comboOf(e.target);
+  if (c && combo && combo.i === c.i && combo.k === c.k) closeCombo(true);
+});
+const isJCard = id => M.cards.get(id)?.rarity === '傑';
+const comboBox = (
+  i,
+  k,
+  value,
+  ph,
+  off,
+) => `<div class="combo${k === 'soldier' ? ' solo' : ''}" data-i="${i}" data-c="${k}"><input id="${inputId(i, k)}" class="combo-in" data-i="${i}" data-c="${k}"${off ? ' disabled' : ''} type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId(i, k)}" autocomplete="off" placeholder="${ph}" value="${esc(value)}">
+  <ul id="${listId(i, k)}" class="combo-list" role="listbox" aria-label="${KIND[k]}の候補" hidden></ul></div>`;
+function soldierOpts(sel) {
+  return (
+    '<option value="">— 兵種 —</option>' +
+    [...M.soldiers]
+      .sort(bySoldierOrder)
+      .map(
+        ([id, d]) =>
+          `<option value="${esc(id)}"${id === sel ? ' selected' : ''}>${esc(d.name)}(攻${fmt(N(d.atk))})</option>`,
+      )
+      .join('')
+  );
+}
+function trOpts(d, sel) {
+  const t = trsOf(d);
+  if (!t.length) return '<option value="">—</option>';
+  return t
+    .map(x => `<option value="${N(x.tr)}"${N(x.tr) === N(sel) ? ' selected' : ''}>TR${N(x.tr)}</option>`)
+    .join('');
+}
+function renderCalc() {
+  const box = $('slots');
+  combo = null;
+  if (!allLoaded()) {
+    box.innerHTML = '<p class="note">マスタを読み込んでいます…</p>';
+    return;
+  }
+  if (!M.cards.size) {
+    box.innerHTML =
+      '<p class="note">武将マスタがまだ登録されていません。「マスタ管理」から登録すると、ここで部隊を組めます。</p>';
+    return;
+  }
+  if (!form) form = fromKeys(store.get('ixa-form-v2') || SAMPLE);
+  $('jin').value = form.jin;
+  if (!form.jb) form.jb = [];
+  renderJb();
+  {
+    const seen = new Set();
+    for (const s of form.slots) {
+      const n = M.cards.get(s.card)?.name;
+      if (!n) continue;
+      if (seen.has(n)) s.card = '';
+      else seen.add(n);
+    }
+  }
+  /* 傑カードは通常枠・極限枠にスキルを付けられない */
+  for (const s of form.slots) if (isJCard(s.card)) for (const k of SKILL_KEYS) s[k] = { id: '', tr: 0 };
+  for (const s of form.slots) if (s.lim.id && isX(M.skills.get(s.lim.id))) s.lim = { id: '', tr: 0 };
+  for (const s of form.slots)
+    for (const k of SKILL_KEYS) if (s[k].id && toFlag(M.skills.get(s[k].id)?.noAdd)) s[k] = { id: '', tr: 0 };
+  for (const s of form.slots) {
+    const init = initNameOf(s.card);
+    if (init)
+      for (const k of SKILL_KEYS)
+        if (s[k].id && String(M.skills.get(s[k].id)?.name ?? '').trim() === init) s[k] = { id: '', tr: 0 };
+  }
+  for (const s of form.slots) {
+    const used = new Set();
+    for (const k of SKILL_KEYS) {
+      const id = s[k].id;
+      if (!id) continue;
+      if (used.has(id)) s[k].id = '';
+      else used.add(id);
+    }
+  }
+  const skillRow = (
+    i,
+    k,
+    label,
+    s,
+    off,
+  ) => `<div class="field"><label class="label" for="${k}-${i}">${label}</label><div class="pair">
+    ${comboBox(i, k, M.skills.get(s.id)?.name || '', off ? '傑は付与不可' : 'なし', off)}
+    <select id="${k}tr-${i}" data-i="${i}" data-k="${k}tr" aria-label="${label}のTR"${s.id && !off ? '' : ' disabled'}>${trOpts(M.skills.get(s.id), s.tr)}</select></div><p class="eff" id="eff-${k}-${i}" aria-live="polite"></p></div>`;
+  box.innerHTML = form.slots
+    .map(
+      (s, i) => `<div class="slot${i === 0 ? ' leader' : ''}">
+    <h3><span>${SLOT_NAMES[i]}</span></h3>
+    <div class="field"><label class="label" for="card-${i}">武将</label><div class="pair">
+      ${comboBox(i, 'card', M.cards.get(s.card)?.name || '', '武将名・カードNoで検索')}
+      <select id="cardtr-${i}" data-i="${i}" data-k="tr" aria-label="武将のTR"${s.card ? '' : ' disabled'}>${trOpts(cardV(M.cards.get(s.card)), s.tr)}</select></div>${s.card ? `<span class="note" id="cardmeta-${i}">${esc(M.cards.get(s.card)?.rarity || '')} No.${esc(M.cards.get(s.card)?.no)}${initNameOf(s.card) ? ` ・ 初期:${esc(initNameOf(s.card))}` : ''}</span>` : ''}
+      <div class="alloc"><span class="label">ステ振り</span><div class="seg" role="group" aria-label="ステ振り">
+        <button type="button" data-alloc="atk" data-i="${i}" aria-pressed="${s.alloc !== 'hei'}">攻撃</button><button type="button" data-alloc="hei" data-i="${i}" aria-pressed="${s.alloc === 'hei'}">兵法</button></div></div></div>
+    <div class="field"><label class="label" for="soldier-${i}">兵種</label><select id="soldier-${i}" data-i="${i}" data-k="soldier">${soldierOpts(s.soldier)}</select></div>
+    ${skillRow(i, 's1', '追加スキル', s.s1, isJCard(s.card))}${skillRow(i, 's2', '追加スキル2', s.s2, isJCard(s.card))}${skillRow(i, 'lim', '極限スキル', s.lim, isJCard(s.card))}
+    <div class="calc" id="calc-${i}"></div></div>`,
+    )
+    .join('');
+  updateResults();
+}
+/* TRが無いときは、いちばん高いTRに合わせる */
+const fitTr = (d, tr) => {
+  const t = trsOf(d);
+  if (!t.length) return 0;
+  return trEntry(d, tr) ? N(tr) : N(t[t.length - 1].tr);
+};
+$('slots').addEventListener('click', e => {
+  const b = e.target.closest('[data-alloc]');
+  if (!b || !form) return;
+  const s = form.slots[+b.dataset.i];
+  s.alloc = b.dataset.alloc;
+  for (const x of b.parentElement.children) x.setAttribute('aria-pressed', String(x === b));
+  updateResults();
+});
+$('slots').addEventListener('change', e => {
+  const t = e.target,
+    k = t.dataset.k;
+  if (!k) return;
+  const s = form.slots[+t.dataset.i];
+  if (k === 'tr') {
+    s.tr = N(t.value);
+  } else if (k === 'soldier') {
+    s.soldier = t.value;
+  } else if (k.endsWith('tr')) {
+    s[k.slice(0, -2)].tr = N(t.value);
+  }
+  updateResults();
+});
+$('jin').addEventListener('input', e => {
+  if (form) {
+    form.jin = parseFloat(e.target.value);
+    updateResults();
+  }
+});
+$('resetForm').addEventListener('click', () => {
+  form = fromKeys(SAMPLE);
+  renderCalc();
+});
+function renderJb() {
+  const btn = $('jbBtn'),
+    panel = $('jbpanel');
+  const out = form ? jbOuter() : [],
+    inn = form ? jbInUnit() : [];
+  const parts = [];
+  if (out.length) parts.push(`外部${out.length}件`);
+  if (inn.length) parts.push(`所属${inn.length}件`);
+  btn.textContent = parts.length ? `傑バフ:${parts.join('・')}` : '傑バフ:なし';
+  btn.classList.toggle('on', parts.length > 0);
+  btn.setAttribute('aria-expanded', String(!panel.hidden));
+  if (panel.hidden || !form) return;
+  const list = [...M.jbuffs].filter(([, d]) => jbHasOuter(d)).sort(byNo),
+    sel = new Set(jbOuter().map(d => String(d.no))),
+    innNos = new Set(inn.map(d => String(d.no)));
+  panel.innerHTML = `<div class="jbhead"><strong>外部からかける傑バフを選ぶ</strong><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small ghost" type="button" data-jb-act="all"${list.length && list.some(([, d]) => !sel.has(String(d.no))) ? '' : ' disabled'}>傑バフすべてOn</button><button class="btn small ghost" type="button" data-jb-act="clear"${sel.size ? '' : ' disabled'}>傑バフすべてOff</button><button class="btn small" type="button" data-jb-act="close">閉じる</button></div></div>
+    <p class="note">チェックした傑バフの「外部」の攻撃力が、対象兵種の兵士攻撃力に足されます。その傑カードが部隊長・小隊長の枠にいる場合は「所属時」の攻撃力が自動で足され、外部にもチェックがあれば両方を合計します。防御力は防御部隊の計算で使います。</p>
+    <div class="jblist">${
+      list.length
+        ? list
+            .map(([id, d]) => {
+              const no = String(d.no),
+                on = sel.has(no),
+                inU = innNos.has(no);
+              return `<div class="jbrow${on || inU ? ' on' : ''}"><label><input type="checkbox" data-jb="${esc(no)}"${on ? ' checked' : ''}><span><b>${esc(d.name)}</b><br><span class="meta">No.${esc(no)} ・ 対象:${esc(targetsLabel(d))}</span></span></label>
+      <div class="jbvals"><span class="${on ? 'jbon' : ''}">外部 攻+${fmt(jv(d, 'atkOut'), 2)}</span><span class="${inU ? 'jbon' : ''}">${inU ? '部隊に所属中:' : ''}所属時 攻+${fmt(jv(d, 'atkIn'), 2)}</span></div></div>`;
+            })
+            .join('')
+        : '<p class="note">外部攻撃力が登録された傑バフがありません。マスタ管理の「傑バフ」タブで、外部攻撃力を登録してください。</p>'
+    }</div>`;
+}
+$('jbBtn').addEventListener('click', () => {
+  const p = $('jbpanel');
+  p.hidden = !p.hidden;
+  renderJb();
+});
+$('jbpanel').addEventListener('click', e => {
+  if (!form) return;
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.jbAct === 'close') {
+    $('jbpanel').hidden = true;
+    renderJb();
+    $('jbBtn').focus();
+    return;
+  }
+  if (b.dataset.jbAct === 'clear') {
+    form.jb = [];
+    renderJb();
+    updateResults();
+  }
+  if (b.dataset.jbAct === 'all') {
+    form.jb = [...M.jbuffs.values()]
+      .filter(jbHasOuter)
+      .sort((a, b) => N(a.no) - N(b.no))
+      .map(d => String(d.no));
+    renderJb();
+    updateResults();
+  }
+});
+$('jbpanel').addEventListener('change', e => {
+  if (!form) return;
+  const c = e.target.closest('[data-jb]');
+  if (!c) return;
+  const no = c.dataset.jb;
+  form.jb = (form.jb || []).map(String).filter(x => x !== no);
+  if (c.checked) form.jb.push(no);
+  renderJb();
+  updateResults();
+});
+
+/* ---------- マスタ一覧 ---------- */
+/* flag は 0/1 の選択。姫:0=姫ではない 1=姫。無尽は数値(0=なし、1以上=あり) */
+const FLAG_LABELS = {
+  noMimic: ['模倣できる', '模倣できない'],
+  init: ['スキル', '初期スキル'],
+  hime: ['姫ではない', '姫'],
+  xskill: ['該当しない', 'Xスキル'],
+  noAdd: ['付与できる', '付与できない'],
+};
+const RARITIES = ['覇・天', '天', '極', '傑'];
+const toFlag = v => {
+  if (v == null) return 0;
+  const t = String(v).trim();
+  if (t === '' || t === '0' || /^(false|no|なし|いいえ|×|✕|-|—)$/i.test(t) || /(ではない|しない)$/.test(t))
+    return 0;
+  return 1;
+};
+const CARD_FIELDS = [
+  ['no', 'カードNo', 'number'],
+  ['rarity', 'レアリティ', 'rarity'],
+  ['cost', '武将コスト', 'number'],
+  ['side', '攻撃or防御', 'side'],
+  ['name', 'カード名', 'text'],
+  ['initName', '初期スキル名', 'text'],
+  ['troops', '兵数', 'number'],
+  ['baseStat', '素攻撃力', 'number'],
+  ['baseDef', '素防御力', 'number'],
+  ['growth', '攻撃上昇率', 'number'],
+  ['growthDef', '防御上昇率', 'number'],
+  ['hime', '姫', 'check'],
+  ['kengou', '剣豪', 'check'],
+];
+const CARD_TR = [
+  ['tr', 'TR'],
+  ['initSkill', '初期スキル'],
+  ['statBuff', '素攻・防バフ'],
+  ['mulNormal', '倍枠通常'],
+  ['mulLimit', '倍枠極限'],
+  ['totalBuff', '総攻・防バフ'],
+];
+const SKILL_TR = [
+  ['tr', 'TR'],
+  ['base', '素スキル上昇率'],
+  ['coef', '係数'],
+];
+/* 初期スキルとしての効果(素攻・防バフ、倍枠、総攻・防バフ)。空欄なら武将マスタの値を使う */
+const TB_COEF = ['tbCoef', '総攻・防バフ係数(%)'];
+const SKILL_INIT = [
+  ['statBuff', '素攻・防バフ'],
+  ['mulNormal', '倍枠通常'],
+  ['mulLimit', '倍枠極限'],
+  ['totalBuff', '総攻・防バフ'],
+];
+/* スキルの種類:0=スキル(通常枠・極限枠に付けるもの)、1=初期スキル(武将が最初から持つもの)。
+   init が未設定の古いデータは、素攻・防バフ〜総攻・防バフが入っているか、初期スキル名に使われていれば初期スキルとみなす */
+const isInitSkill = d =>
+  d.init != null && d.init !== ''
+    ? toFlag(d.init) === 1
+    : (d.trs || []).some(t => SKILL_INIT.some(([f]) => t[f] != null && t[f] !== '')) ||
+      [...M.cards.values()].some(c => String(c.initName ?? '').trim() === String(d.name ?? '').trim());
+const LABEL = { cards: '武将', skills: 'スキル', soldiers: '兵種', jbuffs: '傑バフ' };
+/* 傑バフ:レアリティ「傑」の武将が持つ、兵種の攻撃力・防御力への加算値。カードNoで識別する
+   その傑カードが部隊に所属しているときの値(atkIn/defIn)と、外からかかるときの値(atkOut/defOut)を持つ */
+const JBUFF_FIELDS = [
+  ['no', 'カードNo', 'number'],
+  ['name', '武将名', 'text'],
+  ['atkIn', '所属時攻撃力', 'number'],
+  ['defIn', '所属時防御力', 'number'],
+  ['atkOut', '外部攻撃力', 'number'],
+  ['defOut', '外部防御力', 'number'],
+];
+const JBUFF_VALS = ['atkIn', 'defIn', 'atkOut', 'defOut'];
+/* 対象兵種:バフがかかる兵種名の一覧。空なら全兵種 */
+const splitTargets = v => [
+  ...new Set(
+    String(v ?? '')
+      .split(/[、,，\/／\n]/)
+      .map(x => x.trim())
+      .filter(Boolean),
+  ),
+];
+const targetsLabel = d => (d.targets && d.targets.length ? d.targets.join('、') : '全兵種');
+/* 以前の形(atk/def だけ)で保存されたものは、所属時の値として扱う */
+const jv = (d, f) => N(d[f] ?? (f === 'atkIn' ? d.atk : f === 'defIn' ? d.def : 0));
+const byNo = (a, b) => N(a[1].no) - N(b[1].no) || byName(a, b);
+/* 兵種:攻撃力は攻撃部隊、防御力は防御部隊の計算に使う。order は取り込んだシートの行順 */
+const SOLDIER_FIELDS = [
+  ['name', '兵種名', 'text'],
+  ['branch', '兵科', 'text'],
+  ['atk', '攻撃力', 'number'],
+  ['def', '防御力', 'number'],
+  ['destroy', '破壊', 'number'],
+  ['speed', '速度', 'number'],
+];
+const bySoldierOrder = (a, b) => N(a[1].order ?? 9999) - N(b[1].order ?? 9999) || byName(a, b);
+const trRange = d => {
+  const t = trsOf(d);
+  return t.length ? `TR${N(t[0].tr)}〜${N(t[t.length - 1].tr)}` : 'TRなし';
+};
+function renderMaster() {
+  $('madd').hidden = !isOwner || mtab === 'skills';
+  $('maddSkill').hidden = $('maddInit').hidden = !isOwner || mtab !== 'skills';
+  $('mimport').hidden = !isOwner;
+  $('mclean').hidden = !isOwner || !cleanPlan().n;
+  const mzDiff =
+    isOwner && mtab === 'cards'
+      ? [...M.cards.values()]
+          .filter(c => N(c.muzin) > 0 && skillByName(c.initName) && !(cardMuzin(c) > 0))
+          .map(c => `${c.name}(初期スキル「${c.initName}」)`)
+      : [];
+  $('mnote').textContent = isOwner
+    ? '行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。' +
+      (mzDiff.length
+        ? ` ※無尽は初期スキルで判定します。以前武将マスタで無尽ありにしていた次の武将は、初期スキルの無尽が0です。スキルマスタで無尽を入れてください:${mzDiff.join('、')}`
+        : '')
+    : 'マスタの編集は管理者のみです。管理者は右上の「管理者ログイン」からログインしてください。ここでは内容を確認できます。';
+  const pp = $('people');
+  pp.hidden = mtab !== 'skills';
+  if (mtab === 'skills')
+    pp.innerHTML = isOwner
+      ? `<label class="label" for="peopleIn">人数(スキル上昇率 = 素スキル上昇率 + 係数×人数)</label><input id="peopleIn" type="number" value="${esc(config.people)}"><button id="peopleSave" class="btn small ghost" type="button">人数を保存</button><span id="peopleMsg" class="msg"></span>`
+      : `<span class="label">人数</span><b class="num">${fmt(N(config.people))}</b><span class="note">スキル上昇率 = 素スキル上昇率 + 係数×人数</span>`;
+  const q = $('msearch').value.trim();
+  const ed = isOwner ? 'editable' : '';
+  const list = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q)).sort(byName);
+  const empty = cols =>
+    `<tr><td class="l" colspan="${cols}" style="color:var(--muted)">${loaded[mtab] ? (q ? '該当なし' : `${LABEL[mtab]}はまだ登録されていません。`) : '読み込み中…'}</td></tr>`;
+  let html = '';
+  if (mtab === 'cards') {
+    html =
+      `<thead><tr><th class="l">カード名</th><th class="l">初期スキル名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>素防御力</th><th>攻撃上昇率</th><th>防御上昇率</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th><th>剣豪</th><th>無尽</th></tr></thead><tbody>` +
+      (list.length
+        ? list
+            .map(([id, d]) => {
+              const t = cardTrs(d),
+                last = t[t.length - 1] || {};
+              return `<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side === '攻撃・防御' ? 'side-both' : d.side === '防御' ? 'side-def' : d.side === '攻撃' ? 'side-atk' : ''}">${esc(d.side || '')}</span></td><td class="l">${esc(d.initName || '—')}</td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost), 1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef == null ? '—' : fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth), 2)}</td><td class="num">${d.growthDef == null ? '—' : fmt(N(d.growthDef), 2)}</td><td class="l">${trRange({ trs: t })}</td><td class="num">${fmt(initBase(d, last), 1)}</td><td class="num">${fmt(N(cardT(d, last.tr)?.totalBuff), 2)}</td><td class="num">${toFlag(d.hime) ? '姫' : '—'}</td><td class="num">${toFlag(d.kengou) ? '剣豪' : '—'}</td><td class="num">${cardMuzin(d) > 0 ? fmt(cardMuzin(d), 2) : '—'}</td></tr>`;
+            })
+            .join('')
+        : empty(16)) +
+      '</tbody>';
+  } else if (mtab === 'skills') {
+    const maxTr = Math.max(5, ...list.flatMap(([, d]) => trsOf(d).map(t => N(t.tr))));
+    const trs = [...Array(maxTr + 1).keys()];
+    html =
+      `<thead><tr><th class="l">スキル名</th><th class="l">種類</th><th class="l">攻撃or防御</th><th>スキル付与</th><th class="l">係数の掛け方</th><th>無尽</th><th>Xスキル</th><th class="l">総攻バフの掛け方</th>${trs.map(t => `<th>TR${t}</th>`).join('')}</tr></thead><tbody>` +
+      (list.length
+        ? list
+            .map(
+              ([id, d]) =>
+                `<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="l">${isInitSkill(d) ? '初期スキル' : 'スキル'}</td><td class="l"><span class="chip ${skillSide(d) === '攻撃・防御' ? 'side-both' : skillSide(d) === '防御' ? 'side-def' : 'side-atk'}">${skillSide(d)}</span></td><td class="num">${toFlag(d.noAdd) ? '不可' : '可'}</td><td class="l">${isMimic(d) ? '—' : COEF_SHORT[coefByOf(d)]}</td><td class="num">${N(d.muzin) > 0 ? fmt(N(d.muzin), 2) : '—'}</td><td class="num">${isX(d) ? '○' : '—'}</td><td class="l">${isInitSkill(d) ? TB_BY[tbByOf(d)] : '—'}</td>${trs
+                  .map(t => {
+                    const e = trEntry(d, t);
+                    return `<td class="num" title="${e ? `素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}` : ''}">${e ? skillLabel(e, d) : '—'}</td>`;
+                  })
+                  .join('')}</tr>`,
+            )
+            .join('')
+        : empty(trs.length + 8)) +
+      '</tbody>';
+  } else if (mtab === 'jbuffs') {
+    const jl = [...M.jbuffs]
+      .filter(
+        ([, d]) =>
+          !q ||
+          String(d.name).includes(q) ||
+          String(d.no).includes(q) ||
+          (d.targets || []).some(t => t.includes(q)),
+      )
+      .sort(byNo);
+    html =
+      `<thead><tr><th>カードNo</th><th class="l">武将名</th><th class="l">対象兵種</th><th>所属時攻撃力</th><th>所属時防御力</th><th>外部攻撃力</th><th>外部防御力</th></tr></thead><tbody>` +
+      (jl.length
+        ? jl
+            .map(
+              ([id, d]) =>
+                `<tr data-id="${esc(id)}" class="${ed}"><td class="num">${esc(d.no)}</td><td class="l">${esc(d.name)}</td><td class="l" style="white-space:normal;min-width:140px">${esc(targetsLabel(d))}</td>${JBUFF_VALS.map(f => `<td class="num">+${fmt(jv(d, f), 2)}</td>`).join('')}</tr>`,
+            )
+            .join('')
+        : empty(7)) +
+      '</tbody>';
+  } else {
+    const sl = [...M.soldiers]
+      .filter(([, d]) => !q || String(d.name).includes(q) || String(d.branch || '').includes(q))
+      .sort(bySoldierOrder);
+    html =
+      `<thead><tr><th class="l">兵種名</th><th class="l">兵科</th><th>攻撃力</th><th>防御力</th><th>破壊</th><th>速度</th></tr></thead><tbody>` +
+      (sl.length
+        ? sl
+            .map(
+              ([id, d]) =>
+                `<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="l">${esc(d.branch || '')}</td>${['atk', 'def', 'destroy', 'speed'].map(f => `<td class="num">${d[f] == null ? '—' : fmt(N(d[f]), 2)}</td>`).join('')}</tr>`,
+            )
+            .join('')
+        : empty(6)) +
+      '</tbody>';
+  }
+  $('mtable').innerHTML = html;
+}
+
+/* ---------- 編集パネル ---------- */
+function openEditor(coll, id, kind) {
+  const d = id ? structuredClone(M[coll].get(id)) : null;
+  if (coll === 'cards')
+    draft = {
+      coll,
+      id,
+      data: d || {
+        no: '',
+        rarity: '天',
+        cost: '',
+        side: '攻撃',
+        name: '',
+        initName: '',
+        troops: '',
+        baseStat: '',
+        baseDef: '',
+        growth: '',
+        growthDef: '',
+        hime: 0,
+        kengou: 0,
+      },
+    };
+  else if (coll === 'skills')
+    draft = {
+      coll,
+      id,
+      data: d
+        ? {
+            ...d,
+            side: skillSide(d),
+            init: isInitSkill(d) ? 1 : 0,
+            muzin: N(d.muzin),
+            xskill: toFlag(d.xskill),
+            noAdd: toFlag(d.noAdd),
+            coefBy: coefByOf(d),
+          }
+        : kind === 'init'
+          ? {
+              init: 1,
+              side: '攻撃',
+              name: '',
+              muzin: 0,
+              xskill: 0,
+              noAdd: 1,
+              coefBy: 'people',
+              effs: { stat: false, mul: false, total: false, troop: false },
+              trs: [{ tr: 0, base: 0, coef: 0 }],
+            }
+          : {
+              init: 0,
+              side: '攻撃',
+              name: '',
+              muzin: 0,
+              xskill: 0,
+              noAdd: 0,
+              coefBy: 'people',
+              trs: [{ tr: 0, base: 0, coef: 0 }],
+            },
+    };
+  else if (coll === 'jbuffs') {
+    if (d) {
+      for (const f of JBUFF_VALS) d[f] = jv(d, f);
+      d.targets = d.targets || [];
+    }
+    draft = {
+      coll,
+      id,
+      data: d || { no: '', name: '', targets: [], atkIn: '', defIn: '', atkOut: '', defOut: '' },
+    };
+  } else draft = { coll, id, data: d || { name: '', branch: '', atk: '', def: '', destroy: '', speed: '' } };
+  draft.data.trs && (draft.data.trs = trsOf(draft.data));
+  renderEditor();
+  $('editor').scrollIntoView({ block: 'nearest' });
+}
+function syncDraft() {
+  if (!draft) return;
+  const d = draft.data;
+  for (const el of $('editor').querySelectorAll('[data-f]')) {
+    const f = el.dataset.f;
+    d[f] =
+      el.type === 'checkbox'
+        ? el.dataset.inv
+          ? el.checked
+            ? 0
+            : 1
+          : el.checked
+            ? 1
+            : 0
+        : el.dataset.flag
+          ? Number(el.value)
+          : el.type === 'number'
+            ? el.value === ''
+              ? ''
+              : Number(el.value)
+            : el.value;
+  }
+  if (draft.coll === 'jbuffs' && $('editor').querySelector('[name=jtarget]')) {
+    const known = [...$('editor').querySelectorAll('[name=jtarget]')];
+    const unknown = (d.targets || []).filter(t => !known.some(k => k.value === t));
+    d.targets = [...known.filter(k => k.checked).map(k => k.value), ...unknown];
+  }
+  for (const el of $('editor').querySelectorAll('[data-t]')) {
+    const [r, f] = el.dataset.t.split(':');
+    d.trs[+r][f] = el.value === '' ? '' : Number(el.value);
+  }
+}
+function renderEditor() {
+  const box = $('editor');
+  if (!draft || !isOwner) {
+    box.innerHTML = '';
+    return;
+  }
+  const { coll, id, data: d } = draft;
+  const inp = (f, label, type) =>
+    f === 'initName'
+      ? `<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="text" list="skillNames" autocomplete="off" placeholder="スキルマスタから選択" value="${esc(d[f] ?? '')}"></div>`
+      : type === 'check'
+        ? `<div class="field"><span class="label">${label}</span><label class="checkline"><input type="checkbox" id="f-${f}" data-f="${f}"${toFlag(d[f]) ? ' checked' : ''}>${label}</label></div>`
+        : type === 'invcheck'
+          ? `<div class="field"><span class="label">模倣</span><label class="checkline"><input type="checkbox" id="f-${f}" data-f="${f}" data-inv="1"${toFlag(d[f]) ? '' : ' checked'}>${label}</label></div>`
+          : type === 'mimic'
+            ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(
+                MIMIC,
+              )
+                .map(([v, l]) => `<option value="${v}"${mimicOf(d) === v ? ' selected' : ''}>${l}</option>`)
+                .join('')}</select></div>`
+            : type === 'tbby'
+              ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(
+                  TB_BY,
+                )
+                  .map(([v, l]) => `<option value="${v}"${tbByOf(d) === v ? ' selected' : ''}>${l}</option>`)
+                  .join('')}</select></div>`
+              : type === 'coef'
+                ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(
+                    COEF_BY,
+                  )
+                    .map(
+                      ([v, l]) => `<option value="${v}"${coefByOf(d) === v ? ' selected' : ''}>${l}</option>`,
+                    )
+                    .join('')}</select></div>`
+                : type === 'rarity'
+                  ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${(RARITIES.includes(d[f]) || !d[f] ? RARITIES : [...RARITIES, d[f]]).map(v => `<option${d[f] === v ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>`
+                  : type === 'flag'
+                    ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}" data-flag="1">${(FLAG_LABELS[f] || ['0', '1']).map((l, v) => `<option value="${v}"${toFlag(d[f]) === v ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`
+                    : type === 'side'
+                      ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${['攻撃', '防御', '攻撃・防御'].map(v => `<option${d[f] === v ? ' selected' : ''}>${v}</option>`).join('')}</select></div>`
+                      : `<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="${type}" ${type === 'number' ? 'step="any"' : ''} value="${esc(d[f] ?? '')}"></div>`;
+  let body = '';
+  if (coll === 'cards') {
+    body = `<div class="grid">${CARD_FIELDS.map(([f, l, t]) => inp(f, l, t)).join('')}</div>
+    <datalist id="skillNames">${[...M.skills.values()].map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
+    <div id="initArea" data-key="${esc(String(d.initName ?? '').trim())}">${initAreaHtml(d)}</div>`;
+  } else if (coll === 'skills') {
+    const ini = toFlag(d.init) === 1;
+    body =
+      `<div class="grid">${inp('name', 'スキル名', 'text')}${inp('side', '攻撃or防御', 'side')}${inp('noAdd', 'スキル付与', 'flag')}${!ini && isMimic(d) ? '' : inp('coefBy', '係数の掛け方', 'coef')}${inp('muzin', '無尽(0:なし、1以上:あり)', 'number')}${ini ? '' : inp('xskill', 'Xスキル', 'flag')}${ini ? inp('noMimic', '模倣', 'flag') : inp('mimic', '模倣', 'mimic')}${ini && effsOf(d).total ? inp('tbBy', `総${sw(d)}バフの掛け方`, 'tbby') : ''}</div>
+    ${coefByOf(d) === 'same' && !(!ini && isMimic(d)) ? `<div class="field"><div class="checks"><label><input type="checkbox" id="f-coefMaxTr"${toFlag(d.coefMaxTr) ? ' checked' : ''}>係数は部隊内武将のTRの最大値を参照</label></div></div>` : ''}
+    ${
+      ini
+        ? `<div class="field"><span class="label">特殊効果にチェックを入れてください(チェックした効果の値をTR表で入力)</span><div class="checks">${EFFS.map(([k]) => `<label><input type="checkbox" data-eff="${k}"${effsOf(d)[k] ? ' checked' : ''}>${effLabel(d, k)}</label>` + (k === 'stat' && effsOf(d).stat ? `<label><input type="checkbox" data-eff2="self"${effsOf(d).self ? ' checked' : ''}>${effLabel(d, 'stat')}は本人のみ</label>` : '')).join('')}<label><input type="checkbox" data-eff2="leader"${effsOf(d).leader ? ' checked' : ''}>部隊長限定</label></div></div>`
+        : `<div class="field"><span class="label">特殊効果にチェックを入れてください(チェックした効果の値をTR表で入力)</span><div class="checks"><label><input type="checkbox" data-eff="dup"${dupOn(d) ? ' checked' : ''}>重複上限</label></div></div>`
+    }
+    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。${coefMax(d) ? '係数は、部隊内でこのスキルを持つ武将のうち、いちばん高いTRの係数を使います。' : ''}Xスキルは通常枠にしか付けられません。${ini ? `素${sw(d)}バフ〜総${sw(d)}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0)。${effsOf(d).stat ? (effsOf(d).self ? `素${sw(d)}バフは本人だけにかかります。` : `素${sw(d)}バフは、部隊のどこにいても部隊全員にかかります。`) : ''}${effsOf(d).leader ? '部隊長限定:部隊長の枠にいるときだけ、この初期スキルの効果が出ます。' : ''}` : ''}${ini && effsOf(d).total && tbByOf(d) === 'muzin' ? `総${sw(d)}バフ = 総${sw(d)}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${sw(d)}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。` : ''}${!ini && isMimic(d) ? `模倣スキルの値 = 素スキル上昇率 + 模倣倍率 × ${mimicOf(d) === 'self' ? '自分' : '部隊長'}の初期スキルのスキル上昇率(部隊の中で計算した値)。特殊効果は模倣しません。極限枠でも ×1.2 はかけません。${mimicOf(d) === 'leader' ? '部隊長に付けたときは効果なし。' : ''}` : ''}${skillSide(d) === '防御' ? '防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。' : ''}</p>` +
+      trTable(
+        !ini && isMimic(d)
+          ? [
+              ['tr', 'TR'],
+              ['base', '素スキル上昇率'],
+              ['mimicRate', '模倣倍率'],
+              ...(dupOn(d) ? [['dupMax', '重複上限']] : []),
+            ]
+          : !ini
+            ? [...SKILL_TR, ...(dupOn(d) ? [['dupMax', '重複上限']] : [])]
+            : ini
+              ? [
+                  ...SKILL_TR,
+                  ...initCols(d),
+                  ...(effsOf(d).total && tbByOf(d) === 'muzin' ? [['tbCoef', `総${sw(d)}バフ係数(%)`]] : []),
+                ]
+              : SKILL_TR,
+        d.trs,
+        t => skillLabel(t, d),
+        'スキル上昇率',
+      );
+  } else if (coll === 'jbuffs') {
+    const sold = [...M.soldiers].sort(bySoldierOrder),
+      tg = d.targets || [],
+      unknown = tg.filter(t => !sold.some(([, x]) => x.name === t));
+    body = `<div class="grid">${JBUFF_FIELDS.map(([f, l, t]) => inp(f, l, t)).join('')}</div>
+    <div class="field"><span class="label">対象兵種(チェックなしなら全兵種)</span><div class="checks">${sold.map(([, x]) => `<label><input type="checkbox" name="jtarget" value="${esc(x.name)}"${tg.includes(x.name) ? ' checked' : ''}>${esc(x.name)}</label>`).join('') || '<span class="note">兵種マスタが空です</span>'}</div>
+    ${unknown.length ? `<p class="msg err">兵種マスタにない兵種が指定されています:${unknown.map(esc).join('、')}(このまま残ります)</p>` : ''}</div>
+    <p class="note">傑バフがあると、対象兵種の攻撃力・防御力にこの値が足されます。「所属時」はこの傑カードが部隊に入っているとき、「外部」は部隊の外からかかるときの値です。</p>`;
+  } else
+    body = `<div class="grid">${SOLDIER_FIELDS.map(([f, l, t]) => inp(f, l, t)).join('')}</div><p class="note">攻撃力は攻撃部隊、防御力は防御部隊の計算に使います。</p>`;
+  box.innerHTML = `<form class="editor" id="edform" novalidate><strong>${coll === 'skills' ? (id ? `${esc(d.name)} を編集(${toFlag(d.init) ? '初期スキル' : 'スキル'})` : (toFlag(d.init) ? '初期スキル' : 'スキル') + 'を追加') : id ? esc(d.name) + ' を編集' : LABEL[coll] + 'を追加'}</strong>${body}
+    <div class="actions"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">保存</button><button class="btn ghost" type="button" data-act="close">閉じる</button></div>
+    ${id ? '<button class="btn danger" type="button" data-act="delete">削除</button>' : ''}</div><p class="msg" id="edmsg"></p></form>`;
+}
+/* 武将の編集画面のうち、初期スキル名で変わる部分(案内・登録ボタン・TR表) */
+function initAreaHtml(d) {
+  const sk = skillByName(d.initName),
+    st = sk ? trsOf(sk.d) : [],
+    name = String(d.initName ?? '').trim();
+  const note = !name
+    ? '初期スキル名を入力してください(必須)。TRと初期スキルの値は、スキルマスタの初期スキルから使います。'
+    : sk && st.length
+      ? `TRと初期スキルの値(初期スキル・素攻・防バフ・倍枠通常・倍枠極限・総攻・防バフ)は、スキルマスタの「${esc(sk.d.name)}」(${trRange(sk.d)})から使います。変えるときはスキルマスタで編集してください。`
+      : `「${esc(name)}」はスキルマスタにありません。保存すると、初期スキル追加画面に進みます。`;
+  const btn = sk
+    ? `<button class="btn small ghost" type="button" data-act="openInit" style="align-self:start">「${esc(sk.d.name)}」をスキルマスタで編集</button>`
+    : '';
+  return `<div class="field"><p class="note" id="initNote">${note}</p>${btn}</div>`;
+}
+function trTable(cols, trs, computed, clabel, ro) {
+  return `<div class="field"><span class="label">TRごとの値</span><div class="trtable"><table><thead><tr>${cols.map(c => `<th class="l">${c[1]}</th>`).join('')}${computed ? `<th>${clabel}</th>` : ''}<th></th></tr></thead><tbody>
+  ${trs
+    .map(
+      (t, r) =>
+        `<tr>${cols
+          .map(([f, l]) => {
+            const v = ro ? ro(f, t) : null;
+            return v != null
+              ? `<td class="num computed" title="スキルマスタの値">${v}</td>`
+              : `<td class="l"><input class="${f === 'tr' ? 'tr' : ''}" type="number" step="any" data-t="${r}:${f}" aria-label="${l}" value="${esc(t[f] ?? '')}"></td>`;
+          })
+          .join(
+            '',
+          )}${computed ? `<td class="num computed" data-c="${r}">${computed(t)}</td>` : ''}<td><button class="btn small danger" type="button" data-act="rmtr" data-r="${r}"${trs.length < 2 ? ' disabled' : ''}>行を削除</button></td></tr>`,
+    )
+    .join('')}
+  </tbody></table></div><button class="btn small ghost" type="button" data-act="addtr" style="align-self:start">TRを追加(前の行をコピー)</button></div>`;
+}
+$('editor').addEventListener('change', e => {
+  if (draft && e.target.id === 'f-coefMaxTr') {
+    syncDraft();
+    draft.data.coefMaxTr = e.target.checked ? 1 : 0;
+    renderEditor();
+    return;
+  }
+  if (draft && draft.coll === 'skills' && e.target.id === 'f-coefBy') {
+    syncDraft();
+    renderEditor();
+    return;
+  }
+  if (draft && e.target.dataset.eff2) {
+    syncDraft();
+    const d = draft.data;
+    d.effs = { ...effsOf(d), [e.target.dataset.eff2]: e.target.checked };
+    renderEditor();
+    return;
+  }
+  if (draft && e.target.dataset.eff === 'dup') {
+    syncDraft();
+    const d = draft.data;
+    d.effs = { ...(d.effs || {}), dup: e.target.checked };
+    if (e.target.checked)
+      d.trs.forEach(t => {
+        if (!hasV(t.dupMax)) t.dupMax = 2;
+      });
+    renderEditor();
+    return;
+  }
+  if (draft && e.target.dataset.eff) {
+    syncDraft();
+    const d = draft.data,
+      k = e.target.dataset.eff;
+    d.effs = { ...effsOf(d), [k]: e.target.checked };
+    /* チェックしたら空欄に最初の値(バフ・倍枠は1)を入れる */
+    if (e.target.checked && k !== 'troop')
+      for (const f of EFFS.find(x => x[0] === k)[2])
+        d.trs.forEach(t => {
+          if (!hasV(t[f])) t[f] = 1;
+        });
+    renderEditor();
+    return;
+  }
+  if (draft && e.target.id === 'f-mimic') {
+    syncDraft();
+    if (isMimic(draft.data)) {
+      draft.data.side = '攻撃・防御';
+      draft.data.trs.forEach(t => {
+        if (!hasV(t.mimicRate)) t.mimicRate = 1;
+      });
+    }
+    renderEditor();
+    return;
+  }
+  if (draft && (e.target.id === 'f-tbBy' || (draft.coll === 'skills' && e.target.id === 'f-side'))) {
+    syncDraft();
+    renderEditor();
+    return;
+  }
+  if (draft && e.target.id === 'f-init') {
+    syncDraft();
+    const d = draft.data;
+    /* 初期スキルに切り替えたら、空の素攻・防バフ〜総攻・防バフに1を入れる */
+    if (toFlag(d.init))
+      d.trs.forEach(t => {
+        for (const [f] of SKILL_INIT) if (t[f] == null || t[f] === '') t[f] = 1;
+      });
+    renderEditor();
+    return;
+  }
+});
+$('editor').addEventListener('input', () => {
+  if (!draft) return;
+  syncDraft();
+  const d = draft.data;
+  /* 初期スキル名の案内は入力中に更新する(保存ボタンを押す瞬間に画面がずれないように) */
+  if (draft.coll === 'cards') {
+    const a = $('initArea'),
+      key = String(d.initName ?? '').trim();
+    if (a && a.dataset.key !== key) {
+      a.dataset.key = key;
+      a.innerHTML = initAreaHtml(d);
+    }
+  }
+  if (draft.coll === 'cards' && $('atkPreview')) $('atkPreview').textContent = fmt(cardAtk(d));
+  if (draft.coll === 'skills')
+    d.trs.forEach((t, r) => {
+      const c = document.querySelector(`[data-c="${r}"]`);
+      if (c) c.textContent = skillLabel(t, d);
+    });
+});
+$('editor').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]');
+  if (!b || !draft) return;
+  const act = b.dataset.act;
+  /* 武将の初期スキルを、スキルマスタの編集画面で開く(武将の未保存の変更は破棄) */
+  if (act === 'openInit') {
+    syncDraft();
+    const sk = skillByName(draft.data.initName);
+    if (!sk) return;
+    $('mtabs').querySelector('[data-m=skills]').click();
+    openEditor('skills', sk.id);
+    return;
+  }
+  if (act === 'close') {
+    draft = null;
+    renderEditor();
+    return;
+  }
+  if (act === 'addtr') {
+    syncDraft();
+    const last = draft.data.trs[draft.data.trs.length - 1] || {};
+    draft.data.trs.push({ ...last, tr: N(last.tr) + 1 });
+    renderEditor();
+    return;
+  }
+  if (act === 'rmtr') {
+    syncDraft();
+    draft.data.trs.splice(+b.dataset.r, 1);
+    renderEditor();
+    return;
+  }
+  if (act === 'delete') {
+    if (!b.classList.contains('armed')) {
+      b.classList.add('armed');
+      b.textContent = '本当に削除する';
+      return;
+    }
+    if (needName()) return;
+    try {
+      await writeWithLog('削除', draft.coll, draft.id, null);
+      draft = null;
+      renderEditor();
+    } catch (err) {
+      msg('削除できませんでした(' + logErr(err) + ')', true);
+    }
+  }
+});
+function msg(t, err) {
+  const m = $('edmsg');
+  if (m) {
+    m.textContent = t;
+    m.className = 'msg ' + (err ? 'err' : 'ok');
+  }
+}
+function validate(coll, d) {
+  if (!String(d.name || '').trim()) return '名前を入力してください';
+  if (coll === 'cards') {
+    if (d.no === '' || !Number.isFinite(Number(d.no))) return 'カードNoを入力してください';
+    if (
+      findId(M.cards, x => String(x.no) === String(d.no)) &&
+      findId(M.cards, x => String(x.no) === String(d.no)) !== draft.id
+    )
+      return `カードNo ${d.no} はすでに登録されています`;
+    if (!String(d.initName ?? '').trim()) return '初期スキル名を入力してください';
+  } else if (coll === 'jbuffs') {
+    if (d.no === '' || !Number.isFinite(Number(d.no))) return 'カードNoを入力してください';
+    const dup = findId(M.jbuffs, x => String(x.no) === String(d.no));
+    if (dup && dup !== draft.id) return `カードNo ${d.no} はすでに登録されています`;
+  } else {
+    const dup = findId(M[coll], x => x.name === d.name);
+    if (dup && dup !== draft.id) return '同じ名前がすでに登録されています';
+  }
+  if (d.trs) {
+    if (!d.trs.length) return 'TRを1行以上入力してください';
+    const s = d.trs.map(t => N(t.tr));
+    if (new Set(s).size !== s.length) return '同じTRが2行あります';
+  }
+  return '';
+}
+function clean(coll, d) {
+  if (coll === 'cards') {
+    const o = {};
+    for (const [f, , t] of CARD_FIELDS)
+      o[f] =
+        t === 'flag' || t === 'check' ? toFlag(d[f]) : t === 'number' ? N(d[f]) : String(d[f] ?? '').trim();
+    if (N(d.muzin) > 0)
+      o.muzin = N(d.muzin); /* 以前の武将マスタの無尽(初期スキルがスキルマスタにない武将だけ使う) */
+    if (Array.isArray(d.trs) && d.trs.length)
+      o.trs = trsOf({ trs: d.trs.map(t => Object.fromEntries(CARD_TR.map(([f]) => [f, N(t[f])]))) });
+    return o;
+  }
+  if (coll === 'skills')
+    return {
+      init: toFlag(d.init),
+      side: skillSide(d),
+      ...(coefByOf(d) === 'same' && toFlag(d.coefMaxTr) ? { coefMaxTr: 1 } : {}),
+      ...(!toFlag(d.init) && isMimic(d) ? { mimic: mimicOf(d) } : {}),
+      ...(toFlag(d.init) ? { noMimic: toFlag(d.noMimic) } : {}),
+      name: String(d.name).trim(),
+      muzin: N(d.muzin),
+      xskill: toFlag(d.init) ? 0 : toFlag(d.xskill),
+      noAdd: toFlag(d.noAdd),
+      coefBy: coefByOf(d),
+      trs: trsOf({
+        trs: d.trs.map(t => {
+          const o = Object.fromEntries(SKILL_TR.map(([f]) => [f, N(t[f])]));
+          if (!toFlag(d.init) && isMimic(d)) {
+            o.mimicRate = N(t.mimicRate);
+            o.coef = 0;
+          }
+          if (!toFlag(d.init) && dupOn(d) && hasV(t.dupMax)) o.dupMax = N(t.dupMax);
+          if (toFlag(d.init)) {
+            const ef = effsOf(d);
+            for (const [k, , fs] of EFFS) if (ef[k]) for (const f of fs) if (hasV(t[f])) o[f] = N(t[f]);
+            if (ef.total && tbByOf(d) === 'muzin') o.tbCoef = N(t.tbCoef);
+          }
+          return o;
+        }),
+      }),
+      ...(toFlag(d.init)
+        ? { tbBy: effsOf(d).total ? tbByOf(d) : 'fixed', effs: effsOf(d) }
+        : { effs: { dup: dupOn(d) } }),
+    };
+  if (coll === 'jbuffs') {
+    const o = {};
+    for (const [f, , t] of JBUFF_FIELDS) o[f] = t === 'number' ? N(d[f]) : String(d[f] ?? '').trim();
+    o.targets = [...new Set((d.targets || []).map(x => String(x).trim()).filter(Boolean))];
+    return o;
+  }
+  const o = {};
+  for (const [f, , t] of SOLDIER_FIELDS) o[f] = t === 'number' ? N(d[f]) : String(d[f] ?? '').trim();
+  if (d.order != null) o.order = N(d.order);
+  return o;
+}
+const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+$('editor').addEventListener('submit', async e => {
+  e.preventDefault();
+  syncDraft();
+  const { coll } = draft;
+  const err = validate(coll, draft.data);
+  if (err) return msg(err, true);
+  const data = clean(coll, draft.data);
+  const id =
+    draft.id ||
+    (coll === 'cards'
+      ? 'n' + data.no + '_' + Math.random().toString(36).slice(2, 6)
+      : coll === 'jbuffs'
+        ? 'j' + data.no
+        : newId(coll[0]));
+  if (needName()) return;
+  try {
+    await writeWithLog(draft.id ? '更新' : '追加', coll, id, data);
+    draft.id = id;
+    draft.data = structuredClone(data);
+    renderEditor();
+    msg('保存しました');
+  } catch (er) {
+    msg('保存できませんでした(' + logErr(er) + ')', true);
+    return;
+  }
+  /* 武将の初期スキル名がスキルマスタにないときは、その名前で初期スキル追加画面を開く */
+  const iname = coll === 'cards' ? String(data.initName ?? '').trim() : '';
+  if (iname && !skillByName(iname)) {
+    $('mtabs').querySelector('[data-m=skills]').click();
+    openEditor('skills', null, 'init');
+    draft.data.name = iname;
+    /* 以前武将マスタに登録したTRの値があれば、それを最初の値にする */
+    const old = trsOf(data);
+    if (old.length)
+      (delete draft.data.effs,
+        (draft.data.trs = old.map(t => ({
+          tr: N(t.tr),
+          base: N(t.initSkill),
+          coef: 0,
+          statBuff: N(t.statBuff),
+          mulNormal: N(t.mulNormal),
+          mulLimit: N(t.mulLimit),
+          totalBuff: N(t.totalBuff),
+        }))));
+    renderEditor();
+    msg(
+      `初期スキルを追加してください。(武将「${data.name}」は保存しました。初期スキル「${iname}」がスキルマスタにありません)`,
+      true,
+    );
+  }
+});
+
+/* ---------- Excel取り込み ---------- */
+let xlsxPromise = null;
+function loadXLSX() {
+  return (
+    xlsxPromise ||
+    (xlsxPromise = new Promise((ok, ng) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = () => ok(window.XLSX);
+      s.onerror = () => {
+        xlsxPromise = null;
+        ng(new Error('読み込み失敗'));
+      };
+      document.head.appendChild(s);
+    }))
+  );
+}
+function renderImport() {
+  const box = $('importbox');
+  if (!importPlan) {
+    box.innerHTML = '';
+    return;
+  }
+  if (importPlan === 'pick') {
+    box.innerHTML = `<div class="import"><strong>Excelから取り込み</strong>
+    <p class="note">「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」シートを読み込みます(列はフォーマットのとおり)(あるシートだけで構いません)。武将と傑バフはカードNo、スキルはスキル名、兵種は兵種名が同じものを上書きし、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small ghost" type="button" data-imp="fmt">フォーマットをダウンロード(空)</button><button class="btn small ghost" type="button" data-imp="dump">今のマスタをダウンロード</button></div>
+    <p class="note">「今のマスタ」は、登録済みのデータが入った取り込み用のExcelです。直してそのまま取り込めます。</p>
+    <input id="xfile" type="file" accept=".xlsx,.xlsm,.xls"><div style="display:flex;gap:8px"><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;
+    return;
+  }
+  const p = importPlan;
+  box.innerHTML = `<div class="import"><strong>取り込み内容の確認</strong><ul>
+    <li>武将:${p.cards.length}枚 うち新規 ${p.cards.filter(c => !c.id).length}枚</li>
+    <li>スキル:${p.skills.length}件 うち新規 ${p.skills.filter(c => !c.id).length}件</li>
+    <li>兵種:${p.soldiers.length}件 うち新規 ${p.soldiers.filter(c => !c.id).length}件</li>
+    <li>傑バフ:${p.jbuffs.length}件 うち新規 ${p.jbuffs.filter(c => !c.id).length}件</li>
+    ${p.people != null ? `<li>人数:${p.people}</li>` : ''}${p.warn.map(w => `<li style="color:var(--danger)">${esc(w)}</li>`).join('')}</ul>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-imp="run">取り込む</button><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;
+}
+/* 取り込み用のExcelを作る(列名は取り込みと同じ)。withData=false なら見出しだけ */
+const X_CARD = [
+  'カードNo',
+  'カード名',
+  'レアリティ',
+  '武将コスト',
+  '攻撃or防御',
+  '初期スキル名',
+  '兵数',
+  '素攻撃力',
+  '素防御力',
+  '攻撃上昇率',
+  '防御上昇率',
+  '姫',
+  '剣豪',
+];
+const X_SKILL = [
+  'スキル名',
+  '種類',
+  '攻撃or防御',
+  'スキル付与',
+  '係数の掛け方',
+  '係数最大TR参照',
+  '無尽',
+  'Xスキル',
+  '総攻・防バフの掛け方',
+  '模倣',
+  '模倣可否',
+  'TR',
+  '素スキル上昇率',
+  '係数',
+  '模倣倍率',
+  '重複上限',
+  '素攻・防バフ',
+  '素攻バフ本人のみ',
+  '部隊長限定',
+  '倍枠通常',
+  '倍枠極限',
+  '総攻・防バフ',
+  '総攻・防バフ係数',
+  '兵数加算',
+];
+const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
+const X_JBUFF = [
+  'カードNo',
+  '武将名',
+  '対象兵種',
+  '所属時攻撃力',
+  '所属時防御力',
+  '外部攻撃力',
+  '外部防御力',
+];
+async function downloadXlsx(withData) {
+  const XLSX = await loadXLSX();
+  const wb = XLSX.utils.book_new();
+  const cards = withData
+    ? [...M.cards.values()]
+        .sort((a, b) => N(a.no) - N(b.no))
+        .map(c => [
+          N(c.no),
+          c.name,
+          c.rarity || '',
+          N(c.cost),
+          c.side || '',
+          c.initName || '',
+          N(c.troops),
+          N(c.baseStat),
+          N(c.baseDef),
+          N(c.growth),
+          N(c.growthDef),
+          toFlag(c.hime),
+          toFlag(c.kengou),
+        ])
+    : [];
+  const skills = [];
+  if (withData)
+    for (const [, d] of [...M.skills].sort(byName)) {
+      const ini = isInitSkill(d),
+        tb = ini && tbByOf(d) === 'muzin';
+      for (const t of trsOf(d))
+        skills.push([
+          d.name,
+          ini ? '初期スキル' : 'スキル',
+          skillSide(d),
+          toFlag(d.noAdd) ? '付与できない' : '付与できる',
+          COEF_BY[coefByOf(d)],
+          coefMax(d) ? 1 : 0,
+          N(d.muzin),
+          isX(d) ? 1 : 0,
+          ini ? TB_BY[tbByOf(d)] : '',
+          ini ? '' : MIMIC[mimicOf(d)],
+          ini ? (toFlag(d.noMimic) ? '模倣できない' : '模倣できる') : '',
+          N(t.tr),
+          N(t.base),
+          N(t.coef),
+          isMimic(d) ? N(t.mimicRate) : '',
+          !ini && dupOn(d) && hasV(t.dupMax) ? N(t.dupMax) : '',
+          ...(ini
+            ? [
+                t.statBuff ?? '',
+                effsOf(d).self ? 1 : 0,
+                effsOf(d).leader ? 1 : 0,
+                t.mulNormal ?? '',
+                t.mulLimit ?? '',
+                t.totalBuff ?? '',
+                tb ? (t.tbCoef ?? '') : '',
+                t.troopAdd ?? '',
+              ]
+            : ['', '', '', '', '', '', '', '']),
+        ]);
+    }
+  const sold = withData
+    ? [...M.soldiers]
+        .sort(bySoldierOrder)
+        .map(([, o]) => [o.branch || '', o.name, N(o.atk), N(o.def), N(o.destroy), N(o.speed)])
+    : [];
+  const jb = withData
+    ? [...M.jbuffs]
+        .sort(byNo)
+        .map(([, j]) => [N(j.no), j.name, (j.targets || []).join('、'), ...JBUFF_VALS.map(f => jv(j, f))])
+    : [];
+  const add = (name, head, rows, extra) => {
+    const ws = XLSX.utils.aoa_to_sheet([extra ? [...head, '', ...extra] : head, ...rows]);
+    ws['!cols'] = head.map(h => ({ wch: Math.max(8, h.length * 2 + 2) }));
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  };
+  add('武将データ', X_CARD, cards);
+  add('スキルデータ', X_SKILL, skills, ['人数', N(config.people)]);
+  add('兵種データ', X_SOLDIER, sold);
+  add('傑バフデータ', X_JBUFF, jb);
+  XLSX.writeFile(
+    wb,
+    withData
+      ? `IXAマスタ_${new Date().toISOString().slice(0, 10)}.xlsx`
+      : 'IXAマスタ_取り込みフォーマット.xlsx',
+  );
+}
+function readSheet(XLSX, wb, name) {
+  const ws = wb.Sheets[name];
+  if (!ws) return null;
+  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+}
+function planFrom(XLSX, wb) {
+  const warn = [],
+    plan = { cards: [], skills: [], soldiers: [], jbuffs: [], people: null, warn };
+  const cr = readSheet(XLSX, wb, '武将データ'),
+    sr = readSheet(XLSX, wb, 'スキルデータ'),
+    or = readSheet(XLSX, wb, '兵種データ'),
+    jr = readSheet(XLSX, wb, '傑バフデータ');
+  if (!cr && !sr && !or && !jr)
+    throw new Error(
+      '「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」のどのシートも見つかりません',
+    );
+  if (cr) {
+    const h = cr[0].map(x => String(x ?? '').trim()),
+      ix = n => {
+        if (Array.isArray(n)) {
+          for (const x of n) {
+            const k = h.indexOf(x);
+            if (k >= 0) return k;
+          }
+          return -1;
+        }
+        return h.indexOf(n);
+      };
+    const need = ['カードNo', 'カード名'];
+    for (const n of need) if (ix(n) < 0) throw new Error(`武将データに「${n}」列がありません`);
+    const col = {
+      no: 'カードNo',
+      rarity: 'レアリティ',
+      cost: '武将コスト',
+      side: '攻撃or防御',
+      name: 'カード名',
+      initName: '初期スキル名',
+      troops: '兵数',
+      baseStat: ['素攻撃力', '素攻撃力・素防御力'],
+      baseDef: ['素防御力'],
+      growth: ['攻撃上昇率', '攻撃・防御上昇率', '上昇率'],
+      growthDef: ['防御上昇率'],
+      hime: '姫',
+      kengou: '剣豪',
+      tr: 'TR',
+      initSkill: '初期スキル',
+      statBuff: '素攻・防バフ',
+      mulNormal: '倍枠通常',
+      mulLimit: '倍枠極限',
+      totalBuff: '総攻・防バフ',
+    };
+    const g = new Map();
+    for (const row of cr.slice(1)) {
+      const v = k => (ix(col[k]) < 0 ? null : row[ix(col[k])]);
+      if (v('no') == null || v('name') == null) continue;
+      if (
+        v('rarity') != null &&
+        String(v('rarity')).trim() !== '' &&
+        !RARITIES.includes(String(v('rarity')).trim())
+      )
+        warn.push(
+          `カードNo ${String(v('no')).trim()} のレアリティ「${String(v('rarity')).trim()}」は選択肢にありません(そのまま登録します)`,
+        );
+      /* 1枚1行。TRと初期スキルの値はスキルマスタで持つので、TRの列があっても読まない(同じカードNoの2行目以降は無視) */
+      const no = String(v('no')).trim();
+      if (g.has(no)) continue;
+      const c = {};
+      for (const [f, , t] of CARD_FIELDS)
+        c[f] =
+          t === 'flag' || t === 'check' ? toFlag(v(f)) : t === 'number' ? N(v(f)) : String(v(f) ?? '').trim();
+      g.set(no, c);
+    }
+    /* シートに無い列(無尽・姫など)は、登録済みの値をそのまま残す */
+    const missing = CARD_FIELDS.map(([f]) => f).filter(f => ix(col[f]) < 0);
+    for (const [no, c] of g) {
+      const id = findId(M.cards, d => String(d.no) === no);
+      if (id) {
+        const old = M.cards.get(id);
+        for (const f of missing) if (old[f] != null) c[f] = old[f];
+        /* 初期スキルがスキルマスタにない武将の、以前のTRの値と無尽は残す */ for (const f of ['trs', 'muzin'])
+          if (old[f] !== undefined) c[f] = old[f];
+      }
+      plan.cards.push({ id, data: c });
+    }
+  }
+  if (sr) {
+    const h = sr[0].map(x => String(x ?? '').trim()),
+      ix = n => h.indexOf(n);
+    for (const n of ['スキル名', 'TR', '係数'])
+      if (ix(n) < 0) throw new Error(`スキルデータに「${n}」列がありません`);
+    for (const row of sr) {
+      const k = row.findIndex(x => String(x ?? '').trim() === '人数');
+      if (k >= 0 && Number.isFinite(Number(row[k + 1]))) {
+        plan.people = Number(row[k + 1]);
+        break;
+      }
+    }
+    const g = new Map();
+    for (const row of sr.slice(1)) {
+      const name = row[ix('スキル名')];
+      if (name == null || String(name).trim() === '') continue;
+      const n = String(name).trim();
+      if (!g.has(n)) g.set(n, { name: n, trs: [] });
+      if (ix('無尽') >= 0 && row[ix('無尽')] != null && String(row[ix('無尽')]).trim() !== '')
+        g.get(n).muzin = N(row[ix('無尽')]);
+      {
+        const c =
+          ix('付与不可') >= 0 ? ix('付与不可') : ix('スキル付与') >= 0 ? ix('スキル付与') : ix('付与');
+        if (c >= 0 && row[c] != null && String(row[c]).trim() !== '') {
+          const v = String(row[c]).trim();
+          g.get(n).noAdd = ix('付与不可') >= 0 ? toFlag(v) : /不可|できない|×|✕|^0$|^false$/i.test(v) ? 1 : 0;
+        }
+      }
+      if (ix('Xスキル') >= 0 && row[ix('Xスキル')] != null && String(row[ix('Xスキル')]).trim() !== '')
+        g.get(n).xskill = toFlag(row[ix('Xスキル')]);
+      if (
+        ix('係数の掛け方') >= 0 &&
+        row[ix('係数の掛け方')] != null &&
+        String(row[ix('係数の掛け方')]).trim() !== ''
+      ) {
+        const v = String(row[ix('係数の掛け方')]).trim();
+        g.get(n).coefBy =
+          /同/.test(v) || v === 'same' ? 'same' : /X|Ｘ/i.test(v) || v === 'x' ? 'x' : 'people';
+      }
+      const s = g.get(n),
+        tr = {
+          tr: N(row[ix('TR')]),
+          base: ix('素スキル上昇率') < 0 ? 0 : N(row[ix('素スキル上昇率')]),
+          coef: N(row[ix('係数')]),
+        };
+      {
+        const c = ix('種類');
+        if (c >= 0 && hasV(row[c])) s.init = /初期/.test(String(row[c])) ? 1 : 0;
+      }
+      for (const [col, key] of [
+        ['素攻バフ本人のみ', 'self'],
+        ['部隊長限定', 'leader'],
+      ]) {
+        const c = ix(col);
+        if (c >= 0 && hasV(row[c])) s.effFlags = { ...(s.effFlags || {}), [key]: toFlag(row[c]) === 1 };
+      }
+      {
+        const c = ix('係数最大TR参照');
+        if (c >= 0 && hasV(row[c])) s.coefMaxTr = toFlag(row[c]);
+      }
+      {
+        const c = ix('模倣可否');
+        if (c >= 0 && hasV(row[c])) s.noMimic = /不可|できない/.test(String(row[c])) ? 1 : 0;
+      }
+      {
+        const c = ix('模倣');
+        if (c >= 0 && hasV(row[c])) {
+          const v = String(row[c]);
+          s.mimic = /自/.test(v) ? 'self' : /他|部隊長/.test(v) ? 'leader' : 'none';
+        }
+        const k = ix('模倣倍率');
+        if (k >= 0 && hasV(row[k])) tr.mimicRate = N(row[k]);
+        const q = ix('重複上限');
+        if (q >= 0 && hasV(row[q])) tr.dupMax = N(row[q]);
+      }
+      {
+        const c = [ix('攻撃or防御'), ix('攻防')].find(x => x >= 0);
+        if (c != null && hasV(row[c])) {
+          const v = String(row[c]).trim();
+          s.side = /攻/.test(v) && /防/.test(v) ? '攻撃・防御' : /防/.test(v) ? '防御' : '攻撃';
+        }
+      }
+      {
+        const c = ix('総攻・防バフの掛け方');
+        if (c >= 0 && hasV(row[c])) s.tbBy = /無尽/.test(String(row[c])) ? 'muzin' : 'fixed';
+        const k = ix('総攻・防バフ係数');
+        if (k >= 0 && hasV(row[k])) tr.tbCoef = N(row[k]);
+        else {
+          const old = M.skills.get(findId(M.skills, d => d.name === n) || ''),
+            oe = old && trEntry(old, tr.tr);
+          if (oe && oe.tbCoef != null) tr.tbCoef = oe.tbCoef;
+        }
+      }
+      {
+        const k = ix('兵数加算');
+        if (k >= 0 && hasV(row[k])) tr.troopAdd = N(row[k]);
+        else {
+          const old = M.skills.get(findId(M.skills, d => d.name === n) || ''),
+            oe = old && trEntry(old, tr.tr);
+          if (oe && oe.troopAdd != null) tr.troopAdd = oe.troopAdd;
+        }
+      }
+      for (const [f, l] of SKILL_INIT) {
+        const c = ix(l);
+        if (c >= 0 && row[c] != null && String(row[c]).trim() !== '') tr[f] = N(row[c]);
+        else {
+          const old = M.skills.get(findId(M.skills, d => d.name === n) || ''),
+            oe = old && trEntry(old, tr.tr);
+          if (oe && oe[f] != null) tr[f] = oe[f];
+        }
+      }
+      s.trs = s.trs.filter(t => t.tr !== tr.tr);
+      s.trs.push(tr);
+    }
+    for (const [n, s] of g) {
+      s.trs = trsOf(s);
+      const id = findId(M.skills, d => d.name === n);
+      if (s.muzin == null) s.muzin = id ? N(M.skills.get(id).muzin) : 0;
+      if (s.xskill == null) s.xskill = id ? toFlag(M.skills.get(id).xskill) : 0;
+      if (s.noAdd == null) s.noAdd = id ? toFlag(M.skills.get(id).noAdd) : 0;
+      if (s.coefBy == null) s.coefBy = id ? coefByOf(M.skills.get(id)) : 'people';
+      if (s.side == null) s.side = id ? skillSide(M.skills.get(id)) : '攻撃';
+      if (s.mimic == null && id && isMimic(M.skills.get(id))) s.mimic = mimicOf(M.skills.get(id));
+      if (s.mimic === 'none') delete s.mimic;
+      if (s.init) {
+        const old = id ? M.skills.get(id) : null,
+          ef = {
+            ...effsOf({ ...s, effs: undefined }),
+            ...(old?.effs ? { self: !!old.effs.self, leader: !!old.effs.leader } : {}),
+            ...(s.effFlags || {}),
+          };
+        s.effs = ef;
+      }
+      delete s.effFlags;
+      if (s.coefMaxTr == null && id && M.skills.get(id).coefMaxTr) s.coefMaxTr = 1;
+      if (!s.coefMaxTr || s.coefBy !== 'same') delete s.coefMaxTr;
+      if (s.noMimic == null && id && M.skills.get(id).noMimic != null)
+        s.noMimic = toFlag(M.skills.get(id).noMimic);
+      if (s.tbBy == null && id && M.skills.get(id).tbBy) s.tbBy = tbByOf(M.skills.get(id));
+      if (s.init == null)
+        s.init = id
+          ? isInitSkill(M.skills.get(id))
+            ? 1
+            : 0
+          : s.trs.some(t => SKILL_INIT.some(([f]) => t[f] != null))
+            ? 1
+            : 0;
+      if (!s.init)
+        s.trs = s.trs.map(t => {
+          const o = { ...t };
+          for (const [f] of SKILL_INIT) delete o[f];
+          delete o.troopAdd;
+          delete o.tbCoef;
+          return o;
+        });
+      plan.skills.push({ id, data: s });
+    }
+  }
+  /* 兵種データ:兵科・兵種・攻撃力・防禦力・破壊・速度。兵種名が同じものを上書き。列名は表記ゆれも受け付ける */
+  if (or && or.length) {
+    const h = or[0].map(x => String(x ?? '').trim()),
+      pick = names => {
+        for (const n of names) {
+          const k = h.indexOf(n);
+          if (k >= 0) return k;
+        }
+        return -1;
+      };
+    const col = {
+      name: pick(['兵種', '兵種名']),
+      branch: pick(['兵科']),
+      atk: pick(['攻撃力', '兵士攻撃力']),
+      def: pick(['防禦力', '防御力', '兵士防御力', '兵士防禦力']),
+      destroy: pick(['破壊']),
+      speed: pick(['速度']),
+    };
+    if (col.name < 0) throw new Error('兵種データに「兵種」列がありません');
+    if (col.atk < 0) throw new Error('兵種データに「攻撃力」列がありません');
+    const g = new Map();
+    let order = 0;
+    for (const row of or.slice(1)) {
+      const name = row[col.name];
+      if (name == null || String(name).trim() === '') continue;
+      const n = String(name).trim();
+      const d = {
+        name: n,
+        branch: col.branch < 0 ? '' : String(row[col.branch] ?? '').trim(),
+        order: ++order,
+      };
+      for (const f of ['atk', 'def', 'destroy', 'speed']) {
+        const v = col[f] < 0 ? null : row[col[f]];
+        if (f === 'atk' && (v == null || String(v).trim() === '' || !Number.isFinite(Number(v))))
+          warn.push(`兵種「${n}」の攻撃力が数値ではありません(0として取り込みます)`);
+        d[f] = N(v);
+      }
+      if (g.has(n)) warn.push(`兵種「${n}」が2行あります(後の行を使います)`);
+      g.set(n, d);
+    }
+    for (const [n, d] of g) plan.soldiers.push({ id: findId(M.soldiers, x => x.name === n), data: d });
+  }
+  /* 傑バフデータ:カードNo・武将名・対象兵種(「、」区切り。空なら全兵種)・所属時攻撃力・所属時防御力・外部攻撃力・外部防御力。カードNoが同じものを上書き */
+  if (jr && jr.length) {
+    const h = jr[0].map(x => String(x ?? '').trim()),
+      pick = names => {
+        for (const n of names) {
+          const k = h.indexOf(n);
+          if (k >= 0) return k;
+        }
+        return -1;
+      };
+    const col = {
+      no: pick(['カードNo', 'カードNO', 'No']),
+      name: pick(['武将名', 'カード名']),
+      targets: pick(['対象兵種', '兵種']),
+      atkIn: pick(['所属時攻撃力']),
+      defIn: pick(['所属時防御力', '所属時防禦力']),
+      atkOut: pick(['外部攻撃力']),
+      defOut: pick(['外部防御力', '外部防禦力']),
+    };
+    const JL = {
+      no: 'カードNo',
+      name: '武将名',
+      targets: '対象兵種',
+      atkIn: '所属時攻撃力',
+      defIn: '所属時防御力',
+      atkOut: '外部攻撃力',
+      defOut: '外部防御力',
+    };
+    for (const k in JL) if (col[k] < 0) throw new Error(`傑バフデータに「${JL[k]}」列がありません`);
+    const g = new Map();
+    for (const row of jr.slice(1)) {
+      const no = row[col.no],
+        name = row[col.name];
+      if ((no == null || String(no).trim() === '') && (name == null || String(name).trim() === '')) continue;
+      const n = String(name ?? '').trim();
+      if (no == null || !Number.isFinite(Number(no))) {
+        warn.push(`傑バフ「${n || '(名前なし)'}」のカードNoが数値ではないため、取り込みません`);
+        continue;
+      }
+      const key = String(Number(no)),
+        d = { no: Number(no), name: n, targets: splitTargets(row[col.targets]) };
+      const miss = d.targets.filter(t => !findId(M.soldiers, x => x.name === t));
+      if (miss.length)
+        warn.push(
+          `傑バフ「${n}」の対象兵種「${miss.join('、')}」は兵種マスタにありません(名前のまま登録します)`,
+        );
+      for (const f of JBUFF_VALS) {
+        const v = row[col[f]];
+        if (v != null && String(v).trim() !== '' && !Number.isFinite(Number(v)))
+          warn.push(`傑バフ「${n}」の${JL[f]}が数値ではありません(0として取り込みます)`);
+        d[f] = N(v);
+      }
+      if (g.has(key)) warn.push(`カードNo ${key} の傑バフが2行あります(後の行を使います)`);
+      g.set(key, d);
+    }
+    for (const [key, d] of g) plan.jbuffs.push({ id: findId(M.jbuffs, x => String(x.no) === key), data: d });
+  }
+  plan.warn = [...new Set(warn)];
+  return plan;
+}
+$('mimport').addEventListener('click', () => {
+  draft = null;
+  renderEditor();
+  importPlan = 'pick';
+  renderImport();
+});
+$('importbox').addEventListener('change', async e => {
+  if (e.target.id !== 'xfile' || !e.target.files[0]) return;
+  const m = $('impmsg');
+  m.className = 'msg';
+  m.textContent = '読み込んでいます…';
+  try {
+    const XLSX = await loadXLSX();
+    const wb = XLSX.read(await e.target.files[0].arrayBuffer(), { type: 'array' });
+    importPlan = planFrom(XLSX, wb);
+    renderImport();
+  } catch (err) {
+    m.className = 'msg err';
+    m.textContent = '読み込めませんでした:' + err.message;
+  }
+});
+$('importbox').addEventListener('click', async e => {
+  const b = e.target.closest('[data-imp]');
+  if (!b) return;
+  if (b.dataset.imp === 'cancel') {
+    importPlan = null;
+    renderImport();
+    return;
+  }
+  if (b.dataset.imp === 'fmt' || b.dataset.imp === 'dump') {
+    const m = $('impmsg');
+    try {
+      m.className = 'msg';
+      m.textContent = '作成しています…';
+      await downloadXlsx(b.dataset.imp === 'dump');
+      m.textContent = '';
+    } catch (err) {
+      m.className = 'msg err';
+      m.textContent = '作成できませんでした:' + err.message;
+    }
+    return;
+  }
+  if (needName()) return;
+  const p = importPlan,
+    m = $('impmsg');
+  b.disabled = true;
+  let done = 0;
+  const total =
+    p.cards.length + p.skills.length + p.soldiers.length + p.jbuffs.length + (p.people != null ? 1 : 0);
+  try {
+    for (const c of p.cards) {
+      await writeWithLog(
+        'Excel取り込み',
+        'cards',
+        c.id || 'n' + c.data.no + '_' + Math.random().toString(36).slice(2, 6),
+        c.data,
+      );
+      m.textContent = `取り込み中 ${++done}/${total}`;
+    }
+    for (const s of p.skills) {
+      await writeWithLog('Excel取り込み', 'skills', s.id || newId('s'), s.data);
+      m.textContent = `取り込み中 ${++done}/${total}`;
+    }
+    for (const o of p.soldiers) {
+      await writeWithLog('Excel取り込み', 'soldiers', o.id || newId('o'), o.data);
+      m.textContent = `取り込み中 ${++done}/${total}`;
+    }
+    for (const j of p.jbuffs) {
+      await writeWithLog('Excel取り込み', 'jbuffs', j.id || 'j' + j.data.no, j.data);
+      m.textContent = `取り込み中 ${++done}/${total}`;
+    }
+    if (p.people != null) {
+      await writeWithLog('Excel取り込み', 'config', 'main', { ...plain(config), people: p.people });
+      done++;
+    }
+    importPlan = null;
+    renderImport();
+    status(`Excelから ${done} 件を取り込みました。`);
+    setTimeout(() => status(''), 5000);
+  } catch (err) {
+    m.className = 'msg err';
+    m.textContent = `${done}件まで取り込んだところで止まりました(${logErr(err)})。もう一度「取り込む」を押すと続きから上書きします。`;
+    b.disabled = false;
+  }
+});
+
+/* ---------- 画面に出なくなった古いデータの削除(管理者用。消すものがなくなるとボタンは消える) ----------
+   ・武将:TRごとの値と無尽(初期スキルがスキルマスタにある武将だけ。ない武将は計算に使うので残す)
+   ・スキル:種類と攻撃or防御を保存し、ふつうのスキルからは初期スキル用の値を、固定の初期スキルからは総攻バフ係数を消す
+   ・傑バフ:古い「攻撃力・防御力」を所属時攻撃力・所属時防御力に移して消す */
+function cleanPlan() {
+  const out = { cards: [], skills: [], jbuffs: [], keep: [], n: 0 };
+  if (!allLoaded()) return out;
+  for (const [id, c] of M.cards) {
+    const sk = skillByName(c.initName);
+    if (!sk || !trsOf(sk.d).length) {
+      if (c.trs || c.muzin != null) out.keep.push(c.name);
+      continue;
+    }
+    if (c.trs !== undefined || c.muzin !== undefined) {
+      const d = { ...c };
+      delete d.trs;
+      delete d.muzin;
+      out.cards.push({ id, name: c.name, data: d });
+    }
+  }
+  for (const [id, k] of M.skills) {
+    const ini = isInitSkill(k),
+      tb = ini && tbByOf(k) === 'muzin';
+    const trs = (k.trs || []).map(t => {
+      const o = { ...t };
+      if (!ini) {
+        for (const [f] of SKILL_INIT) delete o[f];
+        delete o.troopAdd;
+      }
+      if (!tb) delete o.tbCoef;
+      return o;
+    });
+    const d = { ...k, init: ini ? 1 : 0, side: skillSide(k), trs };
+    if (!ini) delete d.tbBy;
+    if (JSON.stringify(d) !== JSON.stringify(k)) out.skills.push({ id, name: k.name, data: d });
+  }
+  for (const [id, j] of M.jbuffs) {
+    if (j.atk === undefined && j.def === undefined) continue;
+    const d = { ...j };
+    for (const f of JBUFF_VALS) d[f] = jv(j, f);
+    delete d.atk;
+    delete d.def;
+    out.jbuffs.push({ id, name: j.name, data: d });
+  }
+  out.n = out.cards.length + out.skills.length + out.jbuffs.length;
+  return out;
+}
+let cleaning = null;
+function renderClean() {
+  const box = $('cleanbox');
+  if (!cleaning) {
+    box.innerHTML = '';
+    return;
+  }
+  const p = cleaning;
+  box.innerHTML = `<div class="import"><strong>不要データの削除</strong>
+    <p class="note">画面に出なくなった古いデータを消します。計算結果は変わりません。</p><ul>
+    <li>武将:${p.cards.length}枚(以前のTRごとの値・無尽)</li><li>スキル:${p.skills.length}件(種類・攻撃or防御を保存、使わない初期スキル用の値)</li><li>傑バフ:${p.jbuffs.length}件(古い攻撃力・防御力)</li>
+    ${p.keep.length ? `<li>初期スキルがスキルマスタにないため残す武将:${p.keep.map(esc).join('、')}</li>` : ''}</ul>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-cl="run">削除する</button><button class="btn ghost" type="button" data-cl="cancel">やめる</button></div><p class="msg" id="clmsg"></p></div>`;
+}
+$('mclean').addEventListener('click', () => {
+  draft = null;
+  renderEditor();
+  importPlan = null;
+  renderImport();
+  cleaning = cleanPlan();
+  renderClean();
+});
+$('cleanbox').addEventListener('click', async e => {
+  const b = e.target.closest('[data-cl]');
+  if (!b) return;
+  if (b.dataset.cl === 'cancel') {
+    cleaning = null;
+    renderClean();
+    return;
+  }
+  const p = cleaning,
+    m = $('clmsg');
+  b.disabled = true;
+  m.className = 'msg';
+  m.textContent = '削除しています…';
+  const before = form ? Math.round(calc().total) : null;
+  try {
+    const ops = [
+      ...p.cards.map(x => ['cards', x]),
+      ...p.skills.map(x => ['skills', x]),
+      ...p.jbuffs.map(x => ['jbuffs', x]),
+    ];
+    for (let i = 0; i < ops.length; i += 200) {
+      const batch = db.batch();
+      for (const [coll, x] of ops.slice(i, i + 200)) putWithLog(batch, '不要データ削除', coll, x.id, x.data);
+      await batch.commit();
+    }
+    cleaning = null;
+    renderClean();
+    setTimeout(() => {
+      const after = form ? Math.round(calc().total) : null;
+      status(
+        `不要データを削除しました(武将${p.cards.length}・スキル${p.skills.length}・傑バフ${p.jbuffs.length})。` +
+          (before != null
+            ? before === after
+              ? '計算結果は変わっていません。'
+              : `計算結果が変わりました(${fmt(before)} → ${fmt(after)})。お知らせください。`
+            : ''),
+      );
+      setTimeout(() => status(''), 8000);
+    }, 500);
+  } catch (err) {
+    b.disabled = false;
+    m.className = 'msg err';
+    m.textContent = '削除できませんでした(' + logErr(err) + ')';
+  }
+});
+
+/* ---------- 画面切替・起動 ---------- */
+$('mtabs').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  mtab = b.dataset.m;
+  draft = null;
+  importPlan = null;
+  cleaning = null;
+  renderClean();
+  [...$('mtabs').children].forEach(x => x.setAttribute('aria-pressed', x === b));
+  renderEditor();
+  renderImport();
+  renderMaster();
+});
+$('msearch').addEventListener('input', renderMaster);
+$('madd').addEventListener('click', () => {
+  importPlan = null;
+  renderImport();
+  openEditor(mtab, null);
+});
+$('maddSkill').addEventListener('click', () => {
+  importPlan = null;
+  renderImport();
+  openEditor('skills', null, 'skill');
+});
+$('maddInit').addEventListener('click', () => {
+  importPlan = null;
+  renderImport();
+  openEditor('skills', null, 'init');
+});
+$('mtable').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-id]');
+  if (!tr || !isOwner) return;
+  importPlan = null;
+  renderImport();
+  openEditor(mtab, tr.dataset.id);
+});
+$('people').addEventListener('click', async e => {
+  if (e.target.id !== 'peopleSave') return;
+  const v = Number($('peopleIn').value),
+    m = $('peopleMsg');
+  if (!Number.isFinite(v) || v <= 0) {
+    m.className = 'msg err';
+    m.textContent = '人数は正の数で入力してください';
+    return;
+  }
+  if (needName()) return;
+  try {
+    await writeWithLog('更新', 'config', 'main', { ...plain(config), people: v });
+    m.className = 'msg ok';
+    m.textContent = '保存しました';
+  } catch (err) {
+    m.className = 'msg err';
+    m.textContent = '保存できませんでした(' + logErr(err) + ')';
+  }
+});
+document.querySelector('.tabs').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (b) show(b.dataset.view);
+});
+function show(v) {
+  for (const b of document.querySelectorAll('.tabs button'))
+    b.setAttribute('aria-selected', b.dataset.view === v);
+  $('view-calc').hidden = v !== 'calc';
+  $('view-master').hidden = v !== 'master';
+  try {
+    history.replaceState(null, '', location.pathname + location.search + '#' + v);
+  } catch (e) {}
+  if (v === 'master') renderMaster();
+}
+window.addEventListener('hashchange', () => show(location.hash === '#master' ? 'master' : 'calc'));
+show(location.hash === '#master' ? 'master' : 'calc');
+renderCalc();
+
+/* ---------- 初期データ投入(マスタが空のときだけ、管理者に表示) ---------- */
+function renderSeed() {
+  const box = $('seedbox');
+  const empty = allLoaded() && !M.cards.size && !M.skills.size && !M.soldiers.size;
+  if (!isOwner || !empty || !db) {
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = `<div class="seed"><strong>マスタがまだ空です</strong><p class="note">Claude版で登録していた武将・スキル・兵種・人数を、まとめて登録します(seed/master.json)。</p>
+    <button id="seedRun" class="btn" type="button">初期データを投入</button><p class="msg" id="seedMsg"></p></div>`;
+}
+$('seedbox').addEventListener('click', async e => {
+  if (e.target.id !== 'seedRun') return;
+  const b = e.target,
+    m = $('seedMsg');
+  b.disabled = true;
+  m.className = 'msg';
+  m.textContent = '投入しています…';
+  try {
+    const r = await fetch('seed/master.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('seed/master.json を読み込めません');
+    const d = await r.json();
+    const batch = db.batch();
+    let n = 0;
+    if (needName()) {
+      b.disabled = false;
+      return;
+    }
+    for (const coll of ['cards', 'skills', 'soldiers'])
+      for (const [id, v] of Object.entries(d[coll] || {})) {
+        putWithLog(batch, '初期データ投入', coll, id, v, null);
+        n++;
+      }
+    if (d.config && d.config.main) {
+      putWithLog(batch, '初期データ投入', 'config', 'main', d.config.main, null);
+      n++;
+    }
+    await batch.commit();
+    status(`初期データ ${n} 件を登録しました。`);
+    setTimeout(() => status(''), 5000);
+  } catch (err) {
+    b.disabled = false;
+    m.className = 'msg err';
+    m.textContent = '投入できませんでした(' + logErr(err) + ')';
+  }
+});
+
+/* ---------- Firebase:管理者ログインとデータの読み込み ---------- */
+function setRole(user) {
+  $('role').textContent = isOwner ? '管理者' : '閲覧のみ';
+  $('role').className = 'role' + (isOwner ? ' admin' : '');
+  me = user || null;
+  $('login').hidden = !!user;
+  $('logout').hidden = !user;
+  $('userName').textContent = user
+    ? isOwner && myName()
+      ? myName()
+      : user.displayName || user.email || ''
+    : '';
+  const n = $('uidnote');
+  if (user && !isOwner) {
+    n.hidden = false;
+    n.innerHTML = `ログインしていますが、管理者として登録されていません。管理者にするには、Firestore の <b>admins</b> コレクションに、次のユーザーIDを「ドキュメントID」として追加してください。<br><code id="uidcode">${esc(user.uid)}</code> <button id="uidcopy" class="btn small ghost" type="button">コピー</button>`;
+  } else {
+    n.hidden = true;
+    n.innerHTML = '';
+  }
+  draft = null;
+  importPlan = null;
+  renderEditor();
+  renderImport();
+  renderMaster();
+  renderSeed();
+}
+$('uidnote').addEventListener('click', async e => {
+  if (e.target.id !== 'uidcopy') return;
+  const t = $('uidcode').textContent;
+  try {
+    await navigator.clipboard.writeText(t);
+    e.target.textContent = 'コピーしました';
+  } catch (err) {
+    const r = document.createRange();
+    r.selectNodeContents($('uidcode'));
+    const sel = getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+    e.target.textContent = '選択しました(Ctrl+Cでコピー)';
+  }
+});
+
+(() => {
+  const cfg = window.FIREBASE_CONFIG;
+  if (!window.firebase || !cfg || !cfg.apiKey || /^YOUR/.test(cfg.apiKey)) {
+    status(
+      'Firebase の設定がまだです。firebase-config.js に設定を書き込んでください(README の手順2)。',
+      true,
+    );
+    for (const k in loaded) loaded[k] = true;
+    renderCalc();
+    renderMaster();
+    return;
+  }
+  firebase.initializeApp(cfg);
+  db = firebase.firestore();
+  const auth = firebase.auth();
+  $('login').hidden = false;
+  $('login').addEventListener('click', async () => {
+    try {
+      await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    } catch (e) {
+      if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request')
+        status('ログインできませんでした(' + (e.code || e.message) + ')。', true);
+    }
+  });
+  $('logout').addEventListener('click', () => auth.signOut());
+  auth.onAuthStateChanged(async user => {
+    isOwner = false;
+    adminName = '';
+    if (user) {
+      try {
+        const a = await db.doc('admins/' + user.uid).get();
+        isOwner = a.exists;
+        adminName = isOwner ? String(a.data()?.name ?? '').trim() : '';
+      } catch (e) {
+        isOwner = false;
+      }
+    }
+    setRole(user);
+  });
+  const timer = setTimeout(
+    () => status('マスタの読み込みに時間がかかっています。通信状態を確認してください。', true),
+    10000,
+  );
+  const fail = err => {
+    clearTimeout(timer);
+    for (const k in loaded) loaded[k] = true;
+    status(
+      'マスタを読み込めませんでした(' +
+        (err.code || err.message) +
+        ')。Firestore のルール設定を確認してください。',
+      true,
+    );
+    renderCalc();
+    renderMaster();
+  };
+  const settle = () => {
+    if (Object.values(loaded).every(Boolean)) {
+      clearTimeout(timer);
+      if ($('status').classList.contains('warn')) status('');
+    }
+  };
+  for (const coll of ['cards', 'skills', 'soldiers']) {
+    db.collection(`${BASE}/${coll}`).onSnapshot(snap => {
+      const wasLoaded = allLoaded(),
+        wasEmpty = !M[coll].size;
+      M[coll] = new Map(snap.docs.map(d => [d.id, d.data()]));
+      if (!snap.metadata.fromCache || snap.docs.length) loaded[coll] = true;
+      settle();
+      /* 最初の読み込み完了時と、空だったマスタにデータが入ったとき(初期データ投入など)は編成を作り直す */
+      if ((!wasLoaded && allLoaded()) || (wasLoaded && wasEmpty && M[coll].size)) form = null;
+      renderCalc();
+      if (!$('view-master').hidden) renderMaster();
+      renderSeed();
+    }, fail);
+  }
+  db.collection(`${BASE}/jbuffs`).onSnapshot(
+    snap => {
+      M.jbuffs = new Map(snap.docs.map(d => [d.id, d.data()]));
+      loaded.jbuffs = true;
+      settle();
+      if (form) {
+        renderJb();
+        updateResults();
+      }
+      if (!$('view-master').hidden) renderMaster();
+    },
+    err => {
+      loaded.jbuffs = true;
+      settle();
+      status(
+        '傑バフマスタを読み込めませんでした(' +
+          (err.code || err.message) +
+          ')。Firestore のルールを最新の firestore.rules に更新してください。',
+        true,
+      );
+    },
+  );
+  db.doc(`${BASE}/config/main`).onSnapshot(snap => {
+    if (snap.exists) config = { people: 280, ...snap.data() };
+    loaded.config = true;
+    settle();
+    updateResults();
+    if (!$('view-master').hidden) renderMaster();
+  }, fail);
+})();
