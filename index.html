@@ -203,10 +203,10 @@ const SP={rei:'黎天列光',hi:'火焔武闘'};
 const ZERO_IN_KENSHIN=['黎天列光','火焔武闘','天穿奏覇'];
 const STAT_FACTOR=690;
 const SAMPLE={jin:1.05,slots:[
-  {card:'10052',tr:5,soldier:'炮烙＋７',s1:['',0],s2:['',0],lim:['',0]},
-  {card:'1286',tr:5,soldier:'炮烙＋７',s1:['天地超克',0],s2:['勇冠三軍',0],lim:['万物神勇',0]},
-  {card:'10053',tr:5,soldier:'炮烙＋７',s1:['勇冠三軍',5],s2:['万物神勇',5],lim:['天地超克',5]},
-  {card:'10066',tr:5,soldier:'炮烙＋７',s1:['天地超克',0],s2:['万物神勇',0],lim:['勇冠三軍',0]}]};
+  {card:'10052',tr:5,soldier:'焙烙火矢',s1:['',0],s2:['',0],lim:['',0]},
+  {card:'1286',tr:5,soldier:'焙烙火矢',s1:['天地超克',0],s2:['勇冠三軍',0],lim:['万物神勇',0]},
+  {card:'10053',tr:5,soldier:'焙烙火矢',s1:['勇冠三軍',5],s2:['万物神勇',5],lim:['天地超克',5]},
+  {card:'10066',tr:5,soldier:'焙烙火矢',s1:['天地超克',0],s2:['万物神勇',0],lim:['勇冠三軍',0]}]};
 const M={cards:new Map(),skills:new Map(),soldiers:new Map()};
 const loaded={cards:false,skills:false,soldiers:false,config:false};
 let config={people:280};
@@ -328,7 +328,7 @@ $('slots').addEventListener('mousedown',e=>{const li=e.target.closest('li[data-p
 $('slots').addEventListener('focusout',e=>{const c=comboOf(e.target);if(c&&combo&&combo.i===c.i&&combo.k===c.k)closeCombo(true)});
 const comboBox=(i,k,value,ph)=>`<div class="combo${k==='soldier'?' solo':''}" data-i="${i}" data-c="${k}"><input id="${inputId(i,k)}" class="combo-in" data-i="${i}" data-c="${k}" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId(i,k)}" autocomplete="off" placeholder="${ph}" value="${esc(value)}">
   <ul id="${listId(i,k)}" class="combo-list" role="listbox" aria-label="${KIND[k]}の候補" hidden></ul></div>`;
-function soldierOpts(sel){return '<option value="">— 兵種 —</option>'+[...M.soldiers].sort(byName).map(([id,d])=>`<option value="${esc(id)}"${id===sel?' selected':''}>${esc(d.name)}(${fmt(N(d.atk))})</option>`).join('')}
+function soldierOpts(sel){return '<option value="">— 兵種 —</option>'+[...M.soldiers].sort(bySoldierOrder).map(([id,d])=>`<option value="${esc(id)}"${id===sel?' selected':''}>${esc(d.name)}(攻${fmt(N(d.atk))})</option>`).join('')}
 function trOpts(d,sel){const t=trsOf(d);if(!t.length)return'<option value="">—</option>';return t.map(x=>`<option value="${N(x.tr)}"${N(x.tr)===N(sel)?' selected':''}>TR${N(x.tr)}</option>`).join('')}
 function renderCalc(){
   const box=$('slots');combo=null;
@@ -366,6 +366,9 @@ const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','te
 const CARD_TR=[['tr','TR'],['initSkill','初期スキル'],['statBuff','素攻・防バフ'],['mulNormal','倍枠通常'],['mulLimit','倍枠極限'],['totalBuff','総攻・防バフ']];
 const SKILL_TR=[['tr','TR'],['base','素スキル上昇率'],['coef','係数']];
 const LABEL={cards:'武将',skills:'スキル',soldiers:'兵種'};
+/* 兵種:攻撃力は攻撃部隊、防御力は防御部隊の計算に使う。order は取り込んだシートの行順 */
+const SOLDIER_FIELDS=[['name','兵種名','text'],['branch','兵科','text'],['atk','攻撃力','number'],['def','防御力','number'],['destroy','破壊','number'],['speed','速度','number']];
+const bySoldierOrder=(a,b)=>N(a[1].order??9999)-N(b[1].order??9999)||byName(a,b);
 const trRange=d=>{const t=trsOf(d);return t.length?`TR${N(t[0].tr)}〜${N(t[t.length-1].tr)}`:'TRなし'};
 function renderMaster(){
   $('madd').hidden=!isOwner;$('mimport').hidden=!isOwner;
@@ -385,7 +388,8 @@ function renderMaster(){
     html=`<thead><tr><th class="l">スキル名</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
       (list.length?list.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td>${trs.map(t=>{const e=trEntry(d,t);return`<td class="num" title="${e?`素${N(e.base)} + 係数${N(e.coef)}×人数`:''}">${e?fmt(skillValue(e),1):'—'}</td>`}).join('')}</tr>`).join(''):empty(trs.length+1))+'</tbody>';
   }else{
-    html=`<thead><tr><th class="l">兵種名</th><th>兵士攻撃力</th></tr></thead><tbody>`+(list.length?list.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="num">${fmt(N(d.atk),2)}</td></tr>`).join(''):empty(2))+'</tbody>';
+    const sl=[...M.soldiers].filter(([,d])=>!q||String(d.name).includes(q)||String(d.branch||'').includes(q)).sort(bySoldierOrder);
+    html=`<thead><tr><th class="l">兵種名</th><th class="l">兵科</th><th>攻撃力</th><th>防御力</th><th>破壊</th><th>速度</th></tr></thead><tbody>`+(sl.length?sl.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="l">${esc(d.branch||'')}</td>${['atk','def','destroy','speed'].map(f=>`<td class="num">${d[f]==null?'—':fmt(N(d[f]),2)}</td>`).join('')}</tr>`).join(''):empty(6))+'</tbody>';
   }
   $('mtable').innerHTML=html;
 }
@@ -395,7 +399,7 @@ function openEditor(coll,id){
   const d=id?structuredClone(M[coll].get(id)):null;
   if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',troops:'',baseStat:'',growth:'',hime:0,trs:[{tr:0,initSkill:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}};
   else if(coll==='skills')draft={coll,id,data:d||{name:'',trs:[{tr:0,base:0,coef:0}]}};
-  else draft={coll,id,data:d||{name:'',atk:''}};
+  else draft={coll,id,data:d||{name:'',branch:'',atk:'',def:'',destroy:'',speed:''}};
   draft.data.trs&&(draft.data.trs=trsOf(draft.data));
   renderEditor();$('editor').scrollIntoView({block:'nearest'});
 }
@@ -412,7 +416,7 @@ function renderEditor(){
     body=`<div class="grid">${CARD_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}<div class="field"><span class="label">攻撃(素攻)= 素攻撃力 + 上昇率×690</span><b class="computed num" id="atkPreview">${fmt(cardAtk(d))}</b></div></div>`+trTable(CARD_TR,d.trs);
   }else if(coll==='skills'){
     body=`<div class="grid">${inp('name','スキル名','text')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>`+trTable(SKILL_TR,d.trs,t=>fmt(skillValue(t),1),'スキル上昇率');
-  }else body=`<div class="grid">${inp('name','兵種名','text')}${inp('atk','兵士攻撃力','number')}</div>`;
+  }else body=`<div class="grid">${SOLDIER_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div><p class="note">攻撃力は攻撃部隊、防御力は防御部隊の計算に使います。</p>`;
   box.innerHTML=`<form class="editor" id="edform" novalidate><strong>${id?esc(d.name)+' を編集':LABEL[coll]+'を追加'}</strong>${body}
     <div class="actions"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">保存</button><button class="btn ghost" type="button" data-act="close">閉じる</button></div>
     ${id?'<button class="btn danger" type="button" data-act="delete">削除</button>':''}</div><p class="msg" id="edmsg"></p></form>`;
@@ -443,7 +447,7 @@ function validate(coll,d){
 function clean(coll,d){
   if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
   if(coll==='skills')return{name:String(d.name).trim(),trs:trsOf({trs:d.trs.map(t=>Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])])))})};
-  return{name:String(d.name).trim(),atk:N(d.atk)};
+  const o={};for(const [f,,t] of SOLDIER_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();if(d.order!=null)o.order=N(d.order);return o;
 }
 const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 $('editor').addEventListener('submit',async e=>{e.preventDefault();syncDraft();const {coll}=draft;const err=validate(coll,draft.data);if(err)return msg(err,true);
@@ -456,19 +460,20 @@ function loadXLSX(){return xlsxPromise||(xlsxPromise=new Promise((ok,ng)=>{const
 function renderImport(){
   const box=$('importbox');if(!importPlan){box.innerHTML='';return}
   if(importPlan==='pick'){box.innerHTML=`<div class="import"><strong>Excelから取り込み</strong>
-    <p class="note">「武将データ」「スキルデータ」「兵種データ」シートを読み込みます(あるシートだけで構いません)。武将はカードNo、スキルはスキル名、兵種は兵種名が同じものを上書きし、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
+    <p class="note">「武将データ」「スキルデータ」「兵種データ」シートを読み込みます(あるシートだけで構いません)。武将はカードNo、スキルはスキル名、兵種は兵種名が同じものを上書きし(兵種は、シートにないものを削除することもできます)、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
     <input id="xfile" type="file" accept=".xlsx,.xlsm,.xls"><div style="display:flex;gap:8px"><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;return}
   const p=importPlan;
   box.innerHTML=`<div class="import"><strong>取り込み内容の確認</strong><ul>
     <li>武将:${p.cards.length}枚(TR ${p.cards.reduce((a,c)=>a+c.trs.length,0)}行) うち新規 ${p.cards.filter(c=>!c.id).length}枚</li>
     <li>スキル:${p.skills.length}件 うち新規 ${p.skills.filter(c=>!c.id).length}件</li>
     <li>兵種:${p.soldiers.length}件 うち新規 ${p.soldiers.filter(c=>!c.id).length}件</li>
+    ${p.soldierPrune.length?`<li><label style="display:flex;gap:6px;align-items:flex-start"><input type="checkbox" id="impPrune" style="width:auto;margin-top:4px"><span>兵種データにない兵種 ${p.soldierPrune.length}件を削除する(${p.soldierPrune.map(x=>esc(x.name)).join('、')})</span></label></li>`:''}
     ${p.people!=null?`<li>人数:${p.people}</li>`:''}${p.warn.map(w=>`<li style="color:var(--danger)">${esc(w)}</li>`).join('')}</ul>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-imp="run">取り込む</button><button class="btn ghost" type="button" data-imp="cancel">やめる</button></div><p class="msg" id="impmsg"></p></div>`;
 }
 function readSheet(XLSX,wb,name){const ws=wb.Sheets[name];if(!ws)return null;return XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true})}
 function planFrom(XLSX,wb){
-  const warn=[],plan={cards:[],skills:[],soldiers:[],people:null,warn};
+  const warn=[],plan={cards:[],skills:[],soldiers:[],soldierPrune:[],people:null,warn};
   const cr=readSheet(XLSX,wb,'武将データ'),sr=readSheet(XLSX,wb,'スキルデータ'),or=readSheet(XLSX,wb,'兵種データ');
   if(!cr&&!sr&&!or)throw new Error('「武将データ」「スキルデータ」「兵種データ」のどのシートも見つかりません');
   if(cr){const h=cr[0].map(x=>String(x??'').trim()),ix=n=>h.indexOf(n);
@@ -491,14 +496,18 @@ function planFrom(XLSX,wb){
       if(!g.has(n))g.set(n,{name:n,trs:[]});const s=g.get(n),tr={tr:N(row[ix('TR')]),base:ix('素スキル上昇率')<0?0:N(row[ix('素スキル上昇率')]),coef:N(row[ix('係数')])};
       s.trs=s.trs.filter(t=>t.tr!==tr.tr);s.trs.push(tr)}
     for(const [n,s] of g){s.trs=trsOf(s);plan.skills.push({id:findId(M.skills,d=>d.name===n),data:s})}}
-  /* 兵種データ:兵種名・兵士攻撃力の2列。兵種名が同じものを上書き */
-  if(or&&or.length){const h=or[0].map(x=>String(x??'').trim()),ix=n=>h.indexOf(n);
-    for(const n of ['兵種名','兵士攻撃力'])if(ix(n)<0)throw new Error(`兵種データに「${n}」列がありません`);
-    const g=new Map();
-    for(const row of or.slice(1)){const name=row[ix('兵種名')];if(name==null||String(name).trim()==='')continue;const n=String(name).trim();
-      const v=row[ix('兵士攻撃力')];if(v==null||String(v).trim()===''||!Number.isFinite(Number(v)))warn.push(`兵種「${n}」の兵士攻撃力が数値ではありません(0として取り込みます)`);
-      if(g.has(n))warn.push(`兵種「${n}」が2行あります(後の行を使います)`);g.set(n,{name:n,atk:N(v)})}
-    for(const [n,d] of g)plan.soldiers.push({id:findId(M.soldiers,x=>x.name===n),data:d})}
+  /* 兵種データ:兵科・兵種・攻撃力・防禦力・破壊・速度。兵種名が同じものを上書き。列名は表記ゆれも受け付ける */
+  if(or&&or.length){const h=or[0].map(x=>String(x??'').trim()),pick=names=>{for(const n of names){const k=h.indexOf(n);if(k>=0)return k}return -1};
+    const col={name:pick(['兵種','兵種名']),branch:pick(['兵科']),atk:pick(['攻撃力','兵士攻撃力']),def:pick(['防禦力','防御力','兵士防御力','兵士防禦力']),destroy:pick(['破壊']),speed:pick(['速度'])};
+    if(col.name<0)throw new Error('兵種データに「兵種」列がありません');if(col.atk<0)throw new Error('兵種データに「攻撃力」列がありません');
+    const g=new Map();let order=0;
+    for(const row of or.slice(1)){const name=row[col.name];if(name==null||String(name).trim()==='')continue;const n=String(name).trim();
+      const d={name:n,branch:col.branch<0?'':String(row[col.branch]??'').trim(),order:++order};
+      for(const f of ['atk','def','destroy','speed']){const v=col[f]<0?null:row[col[f]];
+        if(f==='atk'&&(v==null||String(v).trim()===''||!Number.isFinite(Number(v))))warn.push(`兵種「${n}」の攻撃力が数値ではありません(0として取り込みます)`);d[f]=N(v)}
+      if(g.has(n))warn.push(`兵種「${n}」が2行あります(後の行を使います)`);g.set(n,d)}
+    for(const [n,d] of g)plan.soldiers.push({id:findId(M.soldiers,x=>x.name===n),data:d});
+    plan.soldierPrune=[...M.soldiers].filter(([,d])=>!g.has(d.name)).map(([id,d])=>({id,name:d.name}))}
   plan.warn=[...new Set(warn)];return plan;
 }
 $('mimport').addEventListener('click',()=>{draft=null;renderEditor();importPlan='pick';renderImport()});
@@ -507,11 +516,13 @@ $('importbox').addEventListener('change',async e=>{if(e.target.id!=='xfile'||!e.
   catch(err){m.className='msg err';m.textContent='読み込めませんでした:'+err.message}});
 $('importbox').addEventListener('click',async e=>{const b=e.target.closest('[data-imp]');if(!b)return;
   if(b.dataset.imp==='cancel'){importPlan=null;renderImport();return}
-  const p=importPlan,m=$('impmsg');b.disabled=true;let done=0;const total=p.cards.length+p.skills.length+p.soldiers.length+(p.people!=null?1:0);
+  const p=importPlan,m=$('impmsg');b.disabled=true;let done=0;const prune=$('impPrune')?.checked?p.soldierPrune:[];const total=p.cards.length+p.skills.length+p.soldiers.length+prune.length+(p.people!=null?1:0);
   try{
     for(const c of p.cards){await db.doc(`${BASE}/cards/${c.id||'n'+c.data.no+'_'+Math.random().toString(36).slice(2,6)}`).set(c.data);m.textContent=`取り込み中 ${++done}/${total}`}
     for(const s of p.skills){await db.doc(`${BASE}/skills/${s.id||newId('s')}`).set(s.data);m.textContent=`取り込み中 ${++done}/${total}`}
     for(const o of p.soldiers){await db.doc(`${BASE}/soldiers/${o.id||newId('o')}`).set(o.data);m.textContent=`取り込み中 ${++done}/${total}`}
+    for(const x of prune){await db.doc(`${BASE}/soldiers/${x.id}`).delete();m.textContent=`取り込み中 ${++done}/${total}`}
+    if(prune.length)p.soldierPrune=[];
     if(p.people!=null){await db.doc(`${BASE}/config/main`).set({...config,people:p.people});done++}
     importPlan=null;renderImport();status(`Excelから ${done} 件を取り込みました。`);setTimeout(()=>status(''),5000);
   }catch(err){m.className='msg err';m.textContent=`${done}件まで取り込んだところで止まりました(${err.code||err.message})。もう一度「取り込む」を押すと続きから上書きします。`;b.disabled=false}});

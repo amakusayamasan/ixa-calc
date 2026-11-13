@@ -375,48 +375,112 @@
  },
  "soldiers": {
   "o000": {
-   "atk": 0,
-   "name": "なし"
+   "name": "武士",
+   "branch": "槍兵科",
+   "atk": 26,
+   "def": 27,
+   "destroy": 5,
+   "speed": 17,
+   "order": 1
   },
   "o001": {
-   "atk": 31,
-   "name": "炮烙"
+   "name": "国人衆",
+   "branch": "槍兵科",
+   "atk": 27,
+   "def": 28,
+   "destroy": 18,
+   "speed": 7,
+   "order": 2
   },
   "o002": {
-   "atk": 33,
-   "name": "足鉄"
+   "name": "弓騎馬",
+   "branch": "弓兵科",
+   "atk": 27,
+   "def": 26,
+   "destroy": 3,
+   "speed": 21,
+   "order": 3
   },
   "o003": {
-   "atk": 32,
-   "name": "騎鉄"
+   "name": "海賊衆",
+   "branch": "弓兵科",
+   "atk": 26,
+   "def": 27,
+   "destroy": 22,
+   "speed": 8,
+   "order": 4
   },
   "o004": {
-   "atk": 32,
-   "name": "雑賀"
+   "name": "赤備え",
+   "branch": "騎馬兵科",
+   "atk": 26,
+   "def": 26,
+   "destroy": 3,
+   "speed": 22,
+   "order": 5
   },
   "o005": {
-   "atk": 40,
-   "name": "炮烙＋７"
+   "name": "母衣衆",
+   "branch": "騎馬兵科",
+   "atk": 27,
+   "def": 27,
+   "destroy": 23,
+   "speed": 7,
+   "order": 6
   },
   "o006": {
-   "atk": 43,
-   "name": "炮烙＋10"
+   "name": "穴太衆",
+   "branch": "兵器兵科",
+   "atk": 25,
+   "def": 25,
+   "destroy": 15,
+   "speed": 15,
+   "order": 7
   },
   "o007": {
-   "atk": 38,
-   "name": "騎鉄＋6"
+   "name": "大筒兵",
+   "branch": "兵器兵科",
+   "atk": 28,
+   "def": 26,
+   "destroy": 14,
+   "speed": 20,
+   "order": 8
   },
   "o008": {
-   "atk": 39,
-   "name": "騎鉄＋7"
+   "name": "鉄砲足軽",
+   "branch": "兵器兵科",
+   "atk": 31,
+   "def": 33,
+   "destroy": 17,
+   "speed": 10,
+   "order": 9
   },
   "o009": {
-   "atk": 42,
-   "name": "騎鉄＋10"
+   "name": "鉄砲騎馬",
+   "branch": "兵器兵科",
+   "atk": 32,
+   "def": 32,
+   "destroy": 20,
+   "speed": 10,
+   "order": 10
   },
   "o010": {
-   "atk": 27,
-   "name": "弓騎馬"
+   "name": "焙烙火矢",
+   "branch": "兵器兵科",
+   "atk": 33,
+   "def": 31,
+   "destroy": 16,
+   "speed": 12,
+   "order": 11
+  },
+  "o011": {
+   "name": "雑賀衆",
+   "branch": "兵器兵科",
+   "atk": 32,
+   "def": 32,
+   "destroy": 19,
+   "speed": 17,
+   "order": 12
   }
  },
  "config": {
