@@ -132,6 +132,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
 .alloc .seg button{padding:3px 12px;font-size:12px}
 .mz{display:inline-block;font-size:11px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 4px;margin-left:4px}
 .muzin.on{color:var(--accent)}
+.mz.cn{color:var(--brass);border-color:var(--brass)}
 .voidnote{grid-column:1/-1;font-size:11px;color:var(--danger);text-align:left!important}
 @media (max-width:640px){.jbrow{grid-template-columns:1fr}}
 .checks{display:flex;flex-wrap:wrap;gap:6px}
@@ -198,7 +199,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     </div>
 
     <div class="slots" id="slots"></div>
-    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、火力合計 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。傑カードには追加スキル・極限スキルを付けられません。傑カードは無尽のルールの対象外で、初期スキルはそのまま発動します。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
+    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、火力合計 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。傑カードには追加スキル・極限スキルを付けられません。傑カードは無尽のルールの対象外で、初期スキルはそのまま発動します。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×(人数、部隊内の同じスキルの数、部隊内のXスキルの数のうち、スキルごとに決めたもの)で求めます。Xスキルは通常枠にしか付けられません。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
   </section>
 
   <section id="view-master" class="view" hidden>
@@ -260,11 +261,23 @@ const allLoaded=()=>loaded.cards&&loaded.skills&&loaded.soldiers;
 const trsOf=d=>[...(d?.trs||[])].sort((a,b)=>N(a.tr)-N(b.tr));
 const trEntry=(d,tr)=>(d?.trs||[]).find(t=>N(t.tr)===N(tr));
 const cardAtk=c=>N(c.baseStat)+N(c.growth)*STAT_FACTOR;
-const skillValue=t=>N(t.base)+N(t.coef)*N(config.people);
+/* スキル上昇率 = 素スキル上昇率 + 係数 × n
+   n はスキルごとの「係数の掛け方」で決まる:人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 */
+const COEF_BY={people:'人数',same:'部隊内の同じスキルの数',x:'部隊内のXスキルの数'};
+const COEF_SHORT={people:'人数',same:'同スキル数',x:'Xスキル数'};
+const coefByOf=d=>COEF_BY[d?.coefBy]?d.coefBy:'people';
+const isX=d=>toFlag(d?.xskill)===1;
+const skillValue=(t,n)=>N(t.base)+N(t.coef)*(n==null?N(config.people):n);
+/* 部隊の編成から n を数える。人数のときは null(=設定の人数) */
+function coefN(d,id){const by=coefByOf(d);if(by==='people'||!form)return null;
+  if(by==='same')return form.slots.reduce((a,s)=>a+['s1','s2','lim'].filter(k=>s[k].id&&s[k].id===id).length,0);
+  return Math.min(8,form.slots.reduce((a,s)=>a+['s1','s2'].filter(k=>isX(M.skills.get(s[k].id))).length,0))}
+/* 編成がない場面(マスタ一覧など)での表示 */
+function skillLabel(t,d){const by=coefByOf(d);return by==='people'?fmt(skillValue(t),1):`${fmt(N(t.base),1)}+${fmt(N(t.coef),2)}×${COEF_SHORT[by]}`}
 const findId=(map,pred)=>{for(const [id,d] of map)if(pred(d))return id;return ''};
 
 /* ---------- 計算 ---------- */
-function skillVal(sel){const s=M.skills.get(sel.id);if(!s)return 0;const t=trEntry(s,sel.tr);return t?skillValue(t):0}
+function skillVal(sel){const s=M.skills.get(sel.id);if(!s)return 0;const t=trEntry(s,sel.tr);return t?skillValue(t,coefN(s,sel.id)):0}
 /* 無尽でスキル効果が何倍になるか(k: s1 / s2 / lim) */
 function muzinMul(sel,k){if(!muzinOn())return 1;if(k==='lim')return 2;const s=M.skills.get(sel.id);return s&&N(s.muzin)>0?2:1}
 /* 初期スキルの効果(無尽を反映) */
@@ -314,8 +327,8 @@ function calc(){
 const SPECIAL_EFFECT={'黎天列光':'全武将の兵数 +2,000(部隊で2つまで)','火焔武闘':'総攻バフ +0.2(部隊で2つまで)'};
 function skillEffect(i,k){const sel=form.slots[i][k],sk=M.skills.get(sel.id);if(!sk)return'';
   const t=trEntry(sk,sel.tr);if(!t)return'このTRの値が登録されていません';
-  const cc=M.cards.get(form.slots[i].card),v=skillValue(t),ct=effT(cc,trEntry(cc,form.slots[i].tr));
-  const mz=muzinMul(sel,k),tag=mz>1?' <span class="mz">無尽×2</span>':'',sp=SPECIAL_EFFECT[sk.name]?`<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name])}</span>`:'';
+  const cn=coefN(sk,sel.id),cc=M.cards.get(form.slots[i].card),v=skillValue(t,cn),ct=effT(cc,trEntry(cc,form.slots[i].tr));
+  const mz=muzinMul(sel,k),tag=(mz>1?' <span class="mz">無尽×2</span>':'')+(cn!=null?` <span class="mz cn">${COEF_SHORT[coefByOf(sk)]}${cn}</span>`:''),sp=SPECIAL_EFFECT[sk.name]?`<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name])}</span>`:'';
   if(!ct)return`効果 <b>${fmt(v*mz,1)}</b>${tag}${sp}`;
   const mul=k==='lim'?N(ct.mulLimit)*1.2:N(ct.mulNormal);
   return`効果 <b>${fmt(v*mz*mul,1)}</b>${tag}${sp}`}
@@ -350,7 +363,7 @@ function soldierItems(q){const words=kana(q).split(/\s+/).filter(Boolean);
 const SKILL_KEYS=['s1','s2','lim'];
 function skillItems(i,k,q){const words=kana(q).split(/\s+/).filter(Boolean);
   const taken=new Set(SKILL_KEYS.filter(x=>x!==k).map(x=>form.slots[i][x].id).filter(Boolean));
-  return [...M.skills].sort(byName).filter(([,d])=>words.every(w=>kana(d.name).includes(w))).map(([id,d])=>({id,d,off:taken.has(id)}))}
+  return [...M.skills].sort(byName).filter(([,d])=>words.every(w=>kana(d.name).includes(w))).map(([id,d])=>{const xl=k==='lim'&&isX(d);return{id,d,off:taken.has(id)||xl,why:xl?'Xスキルは極限枠に付けられません':'この武将で使用中'}})}
 /* 検索欄は「枠番号 i」と「種類 k(card / s1 / s2 / lim)」で区別する */
 const KIND={card:'武将',soldier:'兵種',s1:'追加スキル',s2:'追加スキル2',lim:'極限スキル'};
 const inputId=(i,k)=>`${k}-${i}`,listId=(i,k)=>`list-${k}-${i}`,trId=(i,k)=>k==='card'?`cardtr-${i}`:k==='soldier'?'':`${k}tr-${i}`;
@@ -358,7 +371,7 @@ const selOf=(i,k)=>k==='card'?form.slots[i].card:k==='soldier'?form.slots[i].sol
 const mapOf=k=>k==='card'?M.cards:k==='soldier'?M.soldiers:M.skills;
 const nameOf=(i,k)=>mapOf(k).get(selOf(i,k))?.name||'';
 function metaOf(k,x){if(k==='soldier')return`兵士攻撃力 ${fmt(N(x.d.atk),2)}`;if(k==='card')return`${esc(x.d.rarity||'')} No.${esc(x.d.no)} ・ ${trRange(x.d)}${x.off?' ・ 他の枠で使用中':''}`;
-  const t=trsOf(x.d),last=t[t.length-1];return`${trRange(x.d)}${last?` ・ TR${N(last.tr)}で ${fmt(skillValue(last),1)}`:''}${x.off?' ・ この武将で使用中':''}`}
+  const t=trsOf(x.d),last=t[t.length-1];return`${isX(x.d)?'Xスキル ・ ':''}${trRange(x.d)}${last?` ・ TR${N(last.tr)}で ${skillLabel(last,x.d)}`:''}${x.off?' ・ '+x.why:''}`}
 let combo=null;
 function openCombo(i,k,q){const input=$(inputId(i,k)),list=$(listId(i,k));if(!input||!list)return;
   if(combo&&(combo.i!==i||combo.k!==k))closeCombo(true);
@@ -404,6 +417,7 @@ function renderCalc(){
   {const seen=new Set();for(const s of form.slots){const n=M.cards.get(s.card)?.name;if(!n)continue;if(seen.has(n))s.card='';else seen.add(n)}}
   /* 傑カードは通常枠・極限枠にスキルを付けられない */
   for(const s of form.slots)if(isJCard(s.card))for(const k of SKILL_KEYS)s[k]={id:'',tr:0};
+  for(const s of form.slots)if(s.lim.id&&isX(M.skills.get(s.lim.id)))s.lim={id:'',tr:0};
   for(const s of form.slots){const used=new Set();for(const k of SKILL_KEYS){const id=s[k].id;if(!id)continue;if(used.has(id))s[k].id='';else used.add(id)}}
   const skillRow=(i,k,label,s,off)=>`<div class="field"><label class="label" for="${k}-${i}">${label}</label><div class="pair">
     ${comboBox(i,k,M.skills.get(s.id)?.name||'',off?'傑は付与不可':'なし',off)}
@@ -454,7 +468,7 @@ $('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.clos
 
 /* ---------- マスタ一覧 ---------- */
 /* flag は 0/1 の選択。姫:0=姫ではない 1=姫。無尽は数値(0=なし、1以上=あり) */
-const FLAG_LABELS={hime:['姫ではない','姫']};
+const FLAG_LABELS={hime:['姫ではない','姫'],xskill:['該当しない','Xスキル']};
 const RARITIES=['覇・パラレル天','パラレル天','覇・天','天','極','傑'];
 const toFlag=v=>{if(v==null)return 0;const t=String(v).trim();if(t===''||t==='0'||/^(false|no|なし|いいえ|×|✕|-|—)$/i.test(t))return 0;return 1};
 const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','rarity'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力','number'],['baseDef','素防御力','number'],['growth','攻撃上昇率','number'],['growthDef','防御上昇率','number'],['hime','姫','flag'],['muzin','無尽(0:なし、1以上:あり)','number']];
@@ -490,8 +504,8 @@ function renderMaster(){
       (list.length?list.map(([id,d])=>{const t=trsOf(d),last=t[t.length-1]||{};return`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side==='攻撃・防御'?'side-both':d.side==='防御'?'side-def':d.side==='攻撃'?'side-atk':''}">${esc(d.side||'')}</span></td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost),1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef==null?'—':fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth),2)}</td><td class="num">${d.growthDef==null?'—':fmt(N(d.growthDef),2)}</td><td class="l">${trRange(d)}</td><td class="num">${fmt(N(last.initSkill))}</td><td class="num">${fmt(N(last.totalBuff),2)}</td><td class="num">${toFlag(d.hime)?'姫':'—'}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td></tr>`}).join(''):empty(14))+'</tbody>';
   }else if(mtab==='skills'){
     const maxTr=Math.max(5,...list.flatMap(([,d])=>trsOf(d).map(t=>N(t.tr))));const trs=[...Array(maxTr+1).keys()];
-    html=`<thead><tr><th class="l">スキル名</th><th>無尽</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
-      (list.length?list.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td>${trs.map(t=>{const e=trEntry(d,t);return`<td class="num" title="${e?`素${N(e.base)} + 係数${N(e.coef)}×人数`:''}">${e?fmt(skillValue(e),1):'—'}</td>`}).join('')}</tr>`).join(''):empty(trs.length+2))+'</tbody>';
+    html=`<thead><tr><th class="l">スキル名</th><th>無尽</th><th>Xスキル</th><th class="l">係数の掛け方</th>${trs.map(t=>`<th>TR${t}</th>`).join('')}</tr></thead><tbody>`+
+      (list.length?list.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="num">${N(d.muzin)>0?fmt(N(d.muzin),2):'—'}</td><td class="num">${isX(d)?'○':'—'}</td><td class="l">${COEF_SHORT[coefByOf(d)]}</td>${trs.map(t=>{const e=trEntry(d,t);return`<td class="num" title="${e?`素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}`:''}">${e?skillLabel(e,d):'—'}</td>`}).join('')}</tr>`).join(''):empty(trs.length+4))+'</tbody>';
   }else if(mtab==='jbuffs'){
     const jl=[...M.jbuffs].filter(([,d])=>!q||String(d.name).includes(q)||String(d.no).includes(q)||(d.targets||[]).some(t=>t.includes(q))).sort(byNo);
     html=`<thead><tr><th>カードNo</th><th class="l">武将名</th><th class="l">対象兵種</th><th>所属時攻撃力</th><th>所属時防御力</th><th>外部攻撃力</th><th>外部防御力</th></tr></thead><tbody>`+(jl.length?jl.map(([id,d])=>`<tr data-id="${esc(id)}" class="${ed}"><td class="num">${esc(d.no)}</td><td class="l">${esc(d.name)}</td><td class="l" style="white-space:normal;min-width:140px">${esc(targetsLabel(d))}</td>${JBUFF_VALS.map(f=>`<td class="num">+${fmt(jv(d,f),2)}</td>`).join('')}</tr>`).join(''):empty(7))+'</tbody>';
@@ -507,7 +521,7 @@ function openEditor(coll,id){
   const d=id?structuredClone(M[coll].get(id)):null;
   if(coll==='cards'&&d&&d.muzin==null)d.muzin=0;
   if(coll==='cards')draft={coll,id,data:d||{no:'',rarity:'天',cost:'',side:'攻撃',name:'',troops:'',baseStat:'',baseDef:'',growth:'',growthDef:'',hime:0,muzin:0,trs:[{tr:0,initSkill:0,statBuff:1,mulNormal:1,mulLimit:1,totalBuff:1}]}};
-  else if(coll==='skills')draft={coll,id,data:d?{...d,muzin:N(d.muzin)}:{name:'',muzin:0,trs:[{tr:0,base:0,coef:0}]}};
+  else if(coll==='skills')draft={coll,id,data:d?{...d,muzin:N(d.muzin),xskill:toFlag(d.xskill),coefBy:coefByOf(d)}:{name:'',muzin:0,xskill:0,coefBy:'people',trs:[{tr:0,base:0,coef:0}]}};
   else if(coll==='jbuffs'){if(d){for(const f of JBUFF_VALS)d[f]=jv(d,f);d.targets=d.targets||[]}draft={coll,id,data:d||{no:'',name:'',targets:[],atkIn:'',defIn:'',atkOut:'',defOut:''}}}
   else draft={coll,id,data:d||{name:'',branch:'',atk:'',def:'',destroy:'',speed:''}};
   draft.data.trs&&(draft.data.trs=trsOf(draft.data));
@@ -520,7 +534,8 @@ function syncDraft(){if(!draft)return;const d=draft.data;
 function renderEditor(){
   const box=$('editor');if(!draft||!isOwner){box.innerHTML='';return}
   const {coll,id,data:d}=draft;
-  const inp=(f,label,type)=>type==='rarity'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${(RARITIES.includes(d[f])||!d[f]?RARITIES:[...RARITIES,d[f]]).map(v=>`<option${d[f]===v?' selected':''}>${esc(v)}</option>`).join('')}</select></div>`
+  const inp=(f,label,type)=>type==='coef'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(COEF_BY).map(([v,l])=>`<option value="${v}"${coefByOf(d)===v?' selected':''}>${l}</option>`).join('')}</select></div>`
+    :type==='rarity'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${(RARITIES.includes(d[f])||!d[f]?RARITIES:[...RARITIES,d[f]]).map(v=>`<option${d[f]===v?' selected':''}>${esc(v)}</option>`).join('')}</select></div>`
     :type==='flag'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}" data-flag="1">${(FLAG_LABELS[f]||['0','1']).map((l,v)=>`<option value="${v}"${toFlag(d[f])===v?' selected':''}>${l}</option>`).join('')}</select></div>`
     :type==='side'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${['攻撃','防御','攻撃・防御'].map(v=>`<option${d[f]===v?' selected':''}>${v}</option>`).join('')}</select></div>`
     :`<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="${type}" ${type==='number'?'step="any"':''} value="${esc(d[f]??'')}"></div>`;
@@ -528,7 +543,8 @@ function renderEditor(){
   if(coll==='cards'){
     body=`<div class="grid">${CARD_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}<div class="field"><span class="label">攻撃(素攻)= 素攻撃力 + 攻撃上昇率×690</span><b class="computed num" id="atkPreview">${fmt(cardAtk(d))}</b></div></div>`+trTable(CARD_TR,d.trs);
   }else if(coll==='skills'){
-    body=`<div class="grid">${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>`+trTable(SKILL_TR,d.trs,t=>fmt(skillValue(t),1),'スキル上昇率');
+    body=`<div class="grid">${inp('name','スキル名','text')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${inp('coefBy','係数の掛け方','coef')}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
+    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。</p>`+trTable(SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
   }else if(coll==='jbuffs'){
     const sold=[...M.soldiers].sort(bySoldierOrder),tg=d.targets||[],unknown=tg.filter(t=>!sold.some(([,x])=>x.name===t));
     body=`<div class="grid">${JBUFF_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div>
@@ -546,7 +562,7 @@ function trTable(cols,trs,computed,clabel){
   </tbody></table></div><button class="btn small ghost" type="button" data-act="addtr" style="align-self:start">TRを追加(前の行をコピー)</button></div>`}
 $('editor').addEventListener('input',()=>{if(!draft)return;syncDraft();const d=draft.data;
   if(draft.coll==='cards'&&$('atkPreview'))$('atkPreview').textContent=fmt(cardAtk(d));
-  if(draft.coll==='skills')d.trs.forEach((t,r)=>{const c=document.querySelector(`[data-c="${r}"]`);if(c)c.textContent=fmt(skillValue(t),1)})});
+  if(draft.coll==='skills')d.trs.forEach((t,r)=>{const c=document.querySelector(`[data-c="${r}"]`);if(c)c.textContent=skillLabel(t,d)})});
 $('editor').addEventListener('click',async e=>{const b=e.target.closest('[data-act]');if(!b||!draft)return;const act=b.dataset.act;
   if(act==='close'){draft=null;renderEditor();return}
   if(act==='addtr'){syncDraft();const last=draft.data.trs[draft.data.trs.length-1]||{};draft.data.trs.push({...last,tr:N(last.tr)+1});renderEditor();return}
@@ -567,7 +583,7 @@ function validate(coll,d){
 }
 function clean(coll,d){
   if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='flag'?toFlag(d[f]):t==='number'?N(d[f]):String(d[f]??'').trim();o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
-  if(coll==='skills')return{name:String(d.name).trim(),muzin:N(d.muzin),trs:trsOf({trs:d.trs.map(t=>Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])])))})};
+  if(coll==='skills')return{name:String(d.name).trim(),muzin:N(d.muzin),xskill:toFlag(d.xskill),coefBy:coefByOf(d),trs:trsOf({trs:d.trs.map(t=>Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])])))})};
   if(coll==='jbuffs'){const o={};for(const [f,,t] of JBUFF_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();o.targets=[...new Set((d.targets||[]).map(x=>String(x).trim()).filter(Boolean))];return o}
   const o={};for(const [f,,t] of SOLDIER_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();if(d.order!=null)o.order=N(d.order);return o;
 }
@@ -618,9 +634,11 @@ function planFrom(XLSX,wb){
     for(const row of sr){const k=row.findIndex(x=>String(x??'').trim()==='人数');if(k>=0&&Number.isFinite(Number(row[k+1]))){plan.people=Number(row[k+1]);break}}
     const g=new Map();
     for(const row of sr.slice(1)){const name=row[ix('スキル名')];if(name==null||String(name).trim()==='')continue;const n=String(name).trim();
-      if(!g.has(n))g.set(n,{name:n,trs:[]});if(ix('無尽')>=0&&row[ix('無尽')]!=null&&String(row[ix('無尽')]).trim()!=='')g.get(n).muzin=N(row[ix('無尽')]);const s=g.get(n),tr={tr:N(row[ix('TR')]),base:ix('素スキル上昇率')<0?0:N(row[ix('素スキル上昇率')]),coef:N(row[ix('係数')])};
+      if(!g.has(n))g.set(n,{name:n,trs:[]});if(ix('無尽')>=0&&row[ix('無尽')]!=null&&String(row[ix('無尽')]).trim()!=='')g.get(n).muzin=N(row[ix('無尽')]);
+      if(ix('Xスキル')>=0&&row[ix('Xスキル')]!=null&&String(row[ix('Xスキル')]).trim()!=='')g.get(n).xskill=toFlag(row[ix('Xスキル')]);
+      if(ix('係数の掛け方')>=0&&row[ix('係数の掛け方')]!=null&&String(row[ix('係数の掛け方')]).trim()!==''){const v=String(row[ix('係数の掛け方')]).trim();g.get(n).coefBy=/同/.test(v)||v==='same'?'same':/X|Ｘ/i.test(v)||v==='x'?'x':'people'}const s=g.get(n),tr={tr:N(row[ix('TR')]),base:ix('素スキル上昇率')<0?0:N(row[ix('素スキル上昇率')]),coef:N(row[ix('係数')])};
       s.trs=s.trs.filter(t=>t.tr!==tr.tr);s.trs.push(tr)}
-    for(const [n,s] of g){s.trs=trsOf(s);const id=findId(M.skills,d=>d.name===n);if(s.muzin==null)s.muzin=id?N(M.skills.get(id).muzin):0;plan.skills.push({id,data:s})}}
+    for(const [n,s] of g){s.trs=trsOf(s);const id=findId(M.skills,d=>d.name===n);if(s.muzin==null)s.muzin=id?N(M.skills.get(id).muzin):0;if(s.xskill==null)s.xskill=id?toFlag(M.skills.get(id).xskill):0;if(s.coefBy==null)s.coefBy=id?coefByOf(M.skills.get(id)):'people';plan.skills.push({id,data:s})}}
   /* 兵種データ:兵科・兵種・攻撃力・防禦力・破壊・速度。兵種名が同じものを上書き。列名は表記ゆれも受け付ける */
   if(or&&or.length){const h=or[0].map(x=>String(x??'').trim()),pick=names=>{for(const n of names){const k=h.indexOf(n);if(k>=0)return k}return -1};
     const col={name:pick(['兵種','兵種名']),branch:pick(['兵科']),atk:pick(['攻撃力','兵士攻撃力']),def:pick(['防禦力','防御力','兵士防御力','兵士防禦力']),destroy:pick(['破壊']),speed:pick(['速度'])};
