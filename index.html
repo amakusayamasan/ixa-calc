@@ -212,6 +212,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
       </div>
       <div class="mtools">
         <input id="msearch" class="search" type="search" placeholder="名前で絞り込み">
+        <button id="mclean" class="btn ghost" type="button" hidden>不要データを削除</button>
         <button id="mimport" class="btn ghost" type="button" hidden>Excelから取り込み</button>
         <button id="madd" class="btn" type="button" hidden>新規追加</button>
         <button id="maddSkill" class="btn" type="button" hidden>スキル追加</button>
@@ -222,6 +223,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     <p class="note" id="mnote"></p>
     <div id="seedbox"></div>
     <div id="importbox"></div>
+    <div id="cleanbox"></div>
     <div id="editor"></div>
     <div class="tablewrap"><table id="mtable"></table></div>
   </section>
@@ -543,7 +545,7 @@ const SOLDIER_FIELDS=[['name','兵種名','text'],['branch','兵科','text'],['a
 const bySoldierOrder=(a,b)=>N(a[1].order??9999)-N(b[1].order??9999)||byName(a,b);
 const trRange=d=>{const t=trsOf(d);return t.length?`TR${N(t[0].tr)}〜${N(t[t.length-1].tr)}`:'TRなし'};
 function renderMaster(){
-  $('madd').hidden=!isOwner||mtab==='skills';$('maddSkill').hidden=$('maddInit').hidden=!isOwner||mtab!=='skills';$('mimport').hidden=!isOwner;
+  $('madd').hidden=!isOwner||mtab==='skills';$('maddSkill').hidden=$('maddInit').hidden=!isOwner||mtab!=='skills';$('mimport').hidden=!isOwner;$('mclean').hidden=!isOwner||!cleanPlan().n;
   const mzDiff=isOwner&&mtab==='cards'?[...M.cards.values()].filter(c=>N(c.muzin)>0&&skillByName(c.initName)&&!(cardMuzin(c)>0)).map(c=>`${c.name}(初期スキル「${c.initName}」)`):[];
   $('mnote').textContent=isOwner?'行をクリックすると編集できます。保存した内容はすぐに全員の画面へ反映されます。'+(mzDiff.length?` ※無尽は初期スキルで判定します。以前武将マスタで無尽ありにしていた次の武将は、初期スキルの無尽が0です。スキルマスタで無尽を入れてください:${mzDiff.join('、')}`:''):'マスタの編集は管理者のみです。管理者は右上の「管理者ログイン」からログインしてください。ここでは内容を確認できます。';
   const pp=$('people');pp.hidden=mtab!=='skills';
@@ -772,8 +774,40 @@ $('importbox').addEventListener('click',async e=>{const b=e.target.closest('[dat
     importPlan=null;renderImport();status(`Excelから ${done} 件を取り込みました。`);setTimeout(()=>status(''),5000);
   }catch(err){m.className='msg err';m.textContent=`${done}件まで取り込んだところで止まりました(${err.code||err.message})。もう一度「取り込む」を押すと続きから上書きします。`;b.disabled=false}});
 
+/* ---------- 画面に出なくなった古いデータの削除(管理者用。消すものがなくなるとボタンは消える) ----------
+   ・武将:TRごとの値と無尽(初期スキルがスキルマスタにある武将だけ。ない武将は計算に使うので残す)
+   ・スキル:種類と攻撃or防御を保存し、ふつうのスキルからは初期スキル用の値を、固定の初期スキルからは総攻バフ係数を消す
+   ・傑バフ:古い「攻撃力・防御力」を所属時攻撃力・所属時防御力に移して消す */
+function cleanPlan(){const out={cards:[],skills:[],jbuffs:[],keep:[],n:0};if(!allLoaded())return out;
+  for(const [id,c] of M.cards){const sk=skillByName(c.initName);
+    if(!sk||!trsOf(sk.d).length){if(c.trs||c.muzin!=null)out.keep.push(c.name);continue}
+    if(c.trs!==undefined||c.muzin!==undefined){const d={...c};delete d.trs;delete d.muzin;out.cards.push({id,name:c.name,data:d})}}
+  for(const [id,k] of M.skills){const ini=isInitSkill(k),tb=ini&&tbByOf(k)==='muzin';
+    const trs=(k.trs||[]).map(t=>{const o={...t};if(!ini){for(const [f] of SKILL_INIT)delete o[f];delete o.troopAdd}if(!tb)delete o.tbCoef;return o});
+    const d={...k,init:ini?1:0,side:skillSide(k),trs};if(!ini)delete d.tbBy;
+    if(JSON.stringify(d)!==JSON.stringify(k))out.skills.push({id,name:k.name,data:d})}
+  for(const [id,j] of M.jbuffs){if(j.atk===undefined&&j.def===undefined)continue;const d={...j};for(const f of JBUFF_VALS)d[f]=jv(j,f);delete d.atk;delete d.def;out.jbuffs.push({id,name:j.name,data:d})}
+  out.n=out.cards.length+out.skills.length+out.jbuffs.length;return out}
+let cleaning=null;
+function renderClean(){const box=$('cleanbox');if(!cleaning){box.innerHTML='';return}const p=cleaning;
+  box.innerHTML=`<div class="import"><strong>不要データの削除</strong>
+    <p class="note">画面に出なくなった古いデータを消します。計算結果は変わりません。</p><ul>
+    <li>武将:${p.cards.length}枚(以前のTRごとの値・無尽)</li><li>スキル:${p.skills.length}件(種類・攻撃or防御を保存、使わない初期スキル用の値)</li><li>傑バフ:${p.jbuffs.length}件(古い攻撃力・防御力)</li>
+    ${p.keep.length?`<li>初期スキルがスキルマスタにないため残す武将:${p.keep.map(esc).join('、')}</li>`:''}</ul>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-cl="run">削除する</button><button class="btn ghost" type="button" data-cl="cancel">やめる</button></div><p class="msg" id="clmsg"></p></div>`}
+$('mclean').addEventListener('click',()=>{draft=null;renderEditor();importPlan=null;renderImport();cleaning=cleanPlan();renderClean()});
+$('cleanbox').addEventListener('click',async e=>{const b=e.target.closest('[data-cl]');if(!b)return;
+  if(b.dataset.cl==='cancel'){cleaning=null;renderClean();return}
+  const p=cleaning,m=$('clmsg');b.disabled=true;m.className='msg';m.textContent='削除しています…';
+  const before=form?Math.round(calc().total):null;
+  try{const ops=[...p.cards.map(x=>['cards',x]),...p.skills.map(x=>['skills',x]),...p.jbuffs.map(x=>['jbuffs',x])];
+    for(let i=0;i<ops.length;i+=400){const batch=db.batch();for(const [coll,x] of ops.slice(i,i+400))batch.set(db.doc(`${BASE}/${coll}/${x.id}`),x.data);await batch.commit()}
+    cleaning=null;renderClean();setTimeout(()=>{const after=form?Math.round(calc().total):null;
+      status(`不要データを削除しました(武将${p.cards.length}・スキル${p.skills.length}・傑バフ${p.jbuffs.length})。`+(before!=null?(before===after?'計算結果は変わっていません。':`計算結果が変わりました(${fmt(before)} → ${fmt(after)})。お知らせください。`):''));setTimeout(()=>status(''),8000)},500)}
+  catch(err){b.disabled=false;m.className='msg err';m.textContent='削除できませんでした('+(err.code||err.message)+')'}});
+
 /* ---------- 画面切替・起動 ---------- */
-$('mtabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mtab=b.dataset.m;draft=null;importPlan=null;[...$('mtabs').children].forEach(x=>x.setAttribute('aria-pressed',x===b));renderEditor();renderImport();renderMaster()});
+$('mtabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mtab=b.dataset.m;draft=null;importPlan=null;cleaning=null;renderClean();[...$('mtabs').children].forEach(x=>x.setAttribute('aria-pressed',x===b));renderEditor();renderImport();renderMaster()});
 $('msearch').addEventListener('input',renderMaster);
 $('madd').addEventListener('click',()=>{importPlan=null;renderImport();openEditor(mtab,null)});
 $('maddSkill').addEventListener('click',()=>{importPlan=null;renderImport();openEditor('skills',null,'skill')});
