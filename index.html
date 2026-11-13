@@ -118,7 +118,9 @@ tbody tr.editable:hover{background:var(--accent-weak)}
 .jbrow label{display:flex;gap:8px;align-items:flex-start;cursor:pointer;min-width:0}
 .jbrow label input{width:auto;margin-top:4px;accent-color:var(--accent)}
 .jbrow .meta{font-size:12px;color:var(--muted)}
-.jbrow .seg button{padding:4px 10px;font-size:12px;white-space:nowrap}
+.jbvals{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:12px;color:var(--muted);white-space:nowrap}
+.jbvals .jbon{color:var(--accent);font-weight:700}
+@media (max-width:640px){.jbvals{align-items:flex-start}}
 .plus{color:var(--brass);font-weight:700;margin-left:4px}
 @media (max-width:640px){.jbrow{grid-template-columns:1fr}}
 .checks{display:flex;flex-wrap:wrap;gap:6px}
@@ -187,7 +189,7 @@ tbody tr.editable:hover{background:var(--accent-weak)}
     </div>
 
     <div class="slots" id="slots"></div>
-    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は 素攻撃力 + 上昇率×690、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊長の兵数+8000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)で、この2つと天穿奏覇はスキル値に加算しません。傑バフは、選んだものの攻撃力(所属時か外部)を対象兵種の兵士攻撃力に足します。編成はこの端末に記憶されます。</p>
+    <p class="note">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×部隊長の素攻バフ、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、素火力 = (素攻合計×スキル合計÷100 + 素攻合計)×陣補正×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は 素攻撃力 + 上昇率×690、スキル値は 素スキル上昇率 + 係数×人数 で求めます。黎天列光は1つにつき部隊長の兵数+8000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)で、この2つと天穿奏覇はスキル値に加算しません。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
   </section>
 
   <section id="view-master" class="view" hidden>
@@ -248,11 +250,16 @@ const findId=(map,pred)=>{for(const [id,d] of map)if(pred(d))return id;return ''
 
 /* ---------- 計算 ---------- */
 function skillVal(sel){const s=M.skills.get(sel.id);if(!s||ZERO_IN_KENSHIN.includes(s.name))return 0;const t=trEntry(s,sel.tr);return t?skillValue(t):0}
-/* 傑バフ:選んだ傑バフのうち、その兵種が対象(空なら全兵種)のものの攻撃力を足す。所属時/外部は傑バフごとに選ぶ */
+/* 傑バフ
+   ・所属時:その傑カード(カードNoが同じ武将)が部隊長・小隊長のどこかの枠にいれば自動でかかる
+   ・外部:傑バフボタンで選んだものがかかる
+   ・両方当てはまれば、所属時と外部の値をすべて合計する。対象兵種が空なら全兵種に効く */
 const jbFind=no=>{const id=findId(M.jbuffs,d=>String(d.no)===String(no));return id?M.jbuffs.get(id):null};
-const jbActive=()=>(form?.jb||[]).map(x=>({...x,d:jbFind(x.no)})).filter(x=>x.d);
+const jbOuter=()=>(form?.jb||[]).map(no=>jbFind(no)).filter(Boolean);
+const jbInUnit=()=>{if(!form)return[];const nos=new Set(form.slots.map(s=>M.cards.get(s.card)?.no).filter(v=>v!=null).map(String));return [...M.jbuffs.values()].filter(d=>nos.has(String(d.no)))};
 const jbHits=(d,sname)=>!(d.targets&&d.targets.length)||(sname&&d.targets.includes(sname));
-function jbBonus(sname){if(!sname)return 0;return jbActive().reduce((a,x)=>a+(jbHits(x.d,sname)?jv(x.d,x.mode==='in'?'atkIn':'atkOut'):0),0)}
+function jbBonus(sname){if(!sname)return 0;
+  return jbInUnit().reduce((a,d)=>a+(jbHits(d,sname)?jv(d,'atkIn'):0),0)+jbOuter().reduce((a,d)=>a+(jbHits(d,sname)?jv(d,'atkOut'):0),0)}
 function calc(){
   const sl=form.slots.map(s=>{const c=M.cards.get(s.card);return{...s,c,t:trEntry(c,s.tr)}});
   const names=sl.flatMap(s=>[s.s1,s.s2,s.lim]).map(x=>M.skills.get(x.id)?.name).filter(Boolean);
@@ -294,10 +301,11 @@ function updateResults(){
   if(M.cards.size&&M.skills.size&&M.soldiers.size)store.set('ixa-form-v2',toKeys(form));
 }
 /* 端末への記憶はIDではなく「カードNo・スキル名・兵種名」で持つ */
-function toKeys(f){return{jin:f.jin,jb:(f.jb||[]).map(x=>({no:String(x.no),mode:x.mode==='in'?'in':'out'})),slots:f.slots.map(s=>({card:String(M.cards.get(s.card)?.no??''),tr:s.tr,soldier:M.soldiers.get(s.soldier)?.name||'',
+function toKeys(f){return{jin:f.jin,jb:(f.jb||[]).map(String),slots:f.slots.map(s=>({card:String(M.cards.get(s.card)?.no??''),tr:s.tr,soldier:M.soldiers.get(s.soldier)?.name||'',
   s1:[M.skills.get(s.s1.id)?.name||'',s.s1.tr],s2:[M.skills.get(s.s2.id)?.name||'',s.s2.tr],lim:[M.skills.get(s.lim.id)?.name||'',s.lim.tr]}))}}
-function fromKeys(f){const sk=([n,tr])=>({id:n?findId(M.skills,d=>d.name===n):'',tr:N(tr)});
-  return{jin:f.jin??1.05,jb:Array.isArray(f.jb)?f.jb.map(x=>({no:String(x.no),mode:x.mode==='in'?'in':'out'})):[],slots:f.slots.map(s=>({card:findId(M.cards,d=>String(d.no)===String(s.card)),tr:N(s.tr),soldier:findId(M.soldiers,d=>d.name===s.soldier),s1:sk(s.s1),s2:sk(s.s2),lim:sk(s.lim)}))}}
+function fromKeys(f){if(!f||typeof f!=='object')f=SAMPLE;if(!Array.isArray(f.slots)||f.slots.length!==4)f={...f,slots:SAMPLE.slots};
+  const sk=(v)=>{const [n,tr]=Array.isArray(v)?v:['',0];return{id:n?findId(M.skills,d=>d.name===n):'',tr:N(tr)}};
+  return{jin:f.jin??1.05,jb:Array.isArray(f.jb)?[...new Set(f.jb.filter(x=>typeof x!=='object'||x.mode!=='in').map(x=>String(typeof x==='object'?x.no:x)))]:[],slots:f.slots.map(s=>({card:findId(M.cards,d=>String(d.no)===String(s.card)),tr:N(s.tr),soldier:findId(M.soldiers,d=>d.name===s.soldier),s1:sk(s.s1),s2:sk(s.s2),lim:sk(s.lim)}))}}
 const byName=(a,b)=>String(a[1].name).localeCompare(String(b[1].name),'ja',{numeric:true})||N(a[1].no)-N(b[1].no);
 /* 武将検索。同じ武将(カード名が同じもの。パラレルも含む)は他の枠で選べない */
 const kana=s=>String(s??'').normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
@@ -387,28 +395,25 @@ $('slots').addEventListener('change',e=>{const t=e.target,k=t.dataset.k;if(!k)re
   updateResults()});
 $('jin').addEventListener('input',e=>{if(form){form.jin=parseFloat(e.target.value);updateResults()}});
 $('resetForm').addEventListener('click',()=>{form=fromKeys(SAMPLE);renderCalc()});
-function renderJb(){const btn=$('jbBtn'),panel=$('jbpanel');const act=form?jbActive():[];
-  btn.textContent=act.length?`傑バフ:${act.length}件`:'傑バフ:なし';btn.classList.toggle('on',act.length>0);
+function renderJb(){const btn=$('jbBtn'),panel=$('jbpanel');const out=form?jbOuter():[],inn=form?jbInUnit():[];
+  const parts=[];if(out.length)parts.push(`外部${out.length}件`);if(inn.length)parts.push(`所属${inn.length}件`);
+  btn.textContent=parts.length?`傑バフ:${parts.join('・')}`:'傑バフ:なし';btn.classList.toggle('on',parts.length>0);
   btn.setAttribute('aria-expanded',String(!panel.hidden));
   if(panel.hidden||!form)return;
-  const list=[...M.jbuffs].sort(byNo),sel=new Map((form.jb||[]).map(x=>[String(x.no),x.mode]));
-  panel.innerHTML=`<div class="jbhead"><strong>使う傑バフを選ぶ</strong><div style="display:flex;gap:8px"><button class="btn small ghost" type="button" data-jb-act="clear"${sel.size?'':' disabled'}>すべて外す</button><button class="btn small" type="button" data-jb-act="close">閉じる</button></div></div>
-    <p class="note">選んだ傑バフの攻撃力が、対象兵種の兵士攻撃力に足されます。傑バフごとに「所属時」(その傑カードが部隊にいる)か「外部」(外からかかる)を選んでください。複数選ぶと合計されます。防御力は防御部隊の計算で使います。</p>
-    <div class="jblist">${list.length?list.map(([id,d])=>{const no=String(d.no),on=sel.has(no),mode=sel.get(no)||'out';
-      return`<div class="jbrow${on?' on':''}"><label><input type="checkbox" data-jb="${esc(no)}"${on?' checked':''}><span><b>${esc(d.name)}</b><br><span class="meta">No.${esc(no)} ・ 対象:${esc(targetsLabel(d))}</span></span></label>
-      <div class="seg" role="group" aria-label="${esc(d.name)}のかかり方">
-        <button type="button" data-jb-mode="in" data-no="${esc(no)}" aria-pressed="${on&&mode==='in'}">所属時 攻+${fmt(jv(d,'atkIn'),2)}</button>
-        <button type="button" data-jb-mode="out" data-no="${esc(no)}" aria-pressed="${on&&mode==='out'}">外部 攻+${fmt(jv(d,'atkOut'),2)}</button></div></div>`}).join('')
+  const list=[...M.jbuffs].sort(byNo),sel=new Set((form.jb||[]).map(String)),innNos=new Set(inn.map(d=>String(d.no)));
+  panel.innerHTML=`<div class="jbhead"><strong>外部からかける傑バフを選ぶ</strong><div style="display:flex;gap:8px"><button class="btn small ghost" type="button" data-jb-act="clear"${sel.size?'':' disabled'}>外部をすべて外す</button><button class="btn small" type="button" data-jb-act="close">閉じる</button></div></div>
+    <p class="note">チェックした傑バフの「外部」の攻撃力が、対象兵種の兵士攻撃力に足されます。その傑カードが部隊長・小隊長の枠にいる場合は「所属時」の攻撃力が自動で足され、外部にもチェックがあれば両方を合計します。防御力は防御部隊の計算で使います。</p>
+    <div class="jblist">${list.length?list.map(([id,d])=>{const no=String(d.no),on=sel.has(no),inU=innNos.has(no);
+      return`<div class="jbrow${on||inU?' on':''}"><label><input type="checkbox" data-jb="${esc(no)}"${on?' checked':''}><span><b>${esc(d.name)}</b><br><span class="meta">No.${esc(no)} ・ 対象:${esc(targetsLabel(d))}</span></span></label>
+      <div class="jbvals"><span class="${on?'jbon':''}">外部 攻+${fmt(jv(d,'atkOut'),2)}</span><span class="${inU?'jbon':''}">${inU?'部隊に所属中:':''}所属時 攻+${fmt(jv(d,'atkIn'),2)}</span></div></div>`}).join('')
       :'<p class="note">傑バフマスタがまだ登録されていません。マスタ管理の「傑バフ」タブから登録してください。</p>'}</div>`;
 }
 $('jbBtn').addEventListener('click',()=>{const p=$('jbpanel');p.hidden=!p.hidden;renderJb()});
 $('jbpanel').addEventListener('click',e=>{if(!form)return;const b=e.target.closest('button');if(!b)return;
   if(b.dataset.jbAct==='close'){$('jbpanel').hidden=true;renderJb();$('jbBtn').focus();return}
-  if(b.dataset.jbAct==='clear'){form.jb=[];renderJb();updateResults();return}
-  if(b.dataset.jbMode){const no=b.dataset.no,mode=b.dataset.jbMode;form.jb=(form.jb||[]).filter(x=>String(x.no)!==no);form.jb.push({no,mode});renderJb();updateResults()}});
+  if(b.dataset.jbAct==='clear'){form.jb=[];renderJb();updateResults()}});
 $('jbpanel').addEventListener('change',e=>{if(!form)return;const c=e.target.closest('[data-jb]');if(!c)return;const no=c.dataset.jb;
-  const prev=(form.jb||[]).find(x=>String(x.no)===no);form.jb=(form.jb||[]).filter(x=>String(x.no)!==no);
-  if(c.checked)form.jb.push({no,mode:prev?.mode||'out'});renderJb();updateResults()});
+  form.jb=(form.jb||[]).map(String).filter(x=>x!==no);if(c.checked)form.jb.push(no);renderJb();updateResults()});
 
 /* ---------- マスタ一覧 ---------- */
 const CARD_FIELDS=[['no','カードNo','number'],['rarity','レアリティ','text'],['cost','武将コスト','number'],['side','攻撃or防御','side'],['name','カード名','text'],['troops','兵数','number'],['baseStat','素攻撃力・素防御力','number'],['growth','攻撃・防御上昇率','number'],['hime','姫','number']];
