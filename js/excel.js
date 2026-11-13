@@ -181,6 +181,23 @@ function readSheet(XLSX, wb, name) {
   if (!ws) return null;
   return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
 }
+/* ---------- 取り込み内容の組み立て ---------- */
+/* シートの1行目(見出し)から列番号を探す道具。名前の配列を渡すと、最初に見つかった列を返す(表記ゆれ対応) */
+function headerOf(rows) {
+  const h = rows[0].map(x => String(x ?? '').trim());
+  return n => {
+    for (const x of Array.isArray(n) ? n : [n]) {
+      const k = h.indexOf(x);
+      if (k >= 0) return k;
+    }
+    return -1;
+  };
+}
+/* 登録済みのスキルの、同じTRの値 */
+const oldSkillTr = (name, tr) => {
+  const old = M.skills.get(findId(M.skills, d => d.name === name) || '');
+  return old && trEntry(old, tr);
+};
 function planFrom(XLSX, wb) {
   const warn = [],
     plan = { cards: [], skills: [], soldiers: [], jbuffs: [], people: null, warn };
@@ -192,334 +209,267 @@ function planFrom(XLSX, wb) {
     throw new Error(
       '「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」のどのシートも見つかりません',
     );
-  if (cr) {
-    const h = cr[0].map(x => String(x ?? '').trim()),
-      ix = n => {
-        if (Array.isArray(n)) {
-          for (const x of n) {
-            const k = h.indexOf(x);
-            if (k >= 0) return k;
-          }
-          return -1;
-        }
-        return h.indexOf(n);
-      };
-    const need = ['カードNo', 'カード名'];
-    for (const n of need) if (ix(n) < 0) throw new Error(`武将データに「${n}」列がありません`);
-    const col = {
-      no: 'カードNo',
-      rarity: 'レアリティ',
-      cost: '武将コスト',
-      side: '攻撃or防御',
-      name: 'カード名',
-      initName: '初期スキル名',
-      troops: '兵数',
-      baseStat: ['素攻撃力', '素攻撃力・素防御力'],
-      baseDef: ['素防御力'],
-      growth: ['攻撃上昇率', '攻撃・防御上昇率', '上昇率'],
-      growthDef: ['防御上昇率'],
-      hime: '姫',
-      kengou: '剣豪',
-      tr: 'TR',
-      initSkill: '初期スキル',
-      statBuff: '素攻・防バフ',
-      mulNormal: '倍枠通常',
-      mulLimit: '倍枠極限',
-      totalBuff: '総攻・防バフ',
-    };
-    const g = new Map();
-    for (const row of cr.slice(1)) {
-      const v = k => (ix(col[k]) < 0 ? null : row[ix(col[k])]);
-      if (v('no') == null || v('name') == null) continue;
-      if (
-        v('rarity') != null &&
-        String(v('rarity')).trim() !== '' &&
-        !RARITIES.includes(String(v('rarity')).trim())
-      )
-        warn.push(
-          `カードNo ${String(v('no')).trim()} のレアリティ「${String(v('rarity')).trim()}」は選択肢にありません(そのまま登録します)`,
-        );
-      /* 1枚1行。TRと初期スキルの値はスキルマスタで持つので、TRの列があっても読まない(同じカードNoの2行目以降は無視) */
-      const no = String(v('no')).trim();
-      if (g.has(no)) continue;
-      const c = {};
-      for (const [f, , t] of CARD_FIELDS)
-        c[f] =
-          t === 'flag' || t === 'check' ? toFlag(v(f)) : t === 'number' ? N(v(f)) : String(v(f) ?? '').trim();
-      g.set(no, c);
-    }
-    /* シートに無い列(無尽・姫など)は、登録済みの値をそのまま残す */
-    const missing = CARD_FIELDS.map(([f]) => f).filter(f => ix(col[f]) < 0);
-    for (const [no, c] of g) {
-      const id = findId(M.cards, d => String(d.no) === no);
-      if (id) {
-        const old = M.cards.get(id);
-        for (const f of missing) if (old[f] != null) c[f] = old[f];
-        /* 初期スキルがスキルマスタにない武将の、以前のTRの値と無尽は残す */ for (const f of ['trs', 'muzin'])
-          if (old[f] !== undefined) c[f] = old[f];
-      }
-      plan.cards.push({ id, data: c });
-    }
-  }
-  if (sr) {
-    const h = sr[0].map(x => String(x ?? '').trim()),
-      ix = n => h.indexOf(n);
-    for (const n of ['スキル名', 'TR', '係数'])
-      if (ix(n) < 0) throw new Error(`スキルデータに「${n}」列がありません`);
-    for (const row of sr) {
-      const k = row.findIndex(x => String(x ?? '').trim() === '人数');
-      if (k >= 0 && Number.isFinite(Number(row[k + 1]))) {
-        plan.people = Number(row[k + 1]);
-        break;
-      }
-    }
-    const g = new Map();
-    for (const row of sr.slice(1)) {
-      const name = row[ix('スキル名')];
-      if (name == null || String(name).trim() === '') continue;
-      const n = String(name).trim();
-      if (!g.has(n)) g.set(n, { name: n, trs: [] });
-      if (ix('無尽') >= 0 && row[ix('無尽')] != null && String(row[ix('無尽')]).trim() !== '')
-        g.get(n).muzin = N(row[ix('無尽')]);
-      {
-        const c =
-          ix('付与不可') >= 0 ? ix('付与不可') : ix('スキル付与') >= 0 ? ix('スキル付与') : ix('付与');
-        if (c >= 0 && row[c] != null && String(row[c]).trim() !== '') {
-          const v = String(row[c]).trim();
-          g.get(n).noAdd = ix('付与不可') >= 0 ? toFlag(v) : /不可|できない|×|✕|^0$|^false$/i.test(v) ? 1 : 0;
-        }
-      }
-      if (ix('Xスキル') >= 0 && row[ix('Xスキル')] != null && String(row[ix('Xスキル')]).trim() !== '')
-        g.get(n).xskill = toFlag(row[ix('Xスキル')]);
-      if (
-        ix('係数の掛け方') >= 0 &&
-        row[ix('係数の掛け方')] != null &&
-        String(row[ix('係数の掛け方')]).trim() !== ''
-      ) {
-        const v = String(row[ix('係数の掛け方')]).trim();
-        g.get(n).coefBy =
-          /同/.test(v) || v === 'same' ? 'same' : /X|Ｘ/i.test(v) || v === 'x' ? 'x' : 'people';
-      }
-      const s = g.get(n),
-        tr = {
-          tr: N(row[ix('TR')]),
-          base: ix('素スキル上昇率') < 0 ? 0 : N(row[ix('素スキル上昇率')]),
-          coef: N(row[ix('係数')]),
-        };
-      {
-        const c = ix('種類');
-        if (c >= 0 && hasV(row[c])) s.init = /初期/.test(String(row[c])) ? 1 : 0;
-      }
-      for (const [col, key] of [
-        ['素攻バフ本人のみ', 'self'],
-        ['部隊長限定', 'leader'],
-      ]) {
-        const c = ix(col);
-        if (c >= 0 && hasV(row[c])) s.effFlags = { ...(s.effFlags || {}), [key]: toFlag(row[c]) === 1 };
-      }
-      {
-        const c = ix('係数最大TR参照');
-        if (c >= 0 && hasV(row[c])) s.coefMaxTr = toFlag(row[c]);
-      }
-      {
-        const c = ix('模倣可否');
-        if (c >= 0 && hasV(row[c])) s.noMimic = /不可|できない/.test(String(row[c])) ? 1 : 0;
-      }
-      {
-        const c = ix('模倣');
-        if (c >= 0 && hasV(row[c])) {
-          const v = String(row[c]);
-          s.mimic = /自/.test(v) ? 'self' : /他|部隊長/.test(v) ? 'leader' : 'none';
-        }
-        const k = ix('模倣倍率');
-        if (k >= 0 && hasV(row[k])) tr.mimicRate = N(row[k]);
-        const q = ix('重複上限');
-        if (q >= 0 && hasV(row[q])) tr.dupMax = N(row[q]);
-      }
-      {
-        const c = [ix('攻撃or防御'), ix('攻防')].find(x => x >= 0);
-        if (c != null && hasV(row[c])) {
-          const v = String(row[c]).trim();
-          s.side = /攻/.test(v) && /防/.test(v) ? '攻撃・防御' : /防/.test(v) ? '防御' : '攻撃';
-        }
-      }
-      {
-        const c = ix('総攻・防バフの掛け方');
-        if (c >= 0 && hasV(row[c])) s.tbBy = /無尽/.test(String(row[c])) ? 'muzin' : 'fixed';
-        const k = ix('総攻・防バフ係数');
-        if (k >= 0 && hasV(row[k])) tr.tbCoef = N(row[k]);
-        else {
-          const old = M.skills.get(findId(M.skills, d => d.name === n) || ''),
-            oe = old && trEntry(old, tr.tr);
-          if (oe && oe.tbCoef != null) tr.tbCoef = oe.tbCoef;
-        }
-      }
-      {
-        const k = ix('兵数加算');
-        if (k >= 0 && hasV(row[k])) tr.troopAdd = N(row[k]);
-        else {
-          const old = M.skills.get(findId(M.skills, d => d.name === n) || ''),
-            oe = old && trEntry(old, tr.tr);
-          if (oe && oe.troopAdd != null) tr.troopAdd = oe.troopAdd;
-        }
-      }
-      for (const [f, l] of SKILL_INIT) {
-        const c = ix(l);
-        if (c >= 0 && row[c] != null && String(row[c]).trim() !== '') tr[f] = N(row[c]);
-        else {
-          const old = M.skills.get(findId(M.skills, d => d.name === n) || ''),
-            oe = old && trEntry(old, tr.tr);
-          if (oe && oe[f] != null) tr[f] = oe[f];
-        }
-      }
-      s.trs = s.trs.filter(t => t.tr !== tr.tr);
-      s.trs.push(tr);
-    }
-    for (const [n, s] of g) {
-      s.trs = trsOf(s);
-      const id = findId(M.skills, d => d.name === n);
-      if (s.muzin == null) s.muzin = id ? N(M.skills.get(id).muzin) : 0;
-      if (s.xskill == null) s.xskill = id ? toFlag(M.skills.get(id).xskill) : 0;
-      if (s.noAdd == null) s.noAdd = id ? toFlag(M.skills.get(id).noAdd) : 0;
-      if (s.coefBy == null) s.coefBy = id ? coefByOf(M.skills.get(id)) : 'people';
-      if (s.side == null) s.side = id ? skillSide(M.skills.get(id)) : '攻撃';
-      if (s.mimic == null && id && isMimic(M.skills.get(id))) s.mimic = mimicOf(M.skills.get(id));
-      if (s.mimic === 'none') delete s.mimic;
-      if (s.init) {
-        const old = id ? M.skills.get(id) : null,
-          ef = {
-            ...effsOf({ ...s, effs: undefined }),
-            ...(old?.effs ? { self: !!old.effs.self, leader: !!old.effs.leader } : {}),
-            ...(s.effFlags || {}),
-          };
-        s.effs = ef;
-      }
-      delete s.effFlags;
-      if (s.coefMaxTr == null && id && M.skills.get(id).coefMaxTr) s.coefMaxTr = 1;
-      if (!s.coefMaxTr || s.coefBy !== 'same') delete s.coefMaxTr;
-      if (s.noMimic == null && id && M.skills.get(id).noMimic != null)
-        s.noMimic = toFlag(M.skills.get(id).noMimic);
-      if (s.tbBy == null && id && M.skills.get(id).tbBy) s.tbBy = tbByOf(M.skills.get(id));
-      if (s.init == null)
-        s.init = id
-          ? isInitSkill(M.skills.get(id))
-            ? 1
-            : 0
-          : s.trs.some(t => SKILL_INIT.some(([f]) => t[f] != null))
-            ? 1
-            : 0;
-      if (!s.init)
-        s.trs = s.trs.map(t => {
-          const o = { ...t };
-          for (const [f] of SKILL_INIT) delete o[f];
-          delete o.troopAdd;
-          delete o.tbCoef;
-          return o;
-        });
-      plan.skills.push({ id, data: s });
-    }
-  }
-  /* 兵種データ:兵科・兵種・攻撃力・防禦力・破壊・速度。兵種名が同じものを上書き。列名は表記ゆれも受け付ける */
-  if (or && or.length) {
-    const h = or[0].map(x => String(x ?? '').trim()),
-      pick = names => {
-        for (const n of names) {
-          const k = h.indexOf(n);
-          if (k >= 0) return k;
-        }
-        return -1;
-      };
-    const col = {
-      name: pick(['兵種', '兵種名']),
-      branch: pick(['兵科']),
-      atk: pick(['攻撃力', '兵士攻撃力']),
-      def: pick(['防禦力', '防御力', '兵士防御力', '兵士防禦力']),
-      destroy: pick(['破壊']),
-      speed: pick(['速度']),
-    };
-    if (col.name < 0) throw new Error('兵種データに「兵種」列がありません');
-    if (col.atk < 0) throw new Error('兵種データに「攻撃力」列がありません');
-    const g = new Map();
-    let order = 0;
-    for (const row of or.slice(1)) {
-      const name = row[col.name];
-      if (name == null || String(name).trim() === '') continue;
-      const n = String(name).trim();
-      const d = {
-        name: n,
-        branch: col.branch < 0 ? '' : String(row[col.branch] ?? '').trim(),
-        order: ++order,
-      };
-      for (const f of ['atk', 'def', 'destroy', 'speed']) {
-        const v = col[f] < 0 ? null : row[col[f]];
-        if (f === 'atk' && (v == null || String(v).trim() === '' || !Number.isFinite(Number(v))))
-          warn.push(`兵種「${n}」の攻撃力が数値ではありません(0として取り込みます)`);
-        d[f] = N(v);
-      }
-      if (g.has(n)) warn.push(`兵種「${n}」が2行あります(後の行を使います)`);
-      g.set(n, d);
-    }
-    for (const [n, d] of g) plan.soldiers.push({ id: findId(M.soldiers, x => x.name === n), data: d });
-  }
-  /* 傑バフデータ:カードNo・武将名・対象兵種(「、」区切り。空なら全兵種)・所属時攻撃力・所属時防御力・外部攻撃力・外部防御力。カードNoが同じものを上書き */
-  if (jr && jr.length) {
-    const h = jr[0].map(x => String(x ?? '').trim()),
-      pick = names => {
-        for (const n of names) {
-          const k = h.indexOf(n);
-          if (k >= 0) return k;
-        }
-        return -1;
-      };
-    const col = {
-      no: pick(['カードNo', 'カードNO', 'No']),
-      name: pick(['武将名', 'カード名']),
-      targets: pick(['対象兵種', '兵種']),
-      atkIn: pick(['所属時攻撃力']),
-      defIn: pick(['所属時防御力', '所属時防禦力']),
-      atkOut: pick(['外部攻撃力']),
-      defOut: pick(['外部防御力', '外部防禦力']),
-    };
-    const JL = {
-      no: 'カードNo',
-      name: '武将名',
-      targets: '対象兵種',
-      atkIn: '所属時攻撃力',
-      defIn: '所属時防御力',
-      atkOut: '外部攻撃力',
-      defOut: '外部防御力',
-    };
-    for (const k in JL) if (col[k] < 0) throw new Error(`傑バフデータに「${JL[k]}」列がありません`);
-    const g = new Map();
-    for (const row of jr.slice(1)) {
-      const no = row[col.no],
-        name = row[col.name];
-      if ((no == null || String(no).trim() === '') && (name == null || String(name).trim() === '')) continue;
-      const n = String(name ?? '').trim();
-      if (no == null || !Number.isFinite(Number(no))) {
-        warn.push(`傑バフ「${n || '(名前なし)'}」のカードNoが数値ではないため、取り込みません`);
-        continue;
-      }
-      const key = String(Number(no)),
-        d = { no: Number(no), name: n, targets: splitTargets(row[col.targets]) };
-      const miss = d.targets.filter(t => !findId(M.soldiers, x => x.name === t));
-      if (miss.length)
-        warn.push(
-          `傑バフ「${n}」の対象兵種「${miss.join('、')}」は兵種マスタにありません(名前のまま登録します)`,
-        );
-      for (const f of JBUFF_VALS) {
-        const v = row[col[f]];
-        if (v != null && String(v).trim() !== '' && !Number.isFinite(Number(v)))
-          warn.push(`傑バフ「${n}」の${JL[f]}が数値ではありません(0として取り込みます)`);
-        d[f] = N(v);
-      }
-      if (g.has(key)) warn.push(`カードNo ${key} の傑バフが2行あります(後の行を使います)`);
-      g.set(key, d);
-    }
-    for (const [key, d] of g) plan.jbuffs.push({ id: findId(M.jbuffs, x => String(x.no) === key), data: d });
-  }
+  if (cr) planCards(cr, plan, warn);
+  if (sr) planSkills(sr, plan);
+  if (or && or.length) planSoldiers(or, plan, warn);
+  if (jr && jr.length) planJbuffs(jr, plan, warn);
   plan.warn = [...new Set(warn)];
   return plan;
+}
+
+/* 武将データ:1枚1行。TRと初期スキルの値はスキルマスタで持つので、TRの列があっても読まない(同じカードNoの2行目以降は無視) */
+const CARD_COLS = {
+  no: 'カードNo',
+  rarity: 'レアリティ',
+  cost: '武将コスト',
+  side: '攻撃or防御',
+  name: 'カード名',
+  initName: '初期スキル名',
+  troops: '兵数',
+  baseStat: ['素攻撃力', '素攻撃力・素防御力'],
+  baseDef: ['素防御力'],
+  growth: ['攻撃上昇率', '攻撃・防御上昇率', '上昇率'],
+  growthDef: ['防御上昇率'],
+  hime: '姫',
+  kengou: '剣豪',
+};
+function planCards(cr, plan, warn) {
+  const ix = headerOf(cr);
+  for (const n of ['カードNo', 'カード名'])
+    if (ix(n) < 0) throw new Error(`武将データに「${n}」列がありません`);
+  const g = new Map();
+  for (const row of cr.slice(1)) {
+    const v = k => (ix(CARD_COLS[k]) < 0 ? null : row[ix(CARD_COLS[k])]);
+    if (v('no') == null || v('name') == null) continue;
+    const rar = String(v('rarity') ?? '').trim();
+    if (v('rarity') != null && rar !== '' && !RARITIES.includes(rar))
+      warn.push(
+        `カードNo ${String(v('no')).trim()} のレアリティ「${rar}」は選択肢にありません(そのまま登録します)`,
+      );
+    const no = String(v('no')).trim();
+    if (g.has(no)) continue;
+    const c = {};
+    for (const [f, , t] of CARD_FIELDS)
+      c[f] =
+        t === 'flag' || t === 'check' ? toFlag(v(f)) : t === 'number' ? N(v(f)) : String(v(f) ?? '').trim();
+    g.set(no, c);
+  }
+  /* シートに無い列(姫・剣豪など)は、登録済みの値をそのまま残す。初期スキルがスキルマスタにない武将の、以前のTRの値と無尽も残す */
+  const missing = CARD_FIELDS.map(([f]) => f).filter(f => ix(CARD_COLS[f]) < 0);
+  for (const [no, c] of g) {
+    const id = findId(M.cards, d => String(d.no) === no);
+    if (id) {
+      const old = M.cards.get(id);
+      for (const f of missing) if (old[f] != null) c[f] = old[f];
+      for (const f of ['trs', 'muzin']) if (old[f] !== undefined) c[f] = old[f];
+    }
+    plan.cards.push({ id, data: c });
+  }
+}
+
+/* スキルデータ:1行が1TR。スキル全体の項目は、どの行に書いてあってもよい(後の行が優先) */
+function planSkills(sr, plan) {
+  const ix = headerOf(sr);
+  for (const n of ['スキル名', 'TR', '係数'])
+    if (ix(n) < 0) throw new Error(`スキルデータに「${n}」列がありません`);
+  for (const row of sr) {
+    const k = row.findIndex(x => String(x ?? '').trim() === '人数');
+    if (k >= 0 && Number.isFinite(Number(row[k + 1]))) {
+      plan.people = Number(row[k + 1]);
+      break;
+    }
+  }
+  const g = new Map();
+  for (const row of sr.slice(1)) {
+    const name = row[ix('スキル名')];
+    if (name == null || String(name).trim() === '') continue;
+    const n = String(name).trim();
+    if (!g.has(n)) g.set(n, { name: n, trs: [] });
+    const s = g.get(n);
+    readSkillRow(s, row, ix);
+    const tr = readSkillTr(n, row, ix);
+    s.trs = s.trs.filter(t => t.tr !== tr.tr);
+    s.trs.push(tr);
+  }
+  for (const [n, s] of g) {
+    const id = findId(M.skills, d => d.name === n);
+    finishSkill(s, id ? M.skills.get(id) : null);
+    plan.skills.push({ id, data: s });
+  }
+}
+/* スキル全体の項目(1行分) */
+function readSkillRow(s, row, ix) {
+  const val = c => (c >= 0 && hasV(row[c]) ? row[c] : null);
+  const str = c => String(row[c]).trim();
+  if (val(ix('無尽')) != null) s.muzin = N(row[ix('無尽')]);
+  const addCol = ix('付与不可') >= 0 ? ix('付与不可') : ix('スキル付与') >= 0 ? ix('スキル付与') : ix('付与');
+  if (val(addCol) != null)
+    s.noAdd =
+      ix('付与不可') >= 0 ? toFlag(str(addCol)) : /不可|できない|×|✕|^0$|^false$/i.test(str(addCol)) ? 1 : 0;
+  if (val(ix('Xスキル')) != null) s.xskill = toFlag(row[ix('Xスキル')]);
+  if (val(ix('係数の掛け方')) != null) {
+    const v = str(ix('係数の掛け方'));
+    s.coefBy = /同/.test(v) || v === 'same' ? 'same' : /X|Ｘ/i.test(v) || v === 'x' ? 'x' : 'people';
+  }
+  if (val(ix('種類')) != null) s.init = /初期/.test(String(row[ix('種類')])) ? 1 : 0;
+  for (const [col, key] of [
+    ['素攻バフ本人のみ', 'self'],
+    ['部隊長限定', 'leader'],
+  ])
+    if (val(ix(col)) != null) s.effFlags = { ...(s.effFlags || {}), [key]: toFlag(row[ix(col)]) === 1 };
+  if (val(ix('係数最大TR参照')) != null) s.coefMaxTr = toFlag(row[ix('係数最大TR参照')]);
+  if (val(ix('模倣可否')) != null) s.noMimic = /不可|できない/.test(String(row[ix('模倣可否')])) ? 1 : 0;
+  if (val(ix('模倣')) != null) {
+    const v = String(row[ix('模倣')]);
+    s.mimic = /自/.test(v) ? 'self' : /他|部隊長/.test(v) ? 'leader' : 'none';
+  }
+  const sideCol = [ix('攻撃or防御'), ix('攻防')].find(x => x >= 0);
+  if (sideCol != null && hasV(row[sideCol])) {
+    const v = str(sideCol);
+    s.side = /攻/.test(v) && /防/.test(v) ? '攻撃・防御' : /防/.test(v) ? '防御' : '攻撃';
+  }
+  if (val(ix('総攻・防バフの掛け方')) != null)
+    s.tbBy = /無尽/.test(String(row[ix('総攻・防バフの掛け方')])) ? 'muzin' : 'fixed';
+}
+/* TRごとの値(1行分)。初期スキル用の値は、列がなければ登録済みの値を残す */
+function readSkillTr(n, row, ix) {
+  const tr = {
+    tr: N(row[ix('TR')]),
+    base: ix('素スキル上昇率') < 0 ? 0 : N(row[ix('素スキル上昇率')]),
+    coef: N(row[ix('係数')]),
+  };
+  const has = c => c >= 0 && hasV(row[c]);
+  if (has(ix('模倣倍率'))) tr.mimicRate = N(row[ix('模倣倍率')]);
+  if (has(ix('重複上限'))) tr.dupMax = N(row[ix('重複上限')]);
+  const keepOld = [
+    ['tbCoef', '総攻・防バフ係数'],
+    ['troopAdd', '兵数加算'],
+    ...SKILL_INIT.map(([f, l]) => [f, l]),
+  ];
+  for (const [f, col] of keepOld) {
+    if (has(ix(col))) tr[f] = N(row[ix(col)]);
+    else {
+      const oe = oldSkillTr(n, tr.tr);
+      if (oe && oe[f] != null) tr[f] = oe[f];
+    }
+  }
+  return tr;
+}
+/* シートに無かった項目は登録済みの値を使い、種類に合わない値を消す */
+function finishSkill(s, old) {
+  s.trs = trsOf(s);
+  if (s.muzin == null) s.muzin = old ? N(old.muzin) : 0;
+  if (s.xskill == null) s.xskill = old ? toFlag(old.xskill) : 0;
+  if (s.noAdd == null) s.noAdd = old ? toFlag(old.noAdd) : 0;
+  if (s.coefBy == null) s.coefBy = old ? coefByOf(old) : 'people';
+  if (s.side == null) s.side = old ? skillSide(old) : '攻撃';
+  if (s.mimic == null && old && isMimic(old)) s.mimic = mimicOf(old);
+  if (s.mimic === 'none') delete s.mimic;
+  if (s.init)
+    s.effs = {
+      ...effsOf({ ...s, effs: undefined }),
+      ...(old?.effs ? { self: !!old.effs.self, leader: !!old.effs.leader } : {}),
+      ...(s.effFlags || {}),
+    };
+  delete s.effFlags;
+  if (s.coefMaxTr == null && old && old.coefMaxTr) s.coefMaxTr = 1;
+  if (!s.coefMaxTr || s.coefBy !== 'same') delete s.coefMaxTr;
+  if (s.noMimic == null && old && old.noMimic != null) s.noMimic = toFlag(old.noMimic);
+  if (s.tbBy == null && old && old.tbBy) s.tbBy = tbByOf(old);
+  if (s.init == null)
+    s.init = old
+      ? isInitSkill(old)
+        ? 1
+        : 0
+      : s.trs.some(t => SKILL_INIT.some(([f]) => t[f] != null))
+        ? 1
+        : 0;
+  if (!s.init)
+    s.trs = s.trs.map(t => {
+      const o = { ...t };
+      for (const [f] of SKILL_INIT) delete o[f];
+      delete o.troopAdd;
+      delete o.tbCoef;
+      return o;
+    });
+}
+
+/* 兵種データ:兵科・兵種・攻撃力・防禦力・破壊・速度。兵種名が同じものを上書き。列名は表記ゆれも受け付ける */
+function planSoldiers(or, plan, warn) {
+  const ix = headerOf(or);
+  const col = {
+    name: ix(['兵種', '兵種名']),
+    branch: ix(['兵科']),
+    atk: ix(['攻撃力', '兵士攻撃力']),
+    def: ix(['防禦力', '防御力', '兵士防御力', '兵士防禦力']),
+    destroy: ix(['破壊']),
+    speed: ix(['速度']),
+  };
+  if (col.name < 0) throw new Error('兵種データに「兵種」列がありません');
+  if (col.atk < 0) throw new Error('兵種データに「攻撃力」列がありません');
+  const g = new Map();
+  let order = 0;
+  for (const row of or.slice(1)) {
+    const name = row[col.name];
+    if (name == null || String(name).trim() === '') continue;
+    const n = String(name).trim();
+    const d = { name: n, branch: col.branch < 0 ? '' : String(row[col.branch] ?? '').trim(), order: ++order };
+    for (const f of ['atk', 'def', 'destroy', 'speed']) {
+      const v = col[f] < 0 ? null : row[col[f]];
+      if (f === 'atk' && (v == null || String(v).trim() === '' || !Number.isFinite(Number(v))))
+        warn.push(`兵種「${n}」の攻撃力が数値ではありません(0として取り込みます)`);
+      d[f] = N(v);
+    }
+    if (g.has(n)) warn.push(`兵種「${n}」が2行あります(後の行を使います)`);
+    g.set(n, d);
+  }
+  for (const [n, d] of g) plan.soldiers.push({ id: findId(M.soldiers, x => x.name === n), data: d });
+}
+
+/* 傑バフデータ:カードNo・武将名・対象兵種(「、」区切り。空なら全兵種)・所属時攻撃力・所属時防御力・外部攻撃力・外部防御力。カードNoが同じものを上書き */
+const JBUFF_COLS = {
+  no: [['カードNo', 'カードNO', 'No'], 'カードNo'],
+  name: [['武将名', 'カード名'], '武将名'],
+  targets: [['対象兵種', '兵種'], '対象兵種'],
+  atkIn: [['所属時攻撃力'], '所属時攻撃力'],
+  defIn: [['所属時防御力', '所属時防禦力'], '所属時防御力'],
+  atkOut: [['外部攻撃力'], '外部攻撃力'],
+  defOut: [['外部防御力', '外部防禦力'], '外部防御力'],
+};
+function planJbuffs(jr, plan, warn) {
+  const ix = headerOf(jr),
+    col = {};
+  for (const [k, [names, label]] of Object.entries(JBUFF_COLS)) {
+    col[k] = ix(names);
+    if (col[k] < 0) throw new Error(`傑バフデータに「${label}」列がありません`);
+  }
+  const g = new Map();
+  for (const row of jr.slice(1)) {
+    const no = row[col.no],
+      name = row[col.name];
+    if ((no == null || String(no).trim() === '') && (name == null || String(name).trim() === '')) continue;
+    const n = String(name ?? '').trim();
+    if (no == null || !Number.isFinite(Number(no))) {
+      warn.push(`傑バフ「${n || '(名前なし)'}」のカードNoが数値ではないため、取り込みません`);
+      continue;
+    }
+    const key = String(Number(no)),
+      d = { no: Number(no), name: n, targets: splitTargets(row[col.targets]) };
+    const miss = d.targets.filter(t => !findId(M.soldiers, x => x.name === t));
+    if (miss.length)
+      warn.push(
+        `傑バフ「${n}」の対象兵種「${miss.join('、')}」は兵種マスタにありません(名前のまま登録します)`,
+      );
+    for (const f of JBUFF_VALS) {
+      const v = row[col[f]];
+      if (v != null && String(v).trim() !== '' && !Number.isFinite(Number(v)))
+        warn.push(`傑バフ「${n}」の${JBUFF_COLS[f][1]}が数値ではありません(0として取り込みます)`);
+      d[f] = N(v);
+    }
+    if (g.has(key)) warn.push(`カードNo ${key} の傑バフが2行あります(後の行を使います)`);
+    g.set(key, d);
+  }
+  for (const [key, d] of g) plan.jbuffs.push({ id: findId(M.jbuffs, x => String(x.no) === key), data: d });
 }
 $('mimport').addEventListener('click', () => {
   draft = null;
