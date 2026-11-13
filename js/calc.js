@@ -113,6 +113,31 @@ function skillEffect(i, k) {
   const mul = k === 'lim' ? N(ct.mulLimit) * limX(sel) : N(ct.mulNormal);
   return `効果 <b>${fmt(v * mz * mul, 1)}</b>${tag}${sp}`;
 }
+/* 武将ごとの内訳。各行は [見出し, 値, 補足(なければ空)] */
+function breakdownHtml(x, r) {
+  const initNote = x.lo
+    ? '部隊長限定のため無効'
+    : r.muzin && x.initRaw && x.init !== x.initRaw
+      ? x.init
+        ? '無尽×2'
+        : '無尽なしで無効'
+      : '';
+  const lines = [
+    ['兵数', fmt(x.troops), x.tadd ? `兵数加算+${fmt(x.tadd)}` : ''],
+    ['攻撃', fmt(x.atk), ''],
+    ['兵士攻撃力', fmt(x.satk), x.jb ? `傑+${fmt(x.jb, 2)}` : ''],
+    ['素攻', fmt(x.b, 1), x.sb !== 1 ? `素攻バフ×${fmt(x.sb, 2)}` : ''],
+    ['初期スキル', fmt(x.init, 1), initNote],
+    ['スキル小計', fmt(x.sk, 1), ''],
+    ['総攻バフ', '×' + fmt(x.tb, 2), x.tbMc != null ? `無尽${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''}` : ''],
+  ];
+  return lines
+    .map(
+      ([h, v, note]) =>
+        `<span>${h}</span><span class="num">${v}${note ? `<span class="plus">(${note})</span>` : ''}</span>`,
+    )
+    .join('');
+}
 function updateResults() {
   if (!form) return;
   const r = calc();
@@ -125,9 +150,7 @@ function updateResults() {
   r.rows.forEach((x, i) => {
     const el = $('calc-' + i);
     if (!el) return;
-    el.innerHTML = x
-      ? `<span>兵数</span><span class="num">${fmt(x.troops)}${x.tadd ? `<span class="plus">(兵数加算+${fmt(x.tadd)})</span>` : ''}</span><span>攻撃</span><span class="num">${fmt(x.atk)}</span><span>兵士攻撃力</span><span class="num">${fmt(x.satk)}${x.jb ? `<span class="plus">(傑+${fmt(x.jb, 2)})</span>` : ''}</span><span>素攻</span><span class="num">${fmt(x.b, 1)}${x.sb !== 1 ? `<span class="plus">(素攻バフ×${fmt(x.sb, 2)})</span>` : ''}</span><span>初期スキル</span><span class="num">${fmt(x.init, 1)}${x.lo ? '<span class="plus">(部隊長限定のため無効)</span>' : ''}${!x.lo && r.muzin && x.initRaw && x.init !== x.initRaw ? `<span class="plus">(${x.init ? '無尽×2' : '無尽なしで無効'})</span>` : ''}</span><span>スキル小計</span><span class="num">${fmt(x.sk, 1)}</span><span>総攻バフ</span><span class="num">×${fmt(x.tb, 2)}${x.tbMc != null ? `<span class="plus">(無尽${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''})</span>` : ''}</span>`
-      : '<span>武将とTRを選んでください</span><span></span>';
+    el.innerHTML = x ? breakdownHtml(x, r) : '<span>武将とTRを選んでください</span><span></span>';
   });
   form.slots.forEach((_, i) =>
     ['s1', 's2', 'lim'].forEach(k => {

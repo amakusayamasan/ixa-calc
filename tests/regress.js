@@ -10,14 +10,14 @@ await p.route(/gstatic\.com\/firebasejs\/.*(auth|firestore)-compat\.js/,r=>r.ful
 await p.route(/cdnjs\.cloudflare\.com\/.*xlsx/,r=>r.fulfill({path:path.join(dir,'fakexlsx.js'),contentType:'text/javascript'}));
 await p.route(/fonts\.(googleapis|gstatic)\.com/,r=>r.fulfill({body:'',contentType:'text/css'}));
 const out={};const W=ms=>p.waitForTimeout(ms);
-await p.goto('http://127.0.0.1:8765/index.html?mode=admin&rules=1');await W(200);await p.click('#login');await W(80);
+await p.goto('http://127.0.0.1:'+(process.env.PORT||8765)+'/index.html?mode=admin&rules=1');await W(200);await p.click('#login');await W(80);
 await p.click('#tab-master');await p.click('#seedRun');await W(200);
 await p.click('#tab-calc');await p.click('#resetForm');await W(50);
 const snapCalc=()=>p.evaluate(()=>{const r=calc();const rnd=v=>typeof v==='number'?Math.round(v*1000)/1000:v;
   const eff=[];form.slots.forEach((s,i)=>['s1','s2','lim'].forEach(k=>eff.push(skillEffect(i,k).replace(/<[^>]+>/g,''))));
   return{total:rnd(r.total),base:rnd(r.base),skill:rnd(r.skill),buff:rnd(r.buff),rei:r.rei,hi:r.hi,muzin:r.muzin,
     rows:r.rows.map(x=>x&&Object.fromEntries(Object.entries(x).map(([k,v])=>[k,rnd(v)]))),eff,
-    bd:[...document.querySelectorAll('[id^=bd-]')].map(e=>e.textContent)}});
+    bd:[...document.querySelectorAll('[id^=calc-]')].map(e=>e.innerHTML)}});
 out.sample=await snapCalc();
 // 初期スキル・スキルを画面から登録
 await p.click('#tab-master');await p.click('[data-m=skills]');
@@ -61,7 +61,7 @@ const forms={
  f1:[['緋村剣心',5,'火焔武闘',0,'自模倣S',5,'他真似S',5],['織田信長',5,'火焔武闘',2,'同数S',1,'他真似S',3],['志々雄真実',5,'火焔武闘',5,'同数S',5,'無尽S',2],['斎藤一',5,'火焔武闘',1,'防御S',0,'同数S',3,'hei']],
  f2:[['斎藤一',3,'無尽S',5,'自模倣S',4,'他真似S',2],['緋村剣心',4,'同数S',2,'火焔武闘',3,'無尽S',1],['志々雄真実',2,'他真似S',5,'火焔武闘',0,'同数S',4],['織田信長',0,'火焔武闘',4,'',0,'自模倣S',5]],
 };
-for(const [k,spec] of Object.entries(forms)){await setForm(spec);out[k]=await snapCalc();await p.fill('#jin','1.1');await p.dispatchEvent('#jin','input');await W(30);out[k+'_jin']=(await snapCalc()).total;await p.fill('#jin','1.05');await p.dispatchEvent('#jin','input')}
+for(const [k,spec] of Object.entries(forms)){await setForm(spec);out[k]=await snapCalc();out[k+'_slots']=await p.$eval('#slots',e=>e.innerHTML);out[k+'_jbbtn']=await p.textContent('#jbBtn');await p.fill('#jin','1.1');await p.dispatchEvent('#jin','input');await W(30);out[k+'_jin']=(await snapCalc()).total;await p.fill('#jin','1.05');await p.dispatchEvent('#jin','input')}
 // 無尽部隊(部隊長を No.1274 に)
 await p.evaluate(async()=>{const id=findId(M.cards,d=>d.name==='緋村剣心');const d=structuredClone(M.cards.get(id));d.no='1274';const b=db.batch();putWithLog(b,'更新','cards',id,d);await b.commit()});await W(100);
 for(const [k,spec] of Object.entries(forms)){await setForm(spec);out[k+'_muzin']=await snapCalc()}
