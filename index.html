@@ -177,7 +177,6 @@ tbody tr.editable:hover{background:var(--accent-weak)}
       <div class="field"><span class="label">部隊タイプ</span>
         <div class="seg">
           <button type="button" aria-pressed="true">攻撃部隊</button>
-          <button type="button" disabled title="次の段階で追加します">模倣(準備中)</button>
           <button type="button" disabled title="次の段階で追加します">今川・弓(準備中)</button>
         </div></div>
       <div class="field" style="width:130px"><label class="label" for="jin">弐の陣・デバフ</label>
@@ -289,11 +288,20 @@ function coefN(d,id){const by=coefByOf(d);if(by==='people'||!form)return null;
   if(by==='same')return form.slots.reduce((a,s)=>a+['s1','s2','lim'].filter(k=>s[k].id&&s[k].id===id).length,0);
   return Math.min(8,form.slots.reduce((a,s)=>a+['s1','s2'].filter(k=>isX(M.skills.get(s[k].id))).length,0))}
 /* 編成がない場面(マスタ一覧など)での表示 */
-function skillLabel(t,d){const by=coefByOf(d);return by==='people'?fmt(skillValue(t),1):`${fmt(N(t.base),1)}+${fmt(N(t.coef),2)}×${COEF_SHORT[by]}`}
+/* 模倣スキル:自模倣=自分の初期スキル、他真似=部隊長の初期スキル。部隊の中で計算した初期スキルの値(無尽×2後)× 模倣倍率。
+   部隊長に付けた他真似は0。特殊効果は模倣しない。極限枠でも ×1.2 はかけない */
+const MIMIC={none:'なし',self:'自模倣',leader:'他真似(部隊長)'};
+const mimicOf=d=>MIMIC[d?.mimic]?d.mimic:'none';
+const isMimic=d=>mimicOf(d)!=='none';
+function slotInit(i){const s=form?.slots[i];if(!s)return 0;const c=M.cards.get(s.card),t=c&&effT(c,cardT(c,s.tr));return c&&t?initEff(c,t):0}
+const mimicSrc=(d,i)=>mimicOf(d)==='self'?i:i===0?null:0;
+function skillLabel(t,d){if(isMimic(d))return`模倣×${fmt(N(t.mimicRate),2)}`;const by=coefByOf(d);return by==='people'?fmt(skillValue(t),1):`${fmt(N(t.base),1)}+${fmt(N(t.coef),2)}×${COEF_SHORT[by]}`}
 const findId=(map,pred)=>{for(const [id,d] of map)if(pred(d))return id;return ''};
 
 /* ---------- 計算 ---------- */
-function skillVal(sel){const s=M.skills.get(sel.id);if(!s||!forAtk(s))return 0;const t=trEntry(s,sel.tr);return t?skillValue(t,coefN(s,sel.id)):0}
+function skillVal(sel,i){const s=M.skills.get(sel.id);if(!s||!forAtk(s))return 0;const t=trEntry(s,sel.tr);if(!t)return 0;
+  if(isMimic(s)){const src=mimicSrc(s,i);return src==null?0:slotInit(src)*N(t.mimicRate)}return skillValue(t,coefN(s,sel.id))}
+const limX=sel=>isMimic(M.skills.get(sel.id))?1:1.2;
 /* 無尽でスキル効果が何倍になるか(k: s1 / s2 / lim) */
 function muzinMul(sel,k){if(!muzinOn())return 1;if(k==='lim')return 2;const s=M.skills.get(sel.id);return s&&N(s.muzin)>0?2:1}
 /* 初期スキルの効果(無尽を反映) */
@@ -350,7 +358,7 @@ function calc(){
     const sname=M.soldiers.get(s.soldier)?.name,jb=jbBonus(sname),satk=N(M.soldiers.get(s.soldier)?.atk)+jb;
     const b=satk*troops*1.4+atk*1.4*lb;
     const init=initEff(s.c,s.t);
-    const sk=init+(skillVal(s.s1)*muzinMul(s.s1,'s1')+skillVal(s.s2)*muzinMul(s.s2,'s2'))*N(s.t.mulNormal)+skillVal(s.lim)*muzinMul(s.lim,'lim')*N(s.t.mulLimit)*1.2;
+    const sk=init+(skillVal(s.s1,i)*muzinMul(s.s1,'s1')+skillVal(s.s2,i)*muzinMul(s.s2,'s2'))*N(s.t.mulNormal)+skillVal(s.lim,i)*muzinMul(s.lim,'lim')*N(s.t.mulLimit)*limX(s.lim);
     base+=b;skill+=sk;return{tadd,troops,atk,satk,jb,b,sk,init,initRaw:initBase(s.c,s.t)};
   });
   /* 無尽を持つ武将の数(武将の無尽、初期スキル・追加スキル・極限スキルのどれかが無尽なら1人。本人も含む) */
@@ -371,10 +379,11 @@ const SPECIAL_EFFECT={'黎天列光':'全武将の兵数 +2,000(部隊で2つま
 function skillEffect(i,k){const sel=form.slots[i][k],sk=M.skills.get(sel.id);if(!sk)return'';
   const t=trEntry(sk,sel.tr);if(!t)return'このTRの値が登録されていません';
   if(!forAtk(sk))return'防御スキルのため、攻撃部隊では効果なし';
-  const cn=coefN(sk,sel.id),cc=M.cards.get(form.slots[i].card),v=skillValue(t,cn),ct=effT(cc,cardT(cc,form.slots[i].tr));
-  const mz=muzinMul(sel,k),tag=(mz>1?' <span class="mz">無尽×2</span>':'')+(cn!=null?` <span class="mz cn">${COEF_SHORT[coefByOf(sk)]}${cn}</span>`:''),sp=SPECIAL_EFFECT[sk.name]?`<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name])}</span>`:'';
+  const mm=isMimic(sk),cn=mm?null:coefN(sk,sel.id),cc=M.cards.get(form.slots[i].card),v=skillVal(sel,i),ct=effT(cc,cardT(cc,form.slots[i].tr));
+  const mtag=mm?(mimicSrc(sk,i)==null?' <span class="mz cn">部隊長には無効</span>':` <span class="mz cn">${mimicOf(sk)==='self'?'自分':'部隊長'}の初期${fmt(slotInit(mimicSrc(sk,i)),1)}×${fmt(N(t.mimicRate),2)}</span>`):'';
+  const mz=muzinMul(sel,k),tag=(mz>1?' <span class="mz">無尽×2</span>':'')+(cn!=null?` <span class="mz cn">${COEF_SHORT[coefByOf(sk)]}${cn}</span>`:'')+mtag,sp=SPECIAL_EFFECT[sk.name]?`<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name])}</span>`:'';
   if(!ct)return`効果 <b>${fmt(v*mz,1)}</b>${tag}${sp}`;
-  const mul=k==='lim'?N(ct.mulLimit)*1.2:N(ct.mulNormal);
+  const mul=k==='lim'?N(ct.mulLimit)*limX(sel):N(ct.mulNormal);
   return`効果 <b>${fmt(v*mz*mul,1)}</b>${tag}${sp}`}
 function updateResults(){
   if(!form)return;const r=calc();
@@ -592,6 +601,7 @@ function renderEditor(){
   const box=$('editor');if(!draft||!isOwner){box.innerHTML='';return}
   const {coll,id,data:d}=draft;
   const inp=(f,label,type)=>f==='initName'?`<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="text" list="skillNames" autocomplete="off" placeholder="スキルマスタから選択" value="${esc(d[f]??'')}"></div>`
+    :type==='mimic'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(MIMIC).map(([v,l])=>`<option value="${v}"${mimicOf(d)===v?' selected':''}>${l}</option>`).join('')}</select></div>`
     :type==='tbby'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(TB_BY).map(([v,l])=>`<option value="${v}"${tbByOf(d)===v?' selected':''}>${l}</option>`).join('')}</select></div>`
     :type==='coef'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(COEF_BY).map(([v,l])=>`<option value="${v}"${coefByOf(d)===v?' selected':''}>${l}</option>`).join('')}</select></div>`
     :type==='rarity'?`<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${(RARITIES.includes(d[f])||!d[f]?RARITIES:[...RARITIES,d[f]]).map(v=>`<option${d[f]===v?' selected':''}>${esc(v)}</option>`).join('')}</select></div>`
@@ -605,8 +615,8 @@ function renderEditor(){
     <div id="initArea" data-key="${esc(String(d.initName??'').trim())}">${initAreaHtml(d)}</div>`;
   }else if(coll==='skills'){
     const ini=toFlag(d.init)===1;
-    body=`<div class="grid">${inp('name','スキル名','text')}${inp('side','攻撃or防御','side')}${inp('noAdd','スキル付与','flag')}${inp('coefBy','係数の掛け方','coef')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${ini?inp('tbBy',`総${sw(d)}バフの掛け方`,'tbby'):''}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
-    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。${ini?`素${sw(d)}バフ〜総${sw(d)}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0)。`:''}${ini&&tbByOf(d)==='muzin'?`総${sw(d)}バフ = 総${sw(d)}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${sw(d)}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`:''}${skillSide(d)==='防御'?'防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。':''}</p>`+trTable(ini?[...SKILL_TR,...initCols(d),...(tbByOf(d)==='muzin'?[['tbCoef',`総${sw(d)}バフ係数(%)`]]:[])]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
+    body=`<div class="grid">${inp('name','スキル名','text')}${inp('side','攻撃or防御','side')}${inp('noAdd','スキル付与','flag')}${inp('coefBy','係数の掛け方','coef')}${inp('muzin','無尽(0:なし、1以上:あり)','number')}${inp('xskill','Xスキル','flag')}${ini?'':inp('mimic','模倣','mimic')}${ini?inp('tbBy',`総${sw(d)}バフの掛け方`,'tbby'):''}<div class="field"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b></div></div>
+    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。Xスキルは通常枠にしか付けられません。${ini?`素${sw(d)}バフ〜総${sw(d)}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0)。`:''}${ini&&tbByOf(d)==='muzin'?`総${sw(d)}バフ = 総${sw(d)}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${sw(d)}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`:''}${!ini&&isMimic(d)?`模倣スキルの値 = ${mimicOf(d)==='self'?'自分':'部隊長'}の初期スキルのスキル上昇率(部隊の中で計算した値) × 模倣倍率。特殊効果は模倣しません。極限枠でも ×1.2 はかけません。${mimicOf(d)==='leader'?'部隊長に付けたときは効果なし。':''}`:''}${skillSide(d)==='防御'?'防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。':''}</p>`+trTable(!ini&&isMimic(d)?[['tr','TR'],['mimicRate','模倣倍率']]:ini?[...SKILL_TR,...initCols(d),...(tbByOf(d)==='muzin'?[['tbCoef',`総${sw(d)}バフ係数(%)`]]:[])]:SKILL_TR,d.trs,t=>skillLabel(t,d),'スキル上昇率');
   }else if(coll==='jbuffs'){
     const sold=[...M.soldiers].sort(bySoldierOrder),tg=d.targets||[],unknown=tg.filter(t=>!sold.some(([,x])=>x.name===t));
     body=`<div class="grid">${JBUFF_FIELDS.map(([f,l,t])=>inp(f,l,t)).join('')}</div>
@@ -629,7 +639,8 @@ function trTable(cols,trs,computed,clabel,ro){
   return `<div class="field"><span class="label">TRごとの値</span><div class="trtable"><table><thead><tr>${cols.map(c=>`<th class="l">${c[1]}</th>`).join('')}${computed?`<th>${clabel}</th>`:''}<th></th></tr></thead><tbody>
   ${trs.map((t,r)=>`<tr>${cols.map(([f,l])=>{const v=ro?ro(f,t):null;return v!=null?`<td class="num computed" title="スキルマスタの値">${v}</td>`:`<td class="l"><input class="${f==='tr'?'tr':''}" type="number" step="any" data-t="${r}:${f}" aria-label="${l}" value="${esc(t[f]??'')}"></td>`}).join('')}${computed?`<td class="num computed" data-c="${r}">${computed(t)}</td>`:''}<td><button class="btn small danger" type="button" data-act="rmtr" data-r="${r}"${trs.length<2?' disabled':''}>行を削除</button></td></tr>`).join('')}
   </tbody></table></div><button class="btn small ghost" type="button" data-act="addtr" style="align-self:start">TRを追加(前の行をコピー)</button></div>`}
-$('editor').addEventListener('change',e=>{if(draft&&(e.target.id==='f-tbBy'||(draft.coll==='skills'&&e.target.id==='f-side'))){syncDraft();renderEditor();return}
+$('editor').addEventListener('change',e=>{if(draft&&e.target.id==='f-mimic'){syncDraft();if(isMimic(draft.data))draft.data.trs.forEach(t=>{if(!hasV(t.mimicRate))t.mimicRate=1});renderEditor();return}
+  if(draft&&(e.target.id==='f-tbBy'||(draft.coll==='skills'&&e.target.id==='f-side'))){syncDraft();renderEditor();return}
   if(draft&&e.target.id==='f-init'){syncDraft();const d=draft.data;
     /* 初期スキルに切り替えたら、空の素攻・防バフ〜総攻・防バフに1を入れる */
     if(toFlag(d.init))d.trs.forEach(t=>{for(const [f] of SKILL_INIT)if(t[f]==null||t[f]==='')t[f]=1});renderEditor();return}
@@ -663,7 +674,7 @@ function validate(coll,d){
 function clean(coll,d){
   if(coll==='cards'){const o={};for(const [f,,t] of CARD_FIELDS)o[f]=t==='flag'?toFlag(d[f]):t==='number'?N(d[f]):String(d[f]??'').trim();if(N(d.muzin)>0)o.muzin=N(d.muzin);/* 以前の武将マスタの無尽(初期スキルがスキルマスタにない武将だけ使う) */
     if(Array.isArray(d.trs)&&d.trs.length)o.trs=trsOf({trs:d.trs.map(t=>Object.fromEntries(CARD_TR.map(([f])=>[f,N(t[f])])))});return o}
-  if(coll==='skills')return{init:toFlag(d.init),side:skillSide(d),name:String(d.name).trim(),muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d),trs:trsOf({trs:d.trs.map(t=>{const o=Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])]));if(toFlag(d.init)){for(const [f] of SKILL_INIT)if(t[f]!=null&&t[f]!=='')o[f]=N(t[f]);if(hasV(t.troopAdd))o.troopAdd=N(t.troopAdd);if(tbByOf(d)==='muzin')o.tbCoef=N(t.tbCoef)}return o})}),...(toFlag(d.init)?{tbBy:tbByOf(d)}:{})};
+  if(coll==='skills')return{init:toFlag(d.init),side:skillSide(d),...(!toFlag(d.init)&&isMimic(d)?{mimic:mimicOf(d)}:{}),name:String(d.name).trim(),muzin:N(d.muzin),xskill:toFlag(d.xskill),noAdd:toFlag(d.noAdd),coefBy:coefByOf(d),trs:trsOf({trs:d.trs.map(t=>{const o=Object.fromEntries(SKILL_TR.map(([f])=>[f,N(t[f])]));if(!toFlag(d.init)&&isMimic(d))o.mimicRate=N(t.mimicRate);if(toFlag(d.init)){for(const [f] of SKILL_INIT)if(t[f]!=null&&t[f]!=='')o[f]=N(t[f]);if(hasV(t.troopAdd))o.troopAdd=N(t.troopAdd);if(tbByOf(d)==='muzin')o.tbCoef=N(t.tbCoef)}return o})}),...(toFlag(d.init)?{tbBy:tbByOf(d)}:{})};
   if(coll==='jbuffs'){const o={};for(const [f,,t] of JBUFF_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();o.targets=[...new Set((d.targets||[]).map(x=>String(x).trim()).filter(Boolean))];return o}
   const o={};for(const [f,,t] of SOLDIER_FIELDS)o[f]=t==='number'?N(d[f]):String(d[f]??'').trim();if(d.order!=null)o.order=N(d.order);return o;
 }
@@ -700,13 +711,13 @@ function renderImport(){
 }
 /* 取り込み用のExcelを作る(列名は取り込みと同じ)。withData=false なら見出しだけ */
 const X_CARD=['カードNo','カード名','レアリティ','武将コスト','攻撃or防御','初期スキル名','兵数','素攻撃力','素防御力','攻撃上昇率','防御上昇率','姫'];
-const X_SKILL=['スキル名','種類','攻撃or防御','スキル付与','係数の掛け方','無尽','Xスキル','総攻・防バフの掛け方','TR','素スキル上昇率','係数','素攻・防バフ','倍枠通常','倍枠極限','総攻・防バフ','総攻・防バフ係数','兵数加算'];
+const X_SKILL=['スキル名','種類','攻撃or防御','スキル付与','係数の掛け方','無尽','Xスキル','総攻・防バフの掛け方','模倣','TR','素スキル上昇率','係数','模倣倍率','素攻・防バフ','倍枠通常','倍枠極限','総攻・防バフ','総攻・防バフ係数','兵数加算'];
 const X_SOLDIER=['兵科','兵種','攻撃力','防禦力','破壊','速度'];
 const X_JBUFF=['カードNo','武将名','対象兵種','所属時攻撃力','所属時防御力','外部攻撃力','外部防御力'];
 async function downloadXlsx(withData){const XLSX=await loadXLSX();const wb=XLSX.utils.book_new();
   const cards=withData?[...M.cards.values()].sort((a,b)=>N(a.no)-N(b.no)).map(c=>[N(c.no),c.name,c.rarity||'',N(c.cost),c.side||'',c.initName||'',N(c.troops),N(c.baseStat),N(c.baseDef),N(c.growth),N(c.growthDef),toFlag(c.hime)]):[];
   const skills=[];if(withData)for(const [,d] of [...M.skills].sort(byName)){const ini=isInitSkill(d),tb=ini&&tbByOf(d)==='muzin';
-    for(const t of trsOf(d))skills.push([d.name,ini?'初期スキル':'スキル',skillSide(d),toFlag(d.noAdd)?'付与できない':'付与できる',COEF_BY[coefByOf(d)],N(d.muzin),isX(d)?1:0,ini?TB_BY[tbByOf(d)]:'',N(t.tr),N(t.base),N(t.coef),
+    for(const t of trsOf(d))skills.push([d.name,ini?'初期スキル':'スキル',skillSide(d),toFlag(d.noAdd)?'付与できない':'付与できる',COEF_BY[coefByOf(d)],N(d.muzin),isX(d)?1:0,ini?TB_BY[tbByOf(d)]:'',ini?'':MIMIC[mimicOf(d)],N(t.tr),N(t.base),N(t.coef),isMimic(d)?N(t.mimicRate):'',
       ...(ini?[t.statBuff??'',t.mulNormal??'',t.mulLimit??'',t.totalBuff??'',tb?(t.tbCoef??''):'',t.troopAdd??'']:['','','','','',''])])}
   const sold=withData?[...M.soldiers].sort(bySoldierOrder).map(([,o])=>[o.branch||'',o.name,N(o.atk),N(o.def),N(o.destroy),N(o.speed)]):[];
   const jb=withData?[...M.jbuffs].sort(byNo).map(([,j])=>[N(j.no),j.name,(j.targets||[]).join('、'),...JBUFF_VALS.map(f=>jv(j,f))]):[];
@@ -740,12 +751,13 @@ function planFrom(XLSX,wb){
       if(ix('Xスキル')>=0&&row[ix('Xスキル')]!=null&&String(row[ix('Xスキル')]).trim()!=='')g.get(n).xskill=toFlag(row[ix('Xスキル')]);
       if(ix('係数の掛け方')>=0&&row[ix('係数の掛け方')]!=null&&String(row[ix('係数の掛け方')]).trim()!==''){const v=String(row[ix('係数の掛け方')]).trim();g.get(n).coefBy=/同/.test(v)||v==='same'?'same':/X|Ｘ/i.test(v)||v==='x'?'x':'people'}const s=g.get(n),tr={tr:N(row[ix('TR')]),base:ix('素スキル上昇率')<0?0:N(row[ix('素スキル上昇率')]),coef:N(row[ix('係数')])};
       {const c=ix('種類');if(c>=0&&hasV(row[c]))s.init=/初期/.test(String(row[c]))?1:0}
+      {const c=ix('模倣');if(c>=0&&hasV(row[c])){const v=String(row[c]);s.mimic=/自/.test(v)?'self':/他|部隊長/.test(v)?'leader':'none'}const k=ix('模倣倍率');if(k>=0&&hasV(row[k]))tr.mimicRate=N(row[k])}
       {const c=[ix('攻撃or防御'),ix('攻防')].find(x=>x>=0);if(c!=null&&hasV(row[c])){const v=String(row[c]).trim();s.side=/攻/.test(v)&&/防/.test(v)?'攻撃・防御':/防/.test(v)?'防御':'攻撃'}}
       {const c=ix('総攻・防バフの掛け方');if(c>=0&&hasV(row[c]))s.tbBy=/無尽/.test(String(row[c]))?'muzin':'fixed';const k=ix('総攻・防バフ係数');if(k>=0&&hasV(row[k]))tr.tbCoef=N(row[k]);else{const old=M.skills.get(findId(M.skills,d=>d.name===n)||''),oe=old&&trEntry(old,tr.tr);if(oe&&oe.tbCoef!=null)tr.tbCoef=oe.tbCoef}}
       {const k=ix('兵数加算');if(k>=0&&hasV(row[k]))tr.troopAdd=N(row[k]);else{const old=M.skills.get(findId(M.skills,d=>d.name===n)||''),oe=old&&trEntry(old,tr.tr);if(oe&&oe.troopAdd!=null)tr.troopAdd=oe.troopAdd}}
       for(const [f,l] of SKILL_INIT){const c=ix(l);if(c>=0&&row[c]!=null&&String(row[c]).trim()!=='')tr[f]=N(row[c]);else{const old=M.skills.get(findId(M.skills,d=>d.name===n)||''),oe=old&&trEntry(old,tr.tr);if(oe&&oe[f]!=null)tr[f]=oe[f]}}
       s.trs=s.trs.filter(t=>t.tr!==tr.tr);s.trs.push(tr)}
-    for(const [n,s] of g){s.trs=trsOf(s);const id=findId(M.skills,d=>d.name===n);if(s.muzin==null)s.muzin=id?N(M.skills.get(id).muzin):0;if(s.xskill==null)s.xskill=id?toFlag(M.skills.get(id).xskill):0;if(s.noAdd==null)s.noAdd=id?toFlag(M.skills.get(id).noAdd):0;if(s.coefBy==null)s.coefBy=id?coefByOf(M.skills.get(id)):'people';if(s.side==null)s.side=id?skillSide(M.skills.get(id)):'攻撃';if(s.tbBy==null&&id&&M.skills.get(id).tbBy)s.tbBy=tbByOf(M.skills.get(id));if(s.init==null)s.init=id?(isInitSkill(M.skills.get(id))?1:0):(s.trs.some(t=>SKILL_INIT.some(([f])=>t[f]!=null))?1:0);
+    for(const [n,s] of g){s.trs=trsOf(s);const id=findId(M.skills,d=>d.name===n);if(s.muzin==null)s.muzin=id?N(M.skills.get(id).muzin):0;if(s.xskill==null)s.xskill=id?toFlag(M.skills.get(id).xskill):0;if(s.noAdd==null)s.noAdd=id?toFlag(M.skills.get(id).noAdd):0;if(s.coefBy==null)s.coefBy=id?coefByOf(M.skills.get(id)):'people';if(s.side==null)s.side=id?skillSide(M.skills.get(id)):'攻撃';if(s.mimic==null&&id&&isMimic(M.skills.get(id)))s.mimic=mimicOf(M.skills.get(id));if(s.mimic==='none')delete s.mimic;if(s.tbBy==null&&id&&M.skills.get(id).tbBy)s.tbBy=tbByOf(M.skills.get(id));if(s.init==null)s.init=id?(isInitSkill(M.skills.get(id))?1:0):(s.trs.some(t=>SKILL_INIT.some(([f])=>t[f]!=null))?1:0);
       if(!s.init)s.trs=s.trs.map(t=>{const o={...t};for(const [f] of SKILL_INIT)delete o[f];delete o.troopAdd;delete o.tbCoef;return o});plan.skills.push({id,data:s})}}
   /* 兵種データ:兵科・兵種・攻撃力・防禦力・破壊・速度。兵種名が同じものを上書き。列名は表記ゆれも受け付ける */
   if(or&&or.length){const h=or[0].map(x=>String(x??'').trim()),pick=names=>{for(const n of names){const k=h.indexOf(n);if(k>=0)return k}return -1};
