@@ -1,4 +1,86 @@
 // マスタ管理画面(一覧・編集パネル・保存)
+/* ---------- マスタ一覧の列 ----------
+   各列は [見出し, 左寄せか, セルの中身(d)=>HTML, 追加の属性(d)=>文字列] */
+const sideChip = side =>
+  `<span class="chip ${side === '攻撃・防御' ? 'side-both' : side === '防御' ? 'side-def' : side === '攻撃' ? 'side-atk' : ''}">${esc(side || '')}</span>`;
+const orDash = (v, f) => (v == null ? '—' : f(v));
+const LIST_COLS = {
+  cards: () => [
+    ['カード名', 1, d => esc(d.name) + sideChip(d.side)],
+    ['初期スキル名', 1, d => esc(d.initName || '—')],
+    ['カードNo', 0, d => esc(d.no)],
+    ['レアリティ', 1, d => esc(d.rarity)],
+    ['コスト', 0, d => fmt(N(d.cost), 1)],
+    ['兵数', 0, d => fmt(N(d.troops))],
+    ['素攻撃力', 0, d => fmt(N(d.baseStat))],
+    ['素防御力', 0, d => orDash(d.baseDef, v => fmt(N(v)))],
+    ['攻撃上昇率', 0, d => fmt(N(d.growth), 2)],
+    ['防御上昇率', 0, d => orDash(d.growthDef, v => fmt(N(v), 2))],
+    ['TR', 1, d => trRange({ trs: cardTrs(d) })],
+    ['最大TRの初期スキル', 0, d => fmt(initBase(d, lastTr(d)), 1)],
+    ['最大TRの総攻バフ', 0, d => fmt(N(cardT(d, lastTr(d).tr)?.totalBuff), 2)],
+    ['姫', 0, d => (toFlag(d.hime) ? '姫' : '—')],
+    ['剣豪', 0, d => (toFlag(d.kengou) ? '剣豪' : '—')],
+    ['無尽', 0, d => (cardMuzin(d) > 0 ? fmt(cardMuzin(d), 2) : '—')],
+  ],
+  skills: list => {
+    const maxTr = Math.max(5, ...list.flatMap(([, d]) => trsOf(d).map(t => N(t.tr))));
+    return [
+      ['スキル名', 1, d => esc(d.name)],
+      ['種類', 1, d => (isInitSkill(d) ? '初期スキル' : 'スキル')],
+      ['攻撃or防御', 1, d => sideChip(skillSide(d))],
+      ['スキル付与', 0, d => (toFlag(d.noAdd) ? '不可' : '可')],
+      ['係数の掛け方', 1, d => (isMimic(d) ? '—' : COEF_SHORT[coefByOf(d)])],
+      ['無尽', 0, d => (N(d.muzin) > 0 ? fmt(N(d.muzin), 2) : '—')],
+      ['Xスキル', 0, d => (isX(d) ? '○' : '—')],
+      ['総攻バフの掛け方', 1, d => (isInitSkill(d) ? TB_BY[tbByOf(d)] : '—')],
+      ...[...Array(maxTr + 1).keys()].map(t => [
+        `TR${t}`,
+        0,
+        d => (trEntry(d, t) ? skillLabel(trEntry(d, t), d) : '—'),
+        d => {
+          const e = trEntry(d, t);
+          return `title="${e ? `素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}` : ''}"`;
+        },
+      ]),
+    ];
+  },
+  jbuffs: () => [
+    ['カードNo', 0, d => esc(d.no)],
+    ['武将名', 1, d => esc(d.name)],
+    ['対象兵種', 1, d => esc(targetsLabel(d)), () => 'style="white-space:normal;min-width:140px"'],
+    ...JBUFF_VALS.map(f => [JBUFF_FIELDS.find(x => x[0] === f)[1], 0, d => `+${fmt(jv(d, f), 2)}`]),
+  ],
+  soldiers: () => [
+    ['兵種名', 1, d => esc(d.name)],
+    ['兵科', 1, d => esc(d.branch || '')],
+    ...[
+      ['atk', '攻撃力'],
+      ['def', '防御力'],
+      ['destroy', '破壊'],
+      ['speed', '速度'],
+    ].map(([f, h]) => [h, 0, d => orDash(d[f], v => fmt(N(v), 2))]),
+  ],
+};
+const lastTr = d => {
+  const t = cardTrs(d);
+  return t[t.length - 1] || {};
+};
+const jbuffList = q =>
+  [...M.jbuffs]
+    .filter(
+      ([, d]) =>
+        !q ||
+        String(d.name).includes(q) ||
+        String(d.no).includes(q) ||
+        (d.targets || []).some(t => t.includes(q)),
+    )
+    .sort(byNo);
+const soldierList = q =>
+  [...M.soldiers]
+    .filter(([, d]) => !q || String(d.name).includes(q) || String(d.branch || '').includes(q))
+    .sort(bySoldierOrder);
+
 function renderMaster() {
   $('madd').hidden = !isOwner || mtab === 'skills';
   $('maddSkill').hidden = $('maddInit').hidden = !isOwner || mtab !== 'skills';
@@ -25,78 +107,26 @@ function renderMaster() {
   const q = $('msearch').value.trim();
   const ed = isOwner ? 'editable' : '';
   const list = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q)).sort(byName);
-  const empty = cols =>
-    `<tr><td class="l" colspan="${cols}" style="color:var(--muted)">${loaded[mtab] ? (q ? '該当なし' : `${LABEL[mtab]}はまだ登録されていません。`) : '読み込み中…'}</td></tr>`;
-  let html = '';
-  if (mtab === 'cards') {
-    html =
-      `<thead><tr><th class="l">カード名</th><th class="l">初期スキル名</th><th>カードNo</th><th class="l">レアリティ</th><th>コスト</th><th>兵数</th><th>素攻撃力</th><th>素防御力</th><th>攻撃上昇率</th><th>防御上昇率</th><th class="l">TR</th><th>最大TRの初期スキル</th><th>最大TRの総攻バフ</th><th>姫</th><th>剣豪</th><th>無尽</th></tr></thead><tbody>` +
-      (list.length
-        ? list
-            .map(([id, d]) => {
-              const t = cardTrs(d),
-                last = t[t.length - 1] || {};
-              return `<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}<span class="chip ${d.side === '攻撃・防御' ? 'side-both' : d.side === '防御' ? 'side-def' : d.side === '攻撃' ? 'side-atk' : ''}">${esc(d.side || '')}</span></td><td class="l">${esc(d.initName || '—')}</td><td class="num">${esc(d.no)}</td><td class="l">${esc(d.rarity)}</td><td class="num">${fmt(N(d.cost), 1)}</td><td class="num">${fmt(N(d.troops))}</td><td class="num">${fmt(N(d.baseStat))}</td><td class="num">${d.baseDef == null ? '—' : fmt(N(d.baseDef))}</td><td class="num">${fmt(N(d.growth), 2)}</td><td class="num">${d.growthDef == null ? '—' : fmt(N(d.growthDef), 2)}</td><td class="l">${trRange({ trs: t })}</td><td class="num">${fmt(initBase(d, last), 1)}</td><td class="num">${fmt(N(cardT(d, last.tr)?.totalBuff), 2)}</td><td class="num">${toFlag(d.hime) ? '姫' : '—'}</td><td class="num">${toFlag(d.kengou) ? '剣豪' : '—'}</td><td class="num">${cardMuzin(d) > 0 ? fmt(cardMuzin(d), 2) : '—'}</td></tr>`;
-            })
-            .join('')
-        : empty(16)) +
-      '</tbody>';
-  } else if (mtab === 'skills') {
-    const maxTr = Math.max(5, ...list.flatMap(([, d]) => trsOf(d).map(t => N(t.tr))));
-    const trs = [...Array(maxTr + 1).keys()];
-    html =
-      `<thead><tr><th class="l">スキル名</th><th class="l">種類</th><th class="l">攻撃or防御</th><th>スキル付与</th><th class="l">係数の掛け方</th><th>無尽</th><th>Xスキル</th><th class="l">総攻バフの掛け方</th>${trs.map(t => `<th>TR${t}</th>`).join('')}</tr></thead><tbody>` +
-      (list.length
-        ? list
-            .map(
-              ([id, d]) =>
-                `<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="l">${isInitSkill(d) ? '初期スキル' : 'スキル'}</td><td class="l"><span class="chip ${skillSide(d) === '攻撃・防御' ? 'side-both' : skillSide(d) === '防御' ? 'side-def' : 'side-atk'}">${skillSide(d)}</span></td><td class="num">${toFlag(d.noAdd) ? '不可' : '可'}</td><td class="l">${isMimic(d) ? '—' : COEF_SHORT[coefByOf(d)]}</td><td class="num">${N(d.muzin) > 0 ? fmt(N(d.muzin), 2) : '—'}</td><td class="num">${isX(d) ? '○' : '—'}</td><td class="l">${isInitSkill(d) ? TB_BY[tbByOf(d)] : '—'}</td>${trs
-                  .map(t => {
-                    const e = trEntry(d, t);
-                    return `<td class="num" title="${e ? `素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}` : ''}">${e ? skillLabel(e, d) : '—'}</td>`;
-                  })
-                  .join('')}</tr>`,
-            )
-            .join('')
-        : empty(trs.length + 8)) +
-      '</tbody>';
-  } else if (mtab === 'jbuffs') {
-    const jl = [...M.jbuffs]
-      .filter(
-        ([, d]) =>
-          !q ||
-          String(d.name).includes(q) ||
-          String(d.no).includes(q) ||
-          (d.targets || []).some(t => t.includes(q)),
-      )
-      .sort(byNo);
-    html =
-      `<thead><tr><th>カードNo</th><th class="l">武将名</th><th class="l">対象兵種</th><th>所属時攻撃力</th><th>所属時防御力</th><th>外部攻撃力</th><th>外部防御力</th></tr></thead><tbody>` +
-      (jl.length
-        ? jl
-            .map(
-              ([id, d]) =>
-                `<tr data-id="${esc(id)}" class="${ed}"><td class="num">${esc(d.no)}</td><td class="l">${esc(d.name)}</td><td class="l" style="white-space:normal;min-width:140px">${esc(targetsLabel(d))}</td>${JBUFF_VALS.map(f => `<td class="num">+${fmt(jv(d, f), 2)}</td>`).join('')}</tr>`,
-            )
-            .join('')
-        : empty(7)) +
-      '</tbody>';
-  } else {
-    const sl = [...M.soldiers]
-      .filter(([, d]) => !q || String(d.name).includes(q) || String(d.branch || '').includes(q))
-      .sort(bySoldierOrder);
-    html =
-      `<thead><tr><th class="l">兵種名</th><th class="l">兵科</th><th>攻撃力</th><th>防御力</th><th>破壊</th><th>速度</th></tr></thead><tbody>` +
-      (sl.length
-        ? sl
-            .map(
-              ([id, d]) =>
-                `<tr data-id="${esc(id)}" class="${ed}"><td class="l">${esc(d.name)}</td><td class="l">${esc(d.branch || '')}</td>${['atk', 'def', 'destroy', 'speed'].map(f => `<td class="num">${d[f] == null ? '—' : fmt(N(d[f]), 2)}</td>`).join('')}</tr>`,
-            )
-            .join('')
-        : empty(6)) +
-      '</tbody>';
-  }
+  const rows = mtab === 'jbuffs' ? jbuffList(q) : mtab === 'soldiers' ? soldierList(q) : list;
+  const cols = LIST_COLS[mtab](rows);
+  const emptyRow = `<tr><td class="l" colspan="${cols.length}" style="color:var(--muted)">${
+    loaded[mtab] ? (q ? '該当なし' : `${LABEL[mtab]}はまだ登録されていません。`) : '読み込み中…'
+  }</td></tr>`;
+  const head = cols.map(([h, l]) => `<th${l ? ' class="l"' : ''}>${h}</th>`).join('');
+  const body = rows.length
+    ? rows
+        .map(
+          ([id, d]) =>
+            `<tr data-id="${esc(id)}" class="${ed}">${cols
+              .map(
+                ([, l, cell, extra]) =>
+                  `<td class="${l ? 'l' : 'num'}"${extra ? ' ' + extra(d) : ''}>${cell(d)}</td>`,
+              )
+              .join('')}</tr>`,
+        )
+        .join('')
+    : emptyRow;
+  const html = `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
   $('mtable').innerHTML = html;
 }
 
@@ -207,6 +237,146 @@ function syncDraft() {
     d.trs[+r][f] = el.value === '' ? '' : Number(el.value);
   }
 }
+/* ---------- 編集パネルの部品 ---------- */
+/* 入力欄1つ分。type でプルダウン・チェックボックス・数値などを切り替える */
+const SELECTS = {
+  mimic: d => Object.entries(MIMIC).map(([v, l]) => [v, l, mimicOf(d) === v]),
+  tbby: d => Object.entries(TB_BY).map(([v, l]) => [v, l, tbByOf(d) === v]),
+  coef: d => Object.entries(COEF_BY).map(([v, l]) => [v, l, coefByOf(d) === v]),
+  side: (d, f) => SIDES.map(v => [null, v, d[f] === v]),
+  rarity: (d, f) =>
+    (RARITIES.includes(d[f]) || !d[f] ? RARITIES : [...RARITIES, d[f]]).map(v => [null, esc(v), d[f] === v]),
+  flag: (d, f) => (FLAG_LABELS[f] || ['0', '1']).map((l, v) => [v, l, toFlag(d[f]) === v]),
+};
+function fieldHtml(d, f, label, type) {
+  const lab = `<label class="label" for="f-${f}">${label}</label>`;
+  if (f === 'initName')
+    return `<div class="field">${lab}<input id="f-${f}" data-f="${f}" type="text" list="skillNames" autocomplete="off" placeholder="スキルマスタから選択" value="${esc(d[f] ?? '')}"></div>`;
+  if (type === 'check')
+    return `<div class="field"><span class="label">${label}</span><label class="checkline"><input type="checkbox" id="f-${f}" data-f="${f}"${toFlag(d[f]) ? ' checked' : ''}>${label}</label></div>`;
+  if (SELECTS[type]) {
+    const opts = SELECTS[type](d, f)
+      .map(
+        ([v, l, sel]) => `<option${v == null ? '' : ` value="${v}"`}${sel ? ' selected' : ''}>${l}</option>`,
+      )
+      .join('');
+    return `<div class="field">${lab}<select id="f-${f}" data-f="${f}"${type === 'flag' ? ' data-flag="1"' : ''}>${opts}</select></div>`;
+  }
+  return `<div class="field">${lab}<input id="f-${f}" data-f="${f}" type="${type}" ${type === 'number' ? 'step="any"' : ''} value="${esc(d[f] ?? '')}"></div>`;
+}
+const checkbox = (attrs, checked, label) =>
+  `<label><input type="checkbox" ${attrs}${checked ? ' checked' : ''}>${label}</label>`;
+const checksField = (label, inner) =>
+  `<div class="field">${label ? `<span class="label">${label}</span>` : ''}<div class="checks">${inner}</div></div>`;
+const EFFECT_PROMPT = '特殊効果にチェックを入れてください(チェックした効果の値をTR表で入力)';
+
+/* スキル・初期スキルの編集画面 */
+function skillEditorBody(d) {
+  const ini = toFlag(d.init) === 1,
+    mm = !ini && isMimic(d),
+    ef = effsOf(d);
+  const fields = [
+    ['name', 'スキル名', 'text'],
+    ['side', '攻撃or防御', 'side'],
+    ['noAdd', 'スキル付与', 'flag'],
+    !mm && ['coefBy', '係数の掛け方', 'coef'],
+    ['muzin', '無尽(0:なし、1以上:あり)', 'number'],
+    !ini && ['xskill', 'Xスキル', 'flag'],
+    ini ? ['noMimic', '模倣', 'flag'] : ['mimic', '模倣', 'mimic'],
+    ini && ef.total && ['tbBy', `総${sw(d)}バフの掛け方`, 'tbby'],
+  ].filter(Boolean);
+  const coefMaxBox =
+    coefByOf(d) === 'same' && !mm
+      ? `<div class="field"><div class="checks">${checkbox('id="f-coefMaxTr"', toFlag(d.coefMaxTr), '係数は部隊内武将のTRの最大値を参照')}</div></div>`
+      : '';
+  const effects = ini
+    ? EFFS.map(
+        ([k]) =>
+          checkbox(`data-eff="${k}"`, ef[k], effLabel(d, k)) +
+          (k === 'stat' && ef.stat
+            ? checkbox('data-eff2="self"', ef.self, `${effLabel(d, 'stat')}は本人のみ`)
+            : ''),
+      ).join('') + checkbox('data-eff2="leader"', ef.leader, '部隊長限定')
+    : checkbox('data-eff="dup"', dupOn(d), '重複上限');
+  return (
+    `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
+    ${coefMaxBox}
+    ${checksField(EFFECT_PROMPT, effects)}
+    <p class="note">${skillNotes(d).join('')}</p>` +
+    trTable(skillTrCols(d), d.trs, t => skillLabel(t, d), 'スキル上昇率')
+  );
+}
+/* スキル編集画面の説明文(選んだ項目に合わせて出す) */
+function skillNotes(d) {
+  const ini = toFlag(d.init) === 1,
+    ef = effsOf(d),
+    b = sw(d);
+  const notes = [
+    'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。',
+    coefMax(d) && '係数は、部隊内でこのスキルを持つ武将のうち、いちばん高いTRの係数を使います。',
+    'Xスキルは通常枠にしか付けられません。',
+  ];
+  if (ini)
+    notes.push(
+      `素${b}バフ〜総${b}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0)。`,
+      ef.stat &&
+        (ef.self
+          ? `素${b}バフは本人だけにかかります。`
+          : `素${b}バフは、部隊のどこにいても部隊全員にかかります。`),
+      ef.leader && '部隊長限定:部隊長の枠にいるときだけ、この初期スキルの効果が出ます。',
+      ef.total &&
+        tbByOf(d) === 'muzin' &&
+        `総${b}バフ = 総${b}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${b}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`,
+    );
+  if (!ini && isMimic(d))
+    notes.push(
+      `模倣スキルの値 = 素スキル上昇率 + 模倣倍率 × ${mimicOf(d) === 'self' ? '自分' : '部隊長'}の初期スキルのスキル上昇率(部隊の中で計算した値)。特殊効果は模倣しません。極限枠でも ×1.2 はかけません。${mimicOf(d) === 'leader' ? '部隊長に付けたときは効果なし。' : ''}`,
+    );
+  if (skillSide(d) === '防御')
+    notes.push('防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。');
+  return notes.filter(Boolean);
+}
+/* スキル編集画面のTR表の列 */
+function skillTrCols(d) {
+  const ini = toFlag(d.init) === 1,
+    dup = dupOn(d) ? [['dupMax', '重複上限']] : [];
+  if (!ini && isMimic(d))
+    return [['tr', 'TR'], ['base', '素スキル上昇率'], ['mimicRate', '模倣倍率'], ...dup];
+  if (!ini) return [...SKILL_TR, ...dup];
+  return [
+    ...SKILL_TR,
+    ...initCols(d),
+    ...(effsOf(d).total && tbByOf(d) === 'muzin' ? [['tbCoef', `総${sw(d)}バフ係数(%)`]] : []),
+  ];
+}
+function cardEditorBody(d) {
+  return `<div class="grid">${CARD_FIELDS.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
+    <datalist id="skillNames">${[...M.skills.values()].map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
+    <div id="initArea" data-key="${esc(String(d.initName ?? '').trim())}">${initAreaHtml(d)}</div>`;
+}
+function jbuffEditorBody(d) {
+  const sold = [...M.soldiers].sort(bySoldierOrder),
+    tg = d.targets || [],
+    unknown = tg.filter(t => !sold.some(([, x]) => x.name === t));
+  const boxes =
+    sold
+      .map(([, x]) => checkbox(`name="jtarget" value="${esc(x.name)}"`, tg.includes(x.name), esc(x.name)))
+      .join('') || '<span class="note">兵種マスタが空です</span>';
+  return `<div class="grid">${JBUFF_FIELDS.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
+    <div class="field"><span class="label">対象兵種(チェックなしなら全兵種)</span><div class="checks">${boxes}</div>
+    ${unknown.length ? `<p class="msg err">兵種マスタにない兵種が指定されています:${unknown.map(esc).join('、')}(このまま残ります)</p>` : ''}</div>
+    <p class="note">傑バフがあると、対象兵種の攻撃力・防御力にこの値が足されます。「所属時」はこの傑カードが部隊に入っているとき、「外部」は部隊の外からかかるときの値です。</p>`;
+}
+function soldierEditorBody(d) {
+  return `<div class="grid">${SOLDIER_FIELDS.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div><p class="note">攻撃力は攻撃部隊、防御力は防御部隊の計算に使います。</p>`;
+}
+function editorTitle(coll, id, d) {
+  if (coll === 'skills') {
+    const kind = toFlag(d.init) ? '初期スキル' : 'スキル';
+    return id ? `${esc(d.name)} を編集(${kind})` : kind + 'を追加';
+  }
+  return id ? esc(d.name) + ' を編集' : LABEL[coll] + 'を追加';
+}
 function renderEditor() {
   const box = $('editor');
   if (!draft || !isOwner) {
@@ -214,88 +384,13 @@ function renderEditor() {
     return;
   }
   const { coll, id, data: d } = draft;
-  const inp = (f, label, type) =>
-    f === 'initName'
-      ? `<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="text" list="skillNames" autocomplete="off" placeholder="スキルマスタから選択" value="${esc(d[f] ?? '')}"></div>`
-      : type === 'check'
-        ? `<div class="field"><span class="label">${label}</span><label class="checkline"><input type="checkbox" id="f-${f}" data-f="${f}"${toFlag(d[f]) ? ' checked' : ''}>${label}</label></div>`
-        : type === 'invcheck'
-          ? `<div class="field"><span class="label">模倣</span><label class="checkline"><input type="checkbox" id="f-${f}" data-f="${f}" data-inv="1"${toFlag(d[f]) ? '' : ' checked'}>${label}</label></div>`
-          : type === 'mimic'
-            ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(
-                MIMIC,
-              )
-                .map(([v, l]) => `<option value="${v}"${mimicOf(d) === v ? ' selected' : ''}>${l}</option>`)
-                .join('')}</select></div>`
-            : type === 'tbby'
-              ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(
-                  TB_BY,
-                )
-                  .map(([v, l]) => `<option value="${v}"${tbByOf(d) === v ? ' selected' : ''}>${l}</option>`)
-                  .join('')}</select></div>`
-              : type === 'coef'
-                ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${Object.entries(
-                    COEF_BY,
-                  )
-                    .map(
-                      ([v, l]) => `<option value="${v}"${coefByOf(d) === v ? ' selected' : ''}>${l}</option>`,
-                    )
-                    .join('')}</select></div>`
-                : type === 'rarity'
-                  ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${(RARITIES.includes(d[f]) || !d[f] ? RARITIES : [...RARITIES, d[f]]).map(v => `<option${d[f] === v ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div>`
-                  : type === 'flag'
-                    ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}" data-flag="1">${(FLAG_LABELS[f] || ['0', '1']).map((l, v) => `<option value="${v}"${toFlag(d[f]) === v ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`
-                    : type === 'side'
-                      ? `<div class="field"><label class="label" for="f-${f}">${label}</label><select id="f-${f}" data-f="${f}">${['攻撃', '防御', '攻撃・防御'].map(v => `<option${d[f] === v ? ' selected' : ''}>${v}</option>`).join('')}</select></div>`
-                      : `<div class="field"><label class="label" for="f-${f}">${label}</label><input id="f-${f}" data-f="${f}" type="${type}" ${type === 'number' ? 'step="any"' : ''} value="${esc(d[f] ?? '')}"></div>`;
-  let body = '';
-  if (coll === 'cards') {
-    body = `<div class="grid">${CARD_FIELDS.map(([f, l, t]) => inp(f, l, t)).join('')}</div>
-    <datalist id="skillNames">${[...M.skills.values()].map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
-    <div id="initArea" data-key="${esc(String(d.initName ?? '').trim())}">${initAreaHtml(d)}</div>`;
-  } else if (coll === 'skills') {
-    const ini = toFlag(d.init) === 1;
-    body =
-      `<div class="grid">${inp('name', 'スキル名', 'text')}${inp('side', '攻撃or防御', 'side')}${inp('noAdd', 'スキル付与', 'flag')}${!ini && isMimic(d) ? '' : inp('coefBy', '係数の掛け方', 'coef')}${inp('muzin', '無尽(0:なし、1以上:あり)', 'number')}${ini ? '' : inp('xskill', 'Xスキル', 'flag')}${ini ? inp('noMimic', '模倣', 'flag') : inp('mimic', '模倣', 'mimic')}${ini && effsOf(d).total ? inp('tbBy', `総${sw(d)}バフの掛け方`, 'tbby') : ''}</div>
-    ${coefByOf(d) === 'same' && !(!ini && isMimic(d)) ? `<div class="field"><div class="checks"><label><input type="checkbox" id="f-coefMaxTr"${toFlag(d.coefMaxTr) ? ' checked' : ''}>係数は部隊内武将のTRの最大値を参照</label></div></div>` : ''}
-    ${
-      ini
-        ? `<div class="field"><span class="label">特殊効果にチェックを入れてください(チェックした効果の値をTR表で入力)</span><div class="checks">${EFFS.map(([k]) => `<label><input type="checkbox" data-eff="${k}"${effsOf(d)[k] ? ' checked' : ''}>${effLabel(d, k)}</label>` + (k === 'stat' && effsOf(d).stat ? `<label><input type="checkbox" data-eff2="self"${effsOf(d).self ? ' checked' : ''}>${effLabel(d, 'stat')}は本人のみ</label>` : '')).join('')}<label><input type="checkbox" data-eff2="leader"${effsOf(d).leader ? ' checked' : ''}>部隊長限定</label></div></div>`
-        : `<div class="field"><span class="label">特殊効果にチェックを入れてください(チェックした効果の値をTR表で入力)</span><div class="checks"><label><input type="checkbox" data-eff="dup"${dupOn(d) ? ' checked' : ''}>重複上限</label></div></div>`
-    }
-    <p class="note">スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。${coefMax(d) ? '係数は、部隊内でこのスキルを持つ武将のうち、いちばん高いTRの係数を使います。' : ''}Xスキルは通常枠にしか付けられません。${ini ? `素${sw(d)}バフ〜総${sw(d)}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0)。${effsOf(d).stat ? (effsOf(d).self ? `素${sw(d)}バフは本人だけにかかります。` : `素${sw(d)}バフは、部隊のどこにいても部隊全員にかかります。`) : ''}${effsOf(d).leader ? '部隊長限定:部隊長の枠にいるときだけ、この初期スキルの効果が出ます。' : ''}` : ''}${ini && effsOf(d).total && tbByOf(d) === 'muzin' ? `総${sw(d)}バフ = 総${sw(d)}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${sw(d)}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。` : ''}${!ini && isMimic(d) ? `模倣スキルの値 = 素スキル上昇率 + 模倣倍率 × ${mimicOf(d) === 'self' ? '自分' : '部隊長'}の初期スキルのスキル上昇率(部隊の中で計算した値)。特殊効果は模倣しません。極限枠でも ×1.2 はかけません。${mimicOf(d) === 'leader' ? '部隊長に付けたときは効果なし。' : ''}` : ''}${skillSide(d) === '防御' ? '防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。' : ''}</p>` +
-      trTable(
-        !ini && isMimic(d)
-          ? [
-              ['tr', 'TR'],
-              ['base', '素スキル上昇率'],
-              ['mimicRate', '模倣倍率'],
-              ...(dupOn(d) ? [['dupMax', '重複上限']] : []),
-            ]
-          : !ini
-            ? [...SKILL_TR, ...(dupOn(d) ? [['dupMax', '重複上限']] : [])]
-            : ini
-              ? [
-                  ...SKILL_TR,
-                  ...initCols(d),
-                  ...(effsOf(d).total && tbByOf(d) === 'muzin' ? [['tbCoef', `総${sw(d)}バフ係数(%)`]] : []),
-                ]
-              : SKILL_TR,
-        d.trs,
-        t => skillLabel(t, d),
-        'スキル上昇率',
-      );
-  } else if (coll === 'jbuffs') {
-    const sold = [...M.soldiers].sort(bySoldierOrder),
-      tg = d.targets || [],
-      unknown = tg.filter(t => !sold.some(([, x]) => x.name === t));
-    body = `<div class="grid">${JBUFF_FIELDS.map(([f, l, t]) => inp(f, l, t)).join('')}</div>
-    <div class="field"><span class="label">対象兵種(チェックなしなら全兵種)</span><div class="checks">${sold.map(([, x]) => `<label><input type="checkbox" name="jtarget" value="${esc(x.name)}"${tg.includes(x.name) ? ' checked' : ''}>${esc(x.name)}</label>`).join('') || '<span class="note">兵種マスタが空です</span>'}</div>
-    ${unknown.length ? `<p class="msg err">兵種マスタにない兵種が指定されています:${unknown.map(esc).join('、')}(このまま残ります)</p>` : ''}</div>
-    <p class="note">傑バフがあると、対象兵種の攻撃力・防御力にこの値が足されます。「所属時」はこの傑カードが部隊に入っているとき、「外部」は部隊の外からかかるときの値です。</p>`;
-  } else
-    body = `<div class="grid">${SOLDIER_FIELDS.map(([f, l, t]) => inp(f, l, t)).join('')}</div><p class="note">攻撃力は攻撃部隊、防御力は防御部隊の計算に使います。</p>`;
-  box.innerHTML = `<form class="editor" id="edform" novalidate><strong>${coll === 'skills' ? (id ? `${esc(d.name)} を編集(${toFlag(d.init) ? '初期スキル' : 'スキル'})` : (toFlag(d.init) ? '初期スキル' : 'スキル') + 'を追加') : id ? esc(d.name) + ' を編集' : LABEL[coll] + 'を追加'}</strong>${body}
+  const body = {
+    cards: cardEditorBody,
+    skills: skillEditorBody,
+    jbuffs: jbuffEditorBody,
+    soldiers: soldierEditorBody,
+  }[coll](d);
+  box.innerHTML = `<form class="editor" id="edform" novalidate><strong>${editorTitle(coll, id, d)}</strong>${body}
     <div class="actions"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">保存</button><button class="btn ghost" type="button" data-act="close">閉じる</button></div>
     ${id ? '<button class="btn danger" type="button" data-act="delete">削除</button>' : ''}</div><p class="msg" id="edmsg"></p></form>`;
 }
