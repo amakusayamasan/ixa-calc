@@ -3,6 +3,7 @@ rules_version = '2';
 // IXA 部隊計算のセキュリティルール
 // ・マスタ(master/v2 の下の武将・スキル・兵種・傑バフ・設定など)は誰でも読める
 // ・書き込めるのは admins コレクションに登録されたユーザーだけ
+// ・変更履歴(logs)は管理者だけが読め、追記のみ(書き換え・削除は不可)
 // ・admins は本人が自分の登録を確認できるだけで、サイトからは書き込めない(Firebase コンソールで登録する)
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -15,6 +16,15 @@ service cloud.firestore {
     match /master/v2/{collection}/{docId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // 変更履歴:管理者が自分の名前(ユーザーID)で追記するだけ。あとから書き換え・削除はできない
+    match /logs/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.at == request.time;
+      allow update, delete: if false;
     }
 
     match /admins/{uid} {

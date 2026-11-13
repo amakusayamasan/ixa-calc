@@ -263,6 +263,19 @@ const M={cards:new Map(),skills:new Map(),soldiers:new Map(),jbuffs:new Map()};
 let me=null,adminName='';
 const myName=()=>adminName;
 const nowStamp=()=>({updatedBy:me?.uid||'',updatedName:myName(),updatedAt:(window.firebase?.firestore?.FieldValue?.serverTimestamp?.())||new Date()});
+/* 変更履歴:保存・削除のたびに logs/{id} へ追記する(ルールで追記のみ・書き換え不可)。マスタの書き込みと同じバッチで書くので、
+   履歴が書けないときはマスタも書き換わらない */
+const COLL_JA={cards:'武将',skills:'スキル',soldiers:'兵種',jbuffs:'傑バフ',config:'設定'};
+const plain=v=>v==null?null:JSON.parse(JSON.stringify(v,(k,x)=>['updatedAt','updatedBy','updatedName'].includes(k)?undefined:x));
+function addLog(batch,action,coll,docId,before,after){const ts=(window.firebase?.firestore?.FieldValue?.serverTimestamp?.())||new Date();
+  batch.set(db.doc(`logs/${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`),{at:ts,by:me?.uid||'',name:myName(),action,coll:COLL_JA[coll]||coll,docId,
+    label:String((after||before)?.name??(coll==='config'?'人数':docId)),before:plain(before),after:plain(after)})}
+/* マスタ1件の書き込み(after=null なら削除)と履歴を、まとめて書く */
+async function writeWithLog(action,coll,docId,after){const path=coll==='config'?`${BASE}/config/${docId}`:`${BASE}/${coll}/${docId}`;
+  const before=coll==='config'?config:M[coll]?.get(docId)||null;const batch=db.batch();
+  if(after)batch.set(db.doc(path),{...after,...nowStamp()});else batch.delete(db.doc(path));
+  addLog(batch,action,coll,docId,before,after);await batch.commit()}
+const logErr=err=>err?.code==='permission-denied'?'権限がありません。Firebase のルールに変更履歴(logs)の設定が入っているか確認してください':(err?.code||err?.message);
 /* 表示名が未登録なら保存させない */
 function needName(){if(myName())return false;
   msgAny(`表示名が登録されていないため保存できません。Firebase コンソールの admins コレクションで、ドキュメント「${me?.uid||''}」に、フィールド name(文字列)で表示名を追加してから、サイトを読み込み直してください。`);return true}
@@ -703,7 +716,7 @@ $('editor').addEventListener('click',async e=>{const b=e.target.closest('[data-a
   if(act==='addtr'){syncDraft();const last=draft.data.trs[draft.data.trs.length-1]||{};draft.data.trs.push({...last,tr:N(last.tr)+1});renderEditor();return}
   if(act==='rmtr'){syncDraft();draft.data.trs.splice(+b.dataset.r,1);renderEditor();return}
   if(act==='delete'){if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='本当に削除する';return}
-    try{await db.doc(`${BASE}/${draft.coll}/${draft.id}`).delete();draft=null;renderEditor()}catch(err){msg('削除できませんでした('+(err.code||err.message)+')',true)}}
+    try{await writeWithLog('削除',draft.coll,draft.id,null);draft=null;renderEditor()}catch(err){msg('削除できませんでした('+logErr(err)+')',true)}}
 });
 function msg(t,err){const m=$('edmsg');if(m){m.textContent=t;m.className='msg '+(err?'err':'ok')}}
 function validate(coll,d){
@@ -728,7 +741,7 @@ const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 $('editor').addEventListener('submit',async e=>{e.preventDefault();syncDraft();const {coll}=draft;const err=validate(coll,draft.data);if(err)return msg(err,true);
   const data=clean(coll,draft.data);const id=draft.id||(coll==='cards'?'n'+data.no+'_'+Math.random().toString(36).slice(2,6):coll==='jbuffs'?'j'+data.no:newId(coll[0]));
   if(needName())return;
-  try{await db.doc(`${BASE}/${coll}/${id}`).set({...data,...nowStamp()});draft.id=id;draft.data=structuredClone(data);renderEditor();msg('保存しました')}catch(er){msg('保存できませんでした('+(er.code||er.message)+')',true);return}
+  try{await writeWithLog(draft.id?'更新':'追加',coll,id,data);draft.id=id;draft.data=structuredClone(data);renderEditor();msg('保存しました')}catch(er){msg('保存できませんでした('+logErr(er)+')',true);return}
   /* 武将の初期スキル名がスキルマスタにないときは、その名前で初期スキル追加画面を開く */
   const iname=coll==='cards'?String(data.initName??'').trim():'';
   if(iname&&!skillByName(iname)){$('mtabs').querySelector('[data-m=skills]').click();openEditor('skills',null,'init');draft.data.name=iname;
@@ -842,16 +855,16 @@ $('importbox').addEventListener('change',async e=>{if(e.target.id!=='xfile'||!e.
 $('importbox').addEventListener('click',async e=>{const b=e.target.closest('[data-imp]');if(!b)return;
   if(b.dataset.imp==='cancel'){importPlan=null;renderImport();return}
   if(b.dataset.imp==='fmt'||b.dataset.imp==='dump'){const m=$('impmsg');try{m.className='msg';m.textContent='作成しています…';await downloadXlsx(b.dataset.imp==='dump');m.textContent=''}catch(err){m.className='msg err';m.textContent='作成できませんでした:'+err.message}return}
-  if(needName())return;const st=nowStamp();
+  if(needName())return;
   const p=importPlan,m=$('impmsg');b.disabled=true;let done=0;const total=p.cards.length+p.skills.length+p.soldiers.length+p.jbuffs.length+(p.people!=null?1:0);
   try{
-    for(const c of p.cards){await db.doc(`${BASE}/cards/${c.id||'n'+c.data.no+'_'+Math.random().toString(36).slice(2,6)}`).set({...c.data,...st});m.textContent=`取り込み中 ${++done}/${total}`}
-    for(const s of p.skills){await db.doc(`${BASE}/skills/${s.id||newId('s')}`).set({...s.data,...st});m.textContent=`取り込み中 ${++done}/${total}`}
-    for(const o of p.soldiers){await db.doc(`${BASE}/soldiers/${o.id||newId('o')}`).set({...o.data,...st});m.textContent=`取り込み中 ${++done}/${total}`}
-    for(const j of p.jbuffs){await db.doc(`${BASE}/jbuffs/${j.id||'j'+j.data.no}`).set({...j.data,...st});m.textContent=`取り込み中 ${++done}/${total}`}
-    if(p.people!=null){await db.doc(`${BASE}/config/main`).set({...config,people:p.people,...st});done++}
+    for(const c of p.cards){await writeWithLog('Excel取り込み','cards',c.id||'n'+c.data.no+'_'+Math.random().toString(36).slice(2,6),c.data);m.textContent=`取り込み中 ${++done}/${total}`}
+    for(const s of p.skills){await writeWithLog('Excel取り込み','skills',s.id||newId('s'),s.data);m.textContent=`取り込み中 ${++done}/${total}`}
+    for(const o of p.soldiers){await writeWithLog('Excel取り込み','soldiers',o.id||newId('o'),o.data);m.textContent=`取り込み中 ${++done}/${total}`}
+    for(const j of p.jbuffs){await writeWithLog('Excel取り込み','jbuffs',j.id||'j'+j.data.no,j.data);m.textContent=`取り込み中 ${++done}/${total}`}
+    if(p.people!=null){await writeWithLog('Excel取り込み','config','main',{...plain(config),people:p.people});done++}
     importPlan=null;renderImport();status(`Excelから ${done} 件を取り込みました。`);setTimeout(()=>status(''),5000);
-  }catch(err){m.className='msg err';m.textContent=`${done}件まで取り込んだところで止まりました(${err.code||err.message})。もう一度「取り込む」を押すと続きから上書きします。`;b.disabled=false}});
+  }catch(err){m.className='msg err';m.textContent=`${done}件まで取り込んだところで止まりました(${logErr(err)})。もう一度「取り込む」を押すと続きから上書きします。`;b.disabled=false}});
 
 /* ---------- 画面に出なくなった古いデータの削除(管理者用。消すものがなくなるとボタンは消える) ----------
    ・武将:TRごとの値と無尽(初期スキルがスキルマスタにある武将だけ。ない武将は計算に使うので残す)
@@ -880,10 +893,10 @@ $('cleanbox').addEventListener('click',async e=>{const b=e.target.closest('[data
   const p=cleaning,m=$('clmsg');b.disabled=true;m.className='msg';m.textContent='削除しています…';
   const before=form?Math.round(calc().total):null;
   try{const ops=[...p.cards.map(x=>['cards',x]),...p.skills.map(x=>['skills',x]),...p.jbuffs.map(x=>['jbuffs',x])];
-    for(let i=0;i<ops.length;i+=400){const batch=db.batch();for(const [coll,x] of ops.slice(i,i+400))batch.set(db.doc(`${BASE}/${coll}/${x.id}`),{...x.data,...nowStamp()});await batch.commit()}
+    for(let i=0;i<ops.length;i+=200){const batch=db.batch();for(const [coll,x] of ops.slice(i,i+200)){batch.set(db.doc(`${BASE}/${coll}/${x.id}`),{...x.data,...nowStamp()});addLog(batch,'不要データ削除',coll,x.id,M[coll].get(x.id),x.data)}await batch.commit()}
     cleaning=null;renderClean();setTimeout(()=>{const after=form?Math.round(calc().total):null;
       status(`不要データを削除しました(武将${p.cards.length}・スキル${p.skills.length}・傑バフ${p.jbuffs.length})。`+(before!=null?(before===after?'計算結果は変わっていません。':`計算結果が変わりました(${fmt(before)} → ${fmt(after)})。お知らせください。`):''));setTimeout(()=>status(''),8000)},500)}
-  catch(err){b.disabled=false;m.className='msg err';m.textContent='削除できませんでした('+(err.code||err.message)+')'}});
+  catch(err){b.disabled=false;m.className='msg err';m.textContent='削除できませんでした('+logErr(err)+')'}});
 
 /* ---------- 画面切替・起動 ---------- */
 $('mtabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mtab=b.dataset.m;draft=null;importPlan=null;cleaning=null;renderClean();[...$('mtabs').children].forEach(x=>x.setAttribute('aria-pressed',x===b));renderEditor();renderImport();renderMaster()});
@@ -895,7 +908,7 @@ $('mtable').addEventListener('click',e=>{const tr=e.target.closest('tr[data-id]'
 $('people').addEventListener('click',async e=>{if(e.target.id!=='peopleSave')return;const v=Number($('peopleIn').value),m=$('peopleMsg');
   if(!Number.isFinite(v)||v<=0){m.className='msg err';m.textContent='人数は正の数で入力してください';return}
   if(needName())return;
-  try{await db.doc(`${BASE}/config/main`).set({...config,people:v,...nowStamp()});m.className='msg ok';m.textContent='保存しました'}catch(err){m.className='msg err';m.textContent='保存できませんでした('+(err.code||err.message)+')'}});
+  try{await writeWithLog('更新','config','main',{...plain(config),people:v});m.className='msg ok';m.textContent='保存しました'}catch(err){m.className='msg err';m.textContent='保存できませんでした('+logErr(err)+')'}});
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)show(b.dataset.view)});
 function show(v){for(const b of document.querySelectorAll('.tabs button'))b.setAttribute('aria-selected',b.dataset.view===v);
   $('view-calc').hidden=v!=='calc';$('view-master').hidden=v!=='master';try{history.replaceState(null,'',location.pathname+location.search+'#'+v)}catch(e){}if(v==='master')renderMaster()}
