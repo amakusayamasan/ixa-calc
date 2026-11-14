@@ -24,13 +24,15 @@ function bulkItems() {
   const list = [...M.skills]
     /* 候補は各武将のスキル欄と同じ:付与できるスキル(付与できる初期スキルも)で、今の部隊タイプで使えるもの */
     .filter(([, d]) => toFlag(d.noAdd) !== 1 && forMode(d))
-    /* 絞り込み:人数系 / 人数系以外 / 自真似(自模倣) / 他真似(部隊長を真似る) */
+    /* 絞り込み:人数系 / 人数系以外 / 自真似(自模倣) / 他真似(部隊長を真似る) / Xスキル */
     .filter(([, d]) =>
       !bulk.people
         ? true
-        : bulk.people === 'self' || bulk.people === 'leader'
-          ? mimicOf(d) === bulk.people
-          : (peopleSkill(d) ? 'yes' : 'no') === bulk.people,
+        : bulk.people === 'x'
+          ? isX(d)
+          : bulk.people === 'self' || bulk.people === 'leader'
+            ? mimicOf(d) === bulk.people
+            : (peopleSkill(d) ? 'yes' : 'no') === bulk.people,
     )
     .filter(([, d]) => words.every(w => kana(d.name).includes(w)))
     .sort(byName)
@@ -80,6 +82,7 @@ function renderBulk() {
           ['no', '人数系以外'],
           ['self', '自真似'],
           ['leader', '他真似'],
+          ['x', 'Xスキル'],
         ],
         bulk.people,
         'data-bulk-people',
