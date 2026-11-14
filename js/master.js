@@ -545,13 +545,9 @@ function skillEditorBody(d) {
       ef.troop &&
       subbox(
         '兵数加算の設定',
-        `<p class="note">兵数加算を足す相手を選びます(「すべて」ならほかの武将全員、「姫」「剣豪」なら武将マスタで姫・剣豪の武将だけ)。「自身の兵数も増やす」にチェックを入れると、この武将本人の兵数にも足します。</p>` +
-          checksField(
-            '兵数加算の対象(ほかの武将)',
-            TROOP_TO.map(([v, l]) =>
-              checkbox(`name="troopto" value="${v}"`, troopToOf(d).includes(v), l),
-            ).join(''),
-          ) +
+        `<p class="note">兵数加算を足す相手(ほかの武将)を選びます。「すべて」ならほかの武将全員、「姫」「剣豪」なら武将マスタで姫・剣豪の武将だけに足します。</p>` +
+          `<div class="field"><div class="checks">${TROOP_TO.map(([v, l]) => checkbox(`name="troopto" value="${v}"`, troopToOf(d).includes(v), l)).join('')}</div></div>` +
+          '<p class="note">チェックを入れると、この武将本人の兵数にも足します。</p>' +
           `<div class="field"><div class="checks">${checkbox('data-eff2="troopSelf"', ef.troopSelf, '自身の兵数も増やす')}</div></div>`,
       ),
     dupOn(d) &&
