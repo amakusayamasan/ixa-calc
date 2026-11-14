@@ -524,20 +524,32 @@ function skillEditorBody(d) {
       if (k === 'leader') return checkbox('data-eff2="leader"', ef.leader, '部隊長限定');
       if (k === 'enemy') return checkbox('data-eff2="enemy"', ef.enemy, '敵火力加算');
       if (k === 'split') return checkbox('data-eff2="split"', ef.split, '攻撃と防御で値を分ける');
-      return (
-        checkbox(`data-eff="${k}"`, ef[k], effLabel(d, k)) +
-        (k === 'stat' && ef.stat
-          ? checkbox('data-eff2="self"', ef.self, `${effLabel(d, 'stat')}は本人のみ`)
-          : '')
-      );
+      return checkbox(`data-eff="${k}"`, ef[k], effLabel(d, k));
     })
+    .join('');
+  /* 特殊効果のチェックで出てくる設定は、チェックのすぐ下に枠でまとめて出す(チェックの並び順) */
+  const subbox = (title, inner) => `<fieldset class="subbox"><legend>${title}</legend>${inner}</fieldset>`;
+  const subs = [
+    ini &&
+      ef.stat &&
+      subbox(
+        `${effLabel(d, 'stat')}の設定`,
+        `<p class="note">チェックを入れると、この武将本人だけにかかります。チェックなしなら、部隊のどこにいても部隊全員にかかります。</p><div class="field"><div class="checks">${checkbox('data-eff2="self"', ef.self, `${effLabel(d, 'stat')}は本人のみ`)}</div></div>`,
+      ),
+    tbCountBox && subbox(`総${sw(d)}バフの設定`, tbCountBox),
+    dupOn(d) &&
+      subbox(
+        '重複上限の設定',
+        `<div class="grid">${fieldHtml(d, 'dupMax', '重複上限(部隊内で効果が出る数)', 'number')}</div>`,
+      ),
+  ]
+    .filter(Boolean)
     .join('');
   return (
     `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
     ${coefMaxBox}
     ${checksField(EFFECT_PROMPT, effects)}
-    ${tbCountBox ? `<fieldset class="subbox"><legend>総${sw(d)}バフの設定</legend>${tbCountBox}</fieldset>` : ''}
-    ${dupOn(d) ? `<div class="grid">${fieldHtml(d, 'dupMax', '重複上限(部隊内で効果が出る数)', 'number')}</div>` : ''}
+    ${subs}
     <p class="note">${skillNotes(d).join('')}</p>` +
     trTable(skillTrCols(d), d.trs, t => skillLabel(t, d), 'スキル上昇率')
   );
