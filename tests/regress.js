@@ -30,7 +30,7 @@ const inits=[
  {n:'初M',eff:['mul'],muz:1,coefBy:'same',coefMax:true,v:{mulNormal:3,mulLimit:2},base:500,coef:[10,20,30,40,50,60]},
 ];
 out.msgs=[];
-for(const s of inits){await p.click('#maddInit');await W(40);await p.fill('#f-name',s.n);
+for(const s of inits){await p.click('#maddInit');await W(40);await p.fill('#f-name',s.n);await p.selectOption('#f-noMimic','0');
   if(s.coefBy){await p.selectOption('#f-coefBy',s.coefBy);await W(30)}if(s.coefMax){await p.check('#f-coefMaxTr');await W(30)}
   for(const e of s.eff){await p.check(`[data-eff=${e}]`);await W(30)}if(s.self){await p.check('[data-eff2=self]');await W(30)}if(s.lead){await p.check('[data-eff2=leader]');await W(30)}
   if(s.tb){await p.selectOption('#f-tbBy',s.tb);await W(30)}await addTr(5);if(s.muz){await p.check('[data-effx=muzin]');await W(30);for(let k=0;k<6;k++)await p.fill(`[data-t="${k}:muzin"]`,String(s.muz))}

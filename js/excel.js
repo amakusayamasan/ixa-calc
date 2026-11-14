@@ -436,6 +436,8 @@ function finishSkill(s, old) {
       : s.trs.some(t => SKILL_INIT.some(([f]) => t[f] != null))
         ? 1
         : 0;
+  /* 新しく登録する初期スキルは、模倣可否の列がなければ「模倣できない」 */
+  if (s.init && s.noMimic == null && !old) s.noMimic = 1;
   if (!s.init)
     s.trs = s.trs.map(t => {
       const o = { ...t };

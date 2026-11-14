@@ -175,6 +175,7 @@ function openEditor(coll, id, kind) {
               muzin: 0,
               xskill: 0,
               noAdd: 1,
+              noMimic: 1,
               coefBy: 'people',
               effs: { stat: false, mul: false, total: false, troop: false },
               trs: [{ tr: 0, base: 0, coef: 0 }],
