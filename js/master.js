@@ -125,6 +125,8 @@ function renderMaster() {
 }
 
 /* ---------- 編集パネル ---------- */
+/* 最後に保存した武将の「攻撃or防御」。スキル追加・初期スキル追加の初期値に使う(この画面を開いている間だけ) */
+let lastCardSide = '攻撃';
 function openEditor(coll, id, kind) {
   const d = id ? structuredClone(M[coll].get(id)) : null;
   if (coll === 'cards')
@@ -170,7 +172,7 @@ function openEditor(coll, id, kind) {
         : kind === 'init'
           ? {
               init: 1,
-              side: '攻撃',
+              side: lastCardSide,
               name: '',
               muzin: 0,
               xskill: 0,
@@ -182,7 +184,7 @@ function openEditor(coll, id, kind) {
             }
           : {
               init: 0,
-              side: '攻撃',
+              side: lastCardSide,
               name: '',
               muzin: 0,
               xskill: 0,
@@ -756,6 +758,7 @@ $('editor').addEventListener('submit', async e => {
     return;
   }
   /* 武将の初期スキル名がスキルマスタにないときは、その名前で初期スキル追加画面を開く */
+  if (coll === 'cards' && SIDES.includes(data.side)) lastCardSide = data.side;
   const iname = coll === 'cards' ? String(data.initName ?? '').trim() : '';
   if (iname && !skillByName(iname)) {
     $('mtabs').querySelector('[data-m=skills]').click();
