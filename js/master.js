@@ -344,6 +344,7 @@ function openEditor(coll, id, kind) {
               xskill: 0,
               noAdd: 1,
               noMimic: 1,
+              tbSelf: 1, // 総バフの「自身をカウントする」は最初からチェックあり
               coefBy: 'people',
               effs: { stat: false, mul: false, total: false, troop: false },
               trs: [{ tr: 0, base: 0, coef: 0 }],
