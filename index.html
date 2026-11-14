@@ -6,7 +6,7 @@
 <title>IXA 部隊計算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho+B1:wght@700;800&display=swap">
-<link rel="stylesheet" href="css/style.css?v=20261114o">
+<link rel="stylesheet" href="css/style.css?v=20261114p">
 </head>
 <body>
 <div class="wrap">
@@ -45,6 +45,14 @@
         <button id="jbBtn" class="btn ghost jbbtn" type="button" aria-expanded="false" aria-controls="jbpanel">傑バフ:なし</button></div>
     </div>
     <div id="jbpanel" class="jbpanel" hidden></div>
+    <div class="opts teambar">
+      <div class="field teamname"><label class="label" for="teamName">部隊名</label>
+        <input id="teamName" type="text" maxlength="40" placeholder="例:剣心今川" autocomplete="off"></div>
+      <button id="teamSave" class="btn" type="button">この編成を保存</button>
+      <button id="teamBtn" class="btn ghost" type="button" aria-expanded="false" aria-controls="teampanel">保存した部隊</button>
+      <span id="teamMsg" class="note teammsg" aria-live="polite"></span>
+    </div>
+    <div id="teampanel" class="jbpanel" hidden></div>
 
     <div class="result" aria-live="polite">
       <div class="big"><span class="label">最大火力</span><div class="v num" id="r-total">—</div><div class="sub num" id="r-total-jp"></div></div>
@@ -91,15 +99,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="js/core.js?v=20261114o"></script>
-<script src="js/fields.js?v=20261114o"></script>
-<script src="js/skills.js?v=20261114o"></script>
-<script src="js/cards.js?v=20261114o"></script>
-<script src="js/calc.js?v=20261114o"></script>
-<script src="js/calc-view.js?v=20261114o"></script>
-<script src="js/master.js?v=20261114o"></script>
-<script src="js/excel.js?v=20261114o"></script>
-<script src="js/admin.js?v=20261114o"></script>
-<script src="js/main.js?v=20261114o"></script>
+<script src="js/core.js?v=20261114p"></script>
+<script src="js/fields.js?v=20261114p"></script>
+<script src="js/skills.js?v=20261114p"></script>
+<script src="js/cards.js?v=20261114p"></script>
+<script src="js/calc.js?v=20261114p"></script>
+<script src="js/calc-view.js?v=20261114p"></script>
+<script src="js/teams.js?v=20261114p"></script>
+<script src="js/master.js?v=20261114p"></script>
+<script src="js/excel.js?v=20261114p"></script>
+<script src="js/admin.js?v=20261114p"></script>
+<script src="js/main.js?v=20261114p"></script>
 </body>
 </html>

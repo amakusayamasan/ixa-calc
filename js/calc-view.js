@@ -1,5 +1,5 @@
 // 部隊計算画面(編成の保存、武将・スキルの候補、画面の描画、傑バフの選択)
-// 使うファイル:core.js、fields.js、skills.js、cards.js、calc.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、fields.js、skills.js、cards.js、calc.js、teams.js(調べ方:node tests/deps.js)
 /* 端末への記憶はIDではなく「カードNo・スキル名・兵種名」で持つ */
 function toKeys(f) {
   return {
@@ -520,6 +520,9 @@ function setMode(m) {
   mode = m;
   form = forms[m];
   $('jbpanel').hidden = true;
+  $('teampanel').hidden = true;
+  $('teamName').value = '';
+  teamMsg('');
   renderCalc();
 }
 /* 部隊タイプで変わる見出し・入力欄 */
@@ -533,6 +536,7 @@ function renderModeUi() {
   $('r-enemy-box').hidden = mode !== 'def';
   $('note-atk').hidden = mode !== 'atk';
   $('note-def').hidden = mode !== 'def';
+  renderTeams();
   if (form) {
     $('jin').value = form.jin;
     $('enemyCount').value = form.enemyCount ?? ENEMY_DEFAULT.count;
