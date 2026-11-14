@@ -6,7 +6,7 @@
 <title>IXA 部隊計算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho+B1:wght@700;800&display=swap">
-<link rel="stylesheet" href="css/style.css?v=20261114i">
+<link rel="stylesheet" href="css/style.css?v=20261114j">
 </head>
 <body>
 <div class="wrap">
@@ -47,7 +47,7 @@
     <div id="jbpanel" class="jbpanel" hidden></div>
 
     <div class="result" aria-live="polite">
-      <div class="big"><span class="label">火力合計</span><div class="v num" id="r-total">—</div><div class="sub num" id="r-total-jp"></div></div>
+      <div class="big"><span class="label">最大火力</span><div class="v num" id="r-total">—</div><div class="sub num" id="r-total-jp"></div></div>
       <div class="stats">
         <div><span class="label" id="lbl-base">素攻合計</span><b class="num" id="r-base">—</b></div>
         <div><span class="label">スキル総合計</span><b class="num" id="r-skill">—</b></div>
@@ -59,7 +59,7 @@
 
     <div class="slots" id="slots"></div>
     <p class="note" id="note-def" hidden>防御部隊の計算式は「柳生部隊」シートと同じです。素防 = 兵士防御力×兵数×1.4 + 防御×1.4×素防バフ(全武将の素防バフを掛け合わせたもの。本人のみのバフは本人だけ)、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2(模倣スキルは×1.2なし)、合計 = (素防合計×スキル合計÷100 + 素防合計)×バフ・デバフ×総防バフ + 敵火力加算。防御は、ステ振りが「防御」なら 素防御力 + 防御上昇率×690、「兵法」なら 素防御力 のみです。武将とスキルは、攻撃or防御が「防御」「攻撃・防御」のものを使います。総防バフは4枠すべての武将の値を足し算で合わせ、火焔武闘は1つにつき+0.2です。部隊長がカードNo.1299のときは無尽が有効になります(ルールは攻撃部隊と同じ)。傑バフは、所属時防御力・外部防御力を対象兵種の兵士防御力に足します。敵火力加算は、初期スキルの特殊効果「敵火力加算」を持つ武将1人につき 敵の推定火力 ÷ 敵の武将数 を足します。編成はこの端末に記憶されます(攻撃部隊とは別)。</p>
-    <p class="note" id="note-atk">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×素攻バフ(全武将の素攻バフを掛け合わせたもの。本人のみのバフは本人だけ)、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、火力合計 = (素攻合計×スキル合計÷100 + 素攻合計)×バフ・デバフ×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです(初期スキルと同じスキルも付けられません)。傑カードには追加スキル・極限スキルを付けられません。傑カードは無尽のルールの対象外で、初期スキルはそのまま発動します。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×(人数、部隊内の同じスキルの数、部隊内のXスキルの数のうち、スキルごとに決めたもの)で求めます。Xスキルは通常枠にしか付けられません。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
+    <p class="note" id="note-atk">計算式は「剣心今川部隊」シートと同じです。素攻 = 兵士攻撃力×兵数×1.4 + 攻撃×1.4×素攻バフ(全武将の素攻バフを掛け合わせたもの。本人のみのバフは本人だけ)、スキル合計 = 初期 + 追加×倍枠通常 + 極限×倍枠極限×1.2、最大火力 = (素攻合計×スキル合計÷100 + 素攻合計)×バフ・デバフ×総攻バフ。同じ武将(パラレル違いを含む同名カード)は1部隊に1枠まで、同じスキルは1人の武将に1つまでです(初期スキルと同じスキルも付けられません)。傑カードには追加スキル・極限スキルを付けられません。傑カードは無尽のルールの対象外で、初期スキルはそのまま発動します。総攻バフは4枠すべての武将の値を足し算で合わせます(1.4と1.3なら 1 + 0.4 + 0.3 = 1.7)。攻撃は、ステ振りが「攻撃」なら 素攻撃力 + 攻撃上昇率×690、「兵法」なら 素攻撃力 のみ、スキル値は 素スキル上昇率 + 係数×(人数、部隊内の同じスキルの数、部隊内のXスキルの数、部隊内の飛翔の数のうち、スキルごとに決めたもの)で求めます。Xスキルは通常枠にしか付けられません。黎天列光は1つにつき部隊の全武将の兵数+2000、火焔武闘は1つにつき総攻バフ+0.2(各最大2つ)です。部隊長がカードNo.1274のときは無尽が有効になり、初期スキルは武将の無尽が1以上なら2倍・0なら無効、極限スキルは全員2倍、無尽が1以上のスキルは2倍になります。傑バフは、傑カードが部隊の枠にいれば所属時の攻撃力を自動で、傑バフボタンで選んだものは外部の攻撃力を、対象兵種の兵士攻撃力に足します(両方なら合計)。編成はこの端末に記憶されます。</p>
   </section>
 
   <section id="view-master" class="view" hidden>
@@ -91,15 +91,15 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="js/core.js?v=20261114i"></script>
-<script src="js/fields.js?v=20261114i"></script>
-<script src="js/skills.js?v=20261114i"></script>
-<script src="js/cards.js?v=20261114i"></script>
-<script src="js/calc.js?v=20261114i"></script>
-<script src="js/calc-view.js?v=20261114i"></script>
-<script src="js/master.js?v=20261114i"></script>
-<script src="js/excel.js?v=20261114i"></script>
-<script src="js/admin.js?v=20261114i"></script>
-<script src="js/main.js?v=20261114i"></script>
+<script src="js/core.js?v=20261114j"></script>
+<script src="js/fields.js?v=20261114j"></script>
+<script src="js/skills.js?v=20261114j"></script>
+<script src="js/cards.js?v=20261114j"></script>
+<script src="js/calc.js?v=20261114j"></script>
+<script src="js/calc-view.js?v=20261114j"></script>
+<script src="js/master.js?v=20261114j"></script>
+<script src="js/excel.js?v=20261114j"></script>
+<script src="js/admin.js?v=20261114j"></script>
+<script src="js/main.js?v=20261114j"></script>
 </body>
 </html>

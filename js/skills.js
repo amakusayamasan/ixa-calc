@@ -2,8 +2,13 @@
 // 使うファイル:core.js、fields.js、cards.js(調べ方:node tests/deps.js)
 /* スキル上昇率 = 素スキル上昇率 + 係数 × n
    n はスキルごとの「係数の掛け方」で決まる:人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 */
-const COEF_BY = { people: '人数', same: '部隊内の同じスキルの数', x: '部隊内のXスキルの数' };
-const COEF_SHORT = { people: '人数', same: '同スキル数', x: 'Xスキル数' };
+const COEF_BY = {
+  people: '人数',
+  same: '部隊内の同じスキルの数',
+  x: '部隊内のXスキルの数',
+  hisho: '部隊内の飛翔の数',
+};
+const COEF_SHORT = { people: '人数', same: '同スキル数', x: 'Xスキル数', hisho: '飛翔数' };
 /* 初期スキルの総攻・防バフの掛け方:固定、または 総攻・防バフ + 無尽を持つ武将数 × 総攻・防バフ係数 ÷ 100 × 無尽2倍 */
 const TB_BY = { fixed: '固定', muzin: '無尽を持つ武将数' };
 const tbByOf = d => (TB_BY[d?.tbBy] ? d.tbBy : 'fixed');
@@ -100,10 +105,24 @@ function skillValueIn(t, d, id) {
     e = mt != null && modeTr(d, trEntry(d, mt));
   return N(t.base) + N(e ? e.coef : t.coef) * n;
 }
+/* 部隊内の飛翔の数:4人それぞれの、持っているスキル(初期・追加・極限)の飛翔のいちばん大きい値を、足したもの */
+const hishoOf = (d, tr) => (d && effsOf(d).hisho ? N(trEntry(d, tr)?.hisho) : 0);
+function hishoCount() {
+  if (!form) return 0;
+  return form.slots.reduce((a, s) => {
+    const init = skillByName(M.cards.get(s.card)?.initName)?.d;
+    const vals = [
+      hishoOf(init, s.tr),
+      ...['s1', 's2', 'lim'].map(k => hishoOf(M.skills.get(s[k].id), s[k].tr)),
+    ];
+    return a + Math.max(0, ...vals);
+  }, 0);
+}
 function coefN(d, id) {
   const by = coefByOf(d);
   if (by === 'people' || !form) return null;
   if (by === 'same') return sameUses(id).length;
+  if (by === 'hisho') return hishoCount();
   return Math.min(
     8,
     form.slots.reduce((a, s) => a + ['s1', 's2'].filter(k => isX(M.skills.get(s[k].id))).length, 0),
@@ -161,7 +180,11 @@ function muzinMul(sel, k) {
 /* 重複上限(スキルの特殊効果のチェック「重複上限」):部隊内で同じスキルが付いていても、効果が出るのは
    倍枠などをかけたあとの実際の上昇値が高い順に、上限の数まで。数(Xスキルの数・同じスキルの数)は全部数える。
    特殊効果(黎天列光・火焔武闘)は倍枠で変わらないので、上限の数まで */
-const dupOn = d => (d?.effs?.dup != null ? !!d.effs.dup : (d?.trs || []).some(t => hasV(t.dupMax)));
+const dupOn = d =>
+  d?.effs?.dup != null ? !!d.effs.dup : hasV(d?.dupMax) || (d?.trs || []).some(t => hasV(t.dupMax));
+/* 重複上限はスキル全体で1つ(TRに左右されない)。TRごとに持っていた古いデータは、いちばん大きい値を使う */
+const skillDupMax = d =>
+  hasV(d?.dupMax) ? N(d.dupMax) : Math.max(0, ...(d?.trs || []).map(t => N(t.dupMax)));
 /* 部隊内でこのスキルが付いているところ。withInit なら、このスキルを初期スキルに持つ武将(k='init')も入れる */
 function dupInstances(id, withInit) {
   const out = [];
@@ -173,10 +196,8 @@ function dupInstances(id, withInit) {
   });
   return out;
 }
-function dupLimit(d, inst) {
-  if (!dupOn(d)) return null;
-  const ls = inst.map(x => N(trEntry(d, x.sel.tr)?.dupMax)).filter(v => v > 0);
-  return ls.length ? Math.max(...ls) : null;
+function dupLimit(d) {
+  return dupOn(d) && skillDupMax(d) > 0 ? skillDupMax(d) : null;
 }
 /* 効果を出さない枠の集合("i:k"。初期スキルは k='init') */
 function dupDropped() {
@@ -190,7 +211,7 @@ function dupDropped() {
   for (const id of ids) {
     const d = M.skills.get(id),
       inst = dupInstances(id, true),
-      L = dupLimit(d, inst);
+      L = dupLimit(d);
     if (L == null || inst.length <= L) continue;
     const val = x => {
       const t = slotEff(x.i).t;
@@ -211,7 +232,7 @@ function spCount(name) {
   const id = findId(M.skills, d => d.name === name);
   if (!id || !form) return 0;
   const inst = dupInstances(id),
-    L = dupLimit(M.skills.get(id), inst);
+    L = dupLimit(M.skills.get(id));
   return Math.min(L ?? 2, inst.length);
 }
 
@@ -229,6 +250,7 @@ function normalizeSkill(d) {
     xskill: toFlag(d.init) ? 0 : toFlag(d.xskill),
     noAdd: toFlag(d.noAdd),
     coefBy: coefByOf(d),
+    ...(dupOn(d) ? { dupMax: skillDupMax(d) || 2 } : {}),
     trs: trsOf({
       trs: d.trs.map(t => {
         const o = Object.fromEntries(SKILL_TR.map(([f]) => [f, N(t[f])]));
@@ -236,7 +258,6 @@ function normalizeSkill(d) {
           o.mimicRate = N(t.mimicRate);
           o.coef = 0;
         }
-        if (dupOn(d) && hasV(t.dupMax)) o.dupMax = N(t.dupMax);
         for (const [k] of EXTRA_EFFS) if (effsOf(d)[k] && hasV(t[k])) o[k] = N(t[k]);
         if (toFlag(d.init)) {
           const ef = effsOf(d);

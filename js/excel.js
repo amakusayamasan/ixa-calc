@@ -157,7 +157,7 @@ async function downloadXlsx(withData) {
           N(t.base),
           N(t.coef),
           isMimic(d) ? N(t.mimicRate) : '',
-          !ini && dupOn(d) && hasV(t.dupMax) ? N(t.dupMax) : '',
+          dupOn(d) ? skillDupMax(d) || '' : '',
           ...(ini
             ? [
                 t.statBuff ?? '',
@@ -333,7 +333,14 @@ function readSkillRow(s, row, ix) {
   if (val(ix('Xスキル')) != null) s.xskill = toFlag(row[ix('Xスキル')]);
   if (val(ix('係数の掛け方')) != null) {
     const v = str(ix('係数の掛け方'));
-    s.coefBy = /同/.test(v) || v === 'same' ? 'same' : /X|Ｘ/i.test(v) || v === 'x' ? 'x' : 'people';
+    s.coefBy =
+      /同/.test(v) || v === 'same'
+        ? 'same'
+        : /X|Ｘ/i.test(v) || v === 'x'
+          ? 'x'
+          : /飛翔/.test(v) || v === 'hisho'
+            ? 'hisho'
+            : 'people';
   }
   if (val(ix('種類')) != null) s.init = /初期/.test(String(row[ix('種類')])) ? 1 : 0;
   for (const [col, key] of [
@@ -343,6 +350,7 @@ function readSkillRow(s, row, ix) {
     ['攻防で値を分ける', 'split'],
   ])
     if (val(ix(col)) != null) s.effFlags = { ...(s.effFlags || {}), [key]: toFlag(row[ix(col)]) === 1 };
+  if (val(ix('重複上限')) != null) s.dupMax = N(row[ix('重複上限')]);
   if (val(ix('係数最大TR参照')) != null) s.coefMaxTr = toFlag(row[ix('係数最大TR参照')]);
   if (val(ix('模倣可否')) != null) s.noMimic = /不可|できない/.test(String(row[ix('模倣可否')])) ? 1 : 0;
   if (val(ix('模倣')) != null) {
@@ -367,7 +375,6 @@ function readSkillTr(n, row, ix) {
   const has = c => c >= 0 && hasV(row[c]);
   if (has(ix('模倣倍率'))) tr.mimicRate = N(row[ix('模倣倍率')]);
   for (const f of SPLIT_FIELDS) if (has(ix(SPLIT_COL[f]))) tr[f + 'D'] = N(row[ix(SPLIT_COL[f])]);
-  if (has(ix('重複上限'))) tr.dupMax = N(row[ix('重複上限')]);
   /* 無尽・飛翔・不屈・速度スキルはTRごと(1行ごと)の値 */
   for (const [k, l] of EXTRA_EFFS) if (has(ix(l))) tr[k] = N(row[ix(l)]);
   const keepOld = [
@@ -415,6 +422,8 @@ function finishSkill(s, old) {
       ...(s.effFlags || {}),
     };
   delete s.effFlags;
+  if (s.dupMax == null && old && dupOn(old)) s.dupMax = skillDupMax(old);
+  if (!(N(s.dupMax) > 0)) delete s.dupMax;
   if (s.coefMaxTr == null && old && old.coefMaxTr) s.coefMaxTr = 1;
   if (!s.coefMaxTr || s.coefBy !== 'same') delete s.coefMaxTr;
   if (s.noMimic == null && old && old.noMimic != null) s.noMimic = toFlag(old.noMimic);

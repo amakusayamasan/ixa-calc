@@ -42,7 +42,7 @@ const skills=[
 for(const s of skills){await p.click('#maddSkill');await W(40);await p.fill('#f-name',s.n);if(s.side)await p.selectOption('#f-side',s.side);
   if(s.x)await p.selectOption('#f-xskill','1');if(s.coefBy){await p.selectOption('#f-coefBy',s.coefBy);await W(30)}if(s.coefMax){await p.check('#f-coefMaxTr');await W(30)}
   if(s.mimic){await p.selectOption('#f-mimic',s.mimic);await W(30)}if(s.dup){await p.check('[data-eff=dup]');await W(30)}await addTr(5);if(s.muz){await p.check('[data-effx=muzin]');await W(30);for(let k=0;k<6;k++)await p.fill(`[data-t="${k}:muzin"]`,String(s.muz))}
-  for(let k=0;k<6;k++){if(s.base!=null)await p.fill(`[data-t="${k}:base"]`,String(s.base+k*10));if(s.coef!=null&&!s.mimic)await p.fill(`[data-t="${k}:coef"]`,String(s.coef));if(s.rate)await p.fill(`[data-t="${k}:mimicRate"]`,String(s.rate[k]));if(s.dup)await p.fill(`[data-t="${k}:dupMax"]`,String(s.dup))}
+  for(let k=0;k<6;k++){if(s.base!=null)await p.fill(`[data-t="${k}:base"]`,String(s.base+k*10));if(s.coef!=null&&!s.mimic)await p.fill(`[data-t="${k}:coef"]`,String(s.coef));if(s.rate)await p.fill(`[data-t="${k}:mimicRate"]`,String(s.rate[k]));}if(s.dup)await p.fill('#f-dupMax',String(s.dup));
   out['editorText_'+s.n]=await p.$eval('#edform',e=>e.innerHTML.replace(/ value="[^"]*"/g,''));out.msgs.push(await save())}
 out.skillList=await p.$eval('#mtable',e=>e.innerHTML);
 // 武将に初期スキルを設定(画面から)

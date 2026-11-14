@@ -157,6 +157,8 @@ function openEditor(coll, id, kind) {
             side: skillSide(d),
             init: isInitSkill(d) ? 1 : 0,
             muzin: N(d.muzin),
+            /* 重複上限はスキル全体で1つ。TRごとに持っていた古いスキルは、いちばん大きい値で開く */
+            ...(dupOn(d) ? { dupMax: skillDupMax(d) || 2 } : {}),
             /* TRごとの無尽がない古いスキルは、スキル全体の無尽をTR表に入れて開く */
             trs: (d.trs || []).map(t =>
               effsOf(d).muzin && !hasV(t.muzin) ? { ...t, muzin: skillMuzin(d, t.tr) } : t,
@@ -312,6 +314,7 @@ function skillEditorBody(d) {
     `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
     ${coefMaxBox}
     ${checksField(EFFECT_PROMPT, effects)}
+    ${dupOn(d) ? `<div class="grid">${fieldHtml(d, 'dupMax', '重複上限(部隊内で効果が出る数)', 'number')}</div>` : ''}
     <p class="note">${skillNotes(d).join('')}</p>` +
     trTable(skillTrCols(d), d.trs, t => skillLabel(t, d), 'スキル上昇率')
   );
@@ -322,7 +325,11 @@ function skillNotes(d) {
     ef = effsOf(d),
     b = sw(d);
   const notes = [
-    'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数)。',
+    'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 / 部隊内の飛翔の数)。',
+    coefByOf(d) === 'hisho' &&
+      '部隊内の飛翔の数 = 4人それぞれが持つスキル(初期・追加・極限)の飛翔のいちばん大きい値を、4人分足したもの。',
+    dupOn(d) &&
+      '重複上限:部隊内でこのスキルが上限より多いときは、値の大きいものから上限の数だけ効果が出ます(TRに関係なく1つの値)。初期スキルが外れたときは特殊効果も出ません。',
     coefMax(d) && '係数は、部隊内でこのスキルを持つ武将のうち、いちばん高いTRの係数を使います。',
     'Xスキルは通常枠にしか付けられません。',
   ];
@@ -390,7 +397,6 @@ function skillTrCols(d) {
     stat: [['statBuff', `素${b}バフ`]],
     total: [['totalBuff', `総${b}バフ`], ...(tbByOf(d) === 'muzin' ? [['tbCoef', `総${b}バフ係数(%)`]] : [])],
     troop: [['troopAdd', '兵数加算']],
-    dup: [['dupMax', '重複上限']],
   };
   for (const [k, l] of EXTRA_EFFS) colsOf[k] = [[k, l]];
   const on = k => (k === 'dup' ? dupOn(d) : ef[k]);
@@ -535,10 +541,7 @@ $('editor').addEventListener('change', e => {
     syncDraft();
     const d = draft.data;
     d.effs = { ...(d.effs || {}), dup: e.target.checked };
-    if (e.target.checked)
-      d.trs.forEach(t => {
-        if (!hasV(t.dupMax)) t.dupMax = 2;
-      });
+    if (e.target.checked && !hasV(d.dupMax)) d.dupMax = 2;
     renderEditor();
     return;
   }

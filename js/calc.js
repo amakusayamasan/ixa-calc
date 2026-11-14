@@ -7,6 +7,11 @@ function calc() {
     hi = spCount(SP.hi),
     drop = dupDropped(),
     dv = (sel, i, k) => (drop.has(i + ':' + k) ? 0 : skillVal(sel, i));
+  /* 初期スキルが重複上限で外れた武将は、初期スキルの特殊効果(バフ・倍枠・兵数加算など)もすべて出ない */
+  sl.forEach((s, i) => {
+    if (s.t && drop.has(i + ':init'))
+      s.t = { ...s.t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1, loOff: true };
+  });
   /* 素攻バフ:どの枠の武将の素攻バフも部隊全員に。「本人のみ」の素攻バフは本人だけに。
      いくつもかかるときは掛け算。部隊長限定の武将は部隊長の枠でだけ効く */
   const sbv = s => (s.t ? N(s.t.statBuff) || 1 : 1);
@@ -41,7 +46,7 @@ function calc() {
     return {
       sb,
       initDrop,
-      lo: !!s.t?.loOff,
+      lo: !!s.t?.loOff && !initDrop,
       tadd,
       troops,
       atk,
