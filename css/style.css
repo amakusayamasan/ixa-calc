@@ -892,6 +892,9 @@ tbody tr.editable:hover {
 .sidefilter {
   margin: 4px 0 10px;
 }
+.sidefilter + .sidefilter {
+  margin-top: -4px;
+}
 .sidefilter button {
   padding: 3px 10px;
   font-size: 12px;

@@ -157,7 +157,7 @@ function breakdownHtml(x, r) {
   const lines = [
     ['兵数', fmt(x.troops), x.tadd ? `兵数加算+${fmt(x.tadd)}` : ''],
     [m.stat, fmt(x.atk), ''],
-    [`兵士${m.stat}力`, fmt(x.satk), x.jb ? `バフ+${fmt(x.jb, 2)}` : ''],
+    [`兵士${m.stat}力`, fmt(x.satk), x.jb ? `傑+${fmt(x.jb, 2)}` : ''],
     [`素${m.st}`, fmt(x.b, 1), x.sb !== 1 ? `素${m.st}バフ×${fmt(x.sb, 2)}` : ''],
     ['初期スキル', fmt(x.init, 1), initNote],
     ['スキル小計', fmt(x.sk, 1), ''],

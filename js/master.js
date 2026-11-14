@@ -9,20 +9,47 @@ const SIDE_FILTERS = [
   ['攻撃・防御', '攻・防'],
 ];
 const sideFilterOn = () => sideFilter && (mtab === 'cards' || mtab === 'skills');
+/* レアリティの絞り込み(武将マスタだけ)。'' はすべて */
+let rarFilter = '';
+const rarFilterOn = () => rarFilter && mtab === 'cards';
+const sideOk = d => !sideFilterOn() || skillSide(d) === sideFilter;
+const rarOk = d => !rarFilterOn() || d.rarity === rarFilter;
+/* 絞り込みボタン。件数は、もう一方の絞り込みをかけた中での数 */
+const filterBtns = (items, cur, attr, n) =>
+  items
+    .map(
+      ([v, l]) =>
+        `<button type="button" ${attr}="${esc(v)}" aria-pressed="${cur === v}">${esc(l)}<span class="cnt">${n(v)}</span></button>`,
+    )
+    .join('');
 function renderSideFilter(named) {
-  const box = $('sidefilter');
+  const box = $('sidefilter'),
+    rbox = $('rarfilter');
   box.hidden = !(mtab === 'cards' || mtab === 'skills');
-  if (box.hidden) return;
-  const n = v => (v ? named.filter(([, d]) => skillSide(d) === v).length : named.length);
-  box.innerHTML = SIDE_FILTERS.map(
-    ([v, l]) =>
-      `<button type="button" data-side="${v}" aria-pressed="${sideFilter === v}">${l}<span class="cnt">${n(v)}</span></button>`,
-  ).join('');
+  rbox.hidden = mtab !== 'cards';
+  if (!box.hidden) {
+    const pool = named.filter(([, d]) => rarOk(d));
+    box.innerHTML = filterBtns(SIDE_FILTERS, sideFilter, 'data-side', v =>
+      v ? pool.filter(([, d]) => skillSide(d) === v).length : pool.length,
+    );
+  }
+  if (!rbox.hidden) {
+    const pool = named.filter(([, d]) => sideOk(d));
+    rbox.innerHTML = filterBtns([['', 'すべて'], ...RARITIES.map(r => [r, r])], rarFilter, 'data-rar', v =>
+      v ? pool.filter(([, d]) => d.rarity === v).length : pool.length,
+    );
+  }
 }
 $('sidefilter').addEventListener('click', e => {
   const b = e.target.closest('[data-side]');
   if (!b) return;
   sideFilter = b.dataset.side;
+  renderMaster();
+});
+$('rarfilter').addEventListener('click', e => {
+  const b = e.target.closest('[data-rar]');
+  if (!b) return;
+  rarFilter = b.dataset.rar;
   renderMaster();
 });
 /* ---------- マスタ一覧の列 ----------
@@ -134,12 +161,16 @@ function renderMaster() {
   const q = $('msearch').value.trim();
   const ed = isOwner ? 'editable' : '';
   const named = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q));
-  const list = named.filter(([, d]) => !sideFilterOn() || skillSide(d) === sideFilter).sort(byName);
+  const list = named.filter(([, d]) => sideOk(d) && rarOk(d)).sort(byName);
   renderSideFilter(named);
   const rows = mtab === 'jbuffs' ? jbuffList(q) : mtab === 'soldiers' ? soldierList(q) : list;
   const cols = LIST_COLS[mtab](rows);
   const emptyRow = `<tr><td class="l" colspan="${cols.length}" style="color:var(--muted)">${
-    loaded[mtab] ? (q || sideFilterOn() ? '該当なし' : `${LABEL[mtab]}はまだ登録されていません。`) : '読み込み中…'
+    loaded[mtab]
+      ? q || sideFilterOn() || rarFilterOn()
+        ? '該当なし'
+        : `${LABEL[mtab]}はまだ登録されていません。`
+      : '読み込み中…'
   }</td></tr>`;
   const head = cols.map(([h, l]) => `<th${l ? ' class="l"' : ''}>${h}</th>`).join('');
   const body = rows.length
