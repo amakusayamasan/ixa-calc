@@ -1,4 +1,4 @@
-// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル・敵武将の総コスト・追加スキルの攻防の値・姫・剣豪・対象兵科の数の総バフ・兵数加算)。期待値と違えば失敗する。
+// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル・敵武将の総コスト・追加スキルの攻防の値・姫・剣豪・対象兵科の数の総バフ・兵数加算・倍枠の数)。期待値と違えば失敗する。
 // 使い方:リポジトリのフォルダで `python3 -m http.server 8765` を起動してから  node tests/rules.js
 const {chromium}=require('playwright');const path=require('path');const dir=__dirname;
 (async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
@@ -68,8 +68,15 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  M.skills.get('TA').troopTo=['hime'];out.toHime=calc().rows.map(x=>x.troops);
  M.skills.get('TA').troopTo=['kengou'];out.toKengou=calc().rows.map(x=>x.troops);
  M.skills.get('TA').troopTo=['hime','kengou'];out.toBoth=calc().rows.map(x=>x.troops);
+ /* 12. 倍枠を姫の数で掛ける(倍枠通常1+0.5×姫、倍枠極限1+1×姫)。姫は2人目・4人目。持ち主(1人目)の追加スキル100・極限100 */
+ for(const k of [...M.skills.keys()])if(k!=='TA')M.skills.delete(k);
+ M.skills.set('MB',{name:'倍初',init:1,side:'攻撃・防御',coefBy:'people',mulBy:'hime',mulSelf:1,effs:{mul:true},trs:tr(t=>({base:0,coef:0,mulNormal:1,mulLimit:1,mulNormalCoef:0.5,mulLimitCoef:1}))});
+ M.skills.set('P1',{name:'追100',init:0,side:'攻撃・防御',coefBy:'people',trs:tr(t=>({base:100,coef:0}))});
+ M.cards.get('h1').initName='倍初';form.slots[0].s1={id:'P1',tr:0};form.slots[0].lim={id:'P1',tr:0};
+ out.mulHime=Math.round(calc().rows[0].sk*100)/100;
+ M.skills.get('MB').mulBy='branch';M.skills.get('MB').mulBranches=['兵器兵科'];out.mulBranch=Math.round(calc().rows[0].sk*100)/100;
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[1000,1500,1500,1500],troopAll:[1500,1500,1500,1500],toHime:[1000,1500,1000,1500],toKengou:[1000,1500,1500,1000],toBoth:[1000,1500,1500,1500]};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[1000,1500,1500,1500],troopAll:[1500,1500,1500,1500],toHime:[1000,1500,1000,1500],toKengou:[1000,1500,1500,1000],toBoth:[1000,1500,1500,1500],mulHime:560,mulBranch:730};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();

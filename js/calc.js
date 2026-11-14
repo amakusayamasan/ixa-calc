@@ -45,11 +45,11 @@ function calc() {
       b = satk * troops * 1.4 + atk * 1.4 * sb;
     const initDrop = drop.has(i + ':init'),
       init = initDrop ? 0 : initEff(s.c, s.t);
+    const ml = slotMul(i, s.t, s.raw);
     const sk =
       init +
-      (dv(s.s1, i, 's1') * muzinMul(s.s1, 's1') + dv(s.s2, i, 's2') * muzinMul(s.s2, 's2')) *
-        N(s.t.mulNormal) +
-      dv(s.lim, i, 'lim') * muzinMul(s.lim, 'lim') * N(s.t.mulLimit) * limX(s.lim);
+      (dv(s.s1, i, 's1') * muzinMul(s.s1, 's1') + dv(s.s2, i, 's2') * muzinMul(s.s2, 's2')) * ml.n +
+      dv(s.lim, i, 'lim') * muzinMul(s.lim, 'lim') * ml.l * limX(s.lim);
     base += b;
     skill += sk;
     return {
@@ -65,6 +65,7 @@ function calc() {
       sk,
       init,
       initRaw: initBase(s.c, s.t),
+      ml,
     };
   });
   /* 無尽を持つ武将の数(武将の無尽、初期スキル・追加スキル・極限スキルのどれかが無尽なら1人。本人も含む) */
@@ -75,24 +76,16 @@ function calc() {
   );
   /* 無尽部隊では、無尽を持つ武将(傑以外)の上乗せ分は2倍 */
   const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c, s.tr) > 0 ? 2 : 1);
-  /* 部隊内の姫の数(武将マスタで姫の武将。自分を数えない設定なら自分を除く) */
-  /* 部隊内の姫・剣豪・対象兵科の数(自分を数えない設定なら自分を除く)。
-     姫・剣豪:武将マスタで姫・剣豪の武将。対象兵科・兵種:選んだ兵種が、スキルで選んだ兵種のどれかか、その兵科がスキルで選んだ兵科のどれか、
-     または「自身のもつ兵種」なら、このスキルを持つ武将と同じ兵種 */
-  const hits = (s, r, own) => {
-    if (r.tbBy === 'hime') return !!toFlag(s.c.hime);
-    if (r.tbBy === 'kengou') return !!toFlag(s.c.kengou);
-    const o = M.soldiers.get(s.soldier);
-    return (
-      !!o &&
-      ((r.tbSoldiers || []).includes(o.name) ||
-        (r.tbBranches || []).includes(o.branch) ||
-        (r.tbOwn && !!own && s.soldier === own))
-    );
-  };
+  /* 部隊内の姫・剣豪・対象兵科・兵種の数(数え方は unit.js の unitCount) */
   const countN = i => {
     const r = sl[i].raw;
-    return sl.filter((s, j) => s.c && hits(s, r, sl[i].soldier) && (j !== i || r.tbSelf)).length;
+    return unitCount(i, {
+      by: r.tbBy,
+      self: r.tbSelf,
+      branches: r.tbBranches,
+      soldiers: r.tbSoldiers,
+      own: r.tbOwn,
+    });
   };
   /* 総バフの「係数 × 数」の数(無尽を持つ武将数 か 部隊内の姫の数)。固定なら null */
   const tbN = i => {
@@ -198,7 +191,13 @@ function breakdownHtml(x, r) {
     [`兵士${m.stat}力`, fmt(x.satk), x.jb ? `傑+${fmt(x.jb, 2)}` : ''],
     [`素${m.st}`, fmt(x.b, 1), x.sb !== 1 ? `素${m.st}バフ×${fmt(x.sb, 2)}` : ''],
     ['初期スキル', fmt(x.init, 1), initNote],
-    ['スキル小計', fmt(x.sk, 1), ''],
+    [
+      'スキル小計',
+      fmt(x.sk, 1),
+      x.ml?.cnt != null
+        ? `倍枠 通常×${fmt(x.ml.n, 2)}・極限×${fmt(x.ml.l, 2)}(${{ hime: '姫', kengou: '剣豪', branch: '対象' }[x.ml.by]}${x.ml.cnt}人)`
+        : '',
+    ],
     [
       `総${m.st}バフ`,
       '×' + fmt(x.tb, 2),

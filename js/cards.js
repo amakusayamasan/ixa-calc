@@ -39,6 +39,18 @@ function cardTrs(c) {
         if (ef.troopSelf) o.troopSelf = true;
         if (ef.troop) o.troopTo = troopToOf(sk.d);
       }
+      /* 倍枠を部隊内の数で掛けるとき:係数と数える設定 */
+      if ((sk.d.effs || {}).mul && mulCounts(sk.d)) {
+        o.mul = {
+          by: mulByOf(sk.d),
+          self: mulSelfOf(sk.d),
+          branches: mulBranchesOf(sk.d),
+          soldiers: mulSoldiersOf(sk.d),
+          own: mulOwnOf(sk.d),
+          n: N(e.mulNormalCoef),
+          l: N(e.mulLimitCoef),
+        };
+      }
       /* この部隊で使わない側の初期スキル(攻撃部隊での防御スキルなど)は、素バフ・総バフを使わない(倍枠は共通) */
       if (!forMode(sk.d)) {
         o.statBuff = 1;

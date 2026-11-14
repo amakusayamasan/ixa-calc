@@ -35,6 +35,20 @@ const tbSelfOf = d => toFlag(d?.tbSelf ?? d?.himeSelf ?? 1) === 1;
 /* 部隊内の対象兵科・兵種の数で数える兵科(兵種マスタの兵科名)と兵種(兵種名) */
 const tbBranchesOf = d => (Array.isArray(d?.tbBranches) ? d.tbBranches : []);
 const tbSoldiersOf = d => (Array.isArray(d?.tbSoldiers) ? d.tbSoldiers : []);
+/* 初期スキルの倍枠の掛け方:固定、または 倍枠 + 倍枠係数(通常・極限) × 部隊内の姫・剣豪・対象兵科・兵種の数。
+   数える設定(自分を数えるか・対象兵科・兵種・自身のもつ兵種)は総バフとは別に持つ */
+const MUL_BY = {
+  fixed: '固定',
+  hime: '部隊内の姫の数',
+  kengou: '部隊内の剣豪の数',
+  branch: '部隊内の対象兵科・兵種の数',
+};
+const mulByOf = d => (MUL_BY[d?.mulBy] ? d.mulBy : 'fixed');
+const mulCounts = d => mulByOf(d) !== 'fixed';
+const mulSelfOf = d => toFlag(d?.mulSelf ?? 1) === 1;
+const mulBranchesOf = d => (Array.isArray(d?.mulBranches) ? d.mulBranches : []);
+const mulSoldiersOf = d => (Array.isArray(d?.mulSoldiers) ? d.mulSoldiers : []);
+const mulOwnOf = d => toFlag(d?.mulOwn) === 1;
 /* 兵数加算の対象(ほかの武将のうちどれに足すか):'all' すべて / 'hime' 姫 / 'kengou' 剣豪。未設定ならすべて */
 const TROOP_TO = [
   ['all', 'すべて'],
@@ -92,7 +106,7 @@ const derivedEffs = d => {
     fukutsu: has('fukutsu'),
     speed: has('speed'),
     stat: ne1('statBuff'),
-    mul: ne1('mulNormal') || ne1('mulLimit'),
+    mul: ne1('mulNormal') || ne1('mulLimit') || mulCounts(d),
     total: ne1('totalBuff') || tbCoefOn(d),
     troop: tr.some(t => N(t.troopAdd) !== 0),
     self: false,
@@ -222,6 +236,10 @@ function normalizeSkill(d) {
           const ef = effsOf(d);
           for (const [k, , fs] of EFFS) if (ef[k]) for (const f of fs) if (hasV(t[f])) o[f] = N(t[f]);
           if (ef.total && tbCoefOn(d)) o.tbCoef = N(t.tbCoef);
+          if (ef.mul && mulCounts(d)) {
+            o.mulNormalCoef = N(t.mulNormalCoef);
+            o.mulLimitCoef = N(t.mulLimitCoef);
+          }
           /* 攻撃と防御で値を分けるときは、使っている項目の(防)の値も保存する */
           if (splitOn(d))
             for (const f of SPLIT_FIELDS)
@@ -235,6 +253,11 @@ function normalizeSkill(d) {
           tbBy: effsOf(d).total ? tbByOf(d) : 'fixed',
           ...(effsOf(d).total && tbCounts(d) ? { tbSelf: tbSelfOf(d) ? 1 : 0 } : {}),
           ...(effsOf(d).troop ? { troopTo: troopToOf(d) } : {}),
+          mulBy: effsOf(d).mul ? mulByOf(d) : 'fixed',
+          ...(effsOf(d).mul && mulCounts(d) ? { mulSelf: mulSelfOf(d) ? 1 : 0 } : {}),
+          ...(effsOf(d).mul && mulByOf(d) === 'branch'
+            ? { mulBranches: mulBranchesOf(d), mulSoldiers: mulSoldiersOf(d), mulOwn: mulOwnOf(d) ? 1 : 0 }
+            : {}),
           ...(effsOf(d).total && tbByOf(d) === 'branch'
             ? { tbBranches: tbBranchesOf(d), tbSoldiers: tbSoldiersOf(d), tbOwn: tbOwnOf(d) ? 1 : 0 }
             : {}),

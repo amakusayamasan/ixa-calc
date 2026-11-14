@@ -90,9 +90,10 @@ function dupDropped() {
       L = dupLimit(M.skills.get(id));
     if (L == null || inst.length <= L) continue;
     const val = x => {
-      const { c, t } = slotEff(x.i);
+      const { c, t, raw } = slotEff(x.i);
       if (x.k === 'init') return t ? initEff(c, t) : 0;
-      const m = !t ? 1 : x.k === 'lim' ? N(t.mulLimit) * limX(x.sel) : N(t.mulNormal);
+      const ml = slotMul(x.i, t, raw),
+        m = !t ? 1 : x.k === 'lim' ? ml.l * limX(x.sel) : ml.n;
       return skillVal(x.sel, x.i) * muzinMul(x.sel, x.k) * m;
     };
     inst
@@ -108,4 +109,34 @@ function spCount(name) {
   const id = findId(M.skills, d => d.name === name);
   if (!id || !form) return 0;
   return Math.min(dupLimit(M.skills.get(id)) ?? 2, dupInstances(id).length);
+}
+
+/* ---------- 部隊内の姫・剣豪・対象兵科・兵種の数(総バフ・倍枠の「係数 × 数」) ----------
+   cfg = { by: 'hime' | 'kengou' | 'branch', self: 自分を数えるか, branches, soldiers, own: 自身のもつ兵種 }。i は持ち主の枠 */
+function unitCount(i, cfg) {
+  if (!form) return 0;
+  const own = form.slots[i]?.soldier;
+  const hit = s => {
+    const c = M.cards.get(s.card);
+    if (!c) return false;
+    if (cfg.by === 'hime') return !!toFlag(c.hime);
+    if (cfg.by === 'kengou') return !!toFlag(c.kengou);
+    const o = M.soldiers.get(s.soldier);
+    return (
+      !!o &&
+      ((cfg.soldiers || []).includes(o.name) ||
+        (cfg.branches || []).includes(o.branch) ||
+        (!!cfg.own && !!own && s.soldier === own))
+    );
+  };
+  return form.slots.filter((s, j) => hit(s) && (j !== i || cfg.self)).length;
+}
+/* その枠の倍枠(通常・極限)。倍枠を数で掛ける初期スキルなら 倍枠 + 係数 × 数。
+   t は効果の出るTR(部隊長限定・重複上限で外れたときは raw と別物になり、数で掛けない) */
+function slotMul(i, t, raw) {
+  if (!t) return { n: 1, l: 1, cnt: null };
+  if (t !== raw || !raw?.mul) return { n: N(t.mulNormal), l: N(t.mulLimit), cnt: null };
+  const m = raw.mul,
+    cnt = unitCount(i, m);
+  return { n: N(t.mulNormal) + m.n * cnt, l: N(t.mulLimit) + m.l * cnt, cnt, by: m.by };
 }

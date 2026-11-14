@@ -404,6 +404,8 @@ function syncDraft() {
   for (const [nm, f, of] of [
     ['tbbranch', 'tbBranches', tbBranchesOf],
     ['tbsoldier', 'tbSoldiers', tbSoldiersOf],
+    ['mulbranch', 'mulBranches', mulBranchesOf],
+    ['mulsoldier', 'mulSoldiers', mulSoldiersOf],
   ])
     if (draft.coll === 'skills' && $('editor').querySelector(`[name=${nm}]`)) {
       const known = [...$('editor').querySelectorAll(`[name=${nm}]`)];
@@ -425,6 +427,7 @@ function syncDraft() {
 const SELECTS = {
   mimic: d => Object.entries(MIMIC).map(([v, l]) => [v, l, mimicOf(d) === v]),
   tbby: d => Object.entries(TB_BY).map(([v, l]) => [v, l, tbByOf(d) === v]),
+  mulby: d => Object.entries(MUL_BY).map(([v, l]) => [v, l, mulByOf(d) === v]),
   coef: d => Object.entries(COEF_BY).map(([v, l]) => [v, l, coefByOf(d) === v]),
   side: (d, f) => SIDES.map(v => [null, v, d[f] === v]),
   rarity: (d, f) =>
@@ -468,6 +471,69 @@ function tbCountNote(d) {
       }[tbByOf(d)] || '部隊内の対象兵科・兵種の数(上で選んだ兵科・兵種の武将)';
   return `総${b}バフ = 総${b}バフ + 総${b}バフ係数(%) × ${what} ÷ 100。例:係数4、3人なら +0.12。チェックを入れると、このスキルを持つ武将自身も人数に数えます。`;
 }
+function mulCountNote(d) {
+  const what =
+    { hime: '部隊内の姫の数', kengou: '部隊内の剣豪の数' }[mulByOf(d)] ||
+    '部隊内の対象兵科・兵種の数(上で選んだ兵科・兵種の武将)';
+  return `倍枠通常 = 倍枠通常 + 倍枠係数(通常) × ${what}(倍枠極限も同じく倍枠係数(極限)で計算)。例:係数0.2、3人なら +0.6。チェックを入れると、このスキルを持つ武将自身も人数に数えます。`;
+}
+/* 「部隊内の◯◯の数」で掛ける設定の部品(p='tb' 総バフ、p='mul' 倍枠)。
+   掛け方のプルダウン、対象兵科・兵種(自身のもつ兵種)、自身をカウントする */
+const COUNT_CFG = {
+  tb: {
+    by: 'tbBy',
+    sel: 'tbby',
+    byOf: tbByOf,
+    counts: tbCounts,
+    br: tbBranchesOf,
+    so: tbSoldiersOf,
+    own: tbOwnOf,
+    self: tbSelfOf,
+  },
+  mul: {
+    by: 'mulBy',
+    sel: 'mulby',
+    byOf: mulByOf,
+    counts: mulCounts,
+    br: mulBranchesOf,
+    so: mulSoldiersOf,
+    own: mulOwnOf,
+    self: mulSelfOf,
+  },
+};
+function countBox(d, p, byLabel, note) {
+  const c = COUNT_CFG[p];
+  const sold = [...M.soldiers.values()].sort((a, b) => bySoldierOrder(['', a], ['', b])),
+    branches = [...new Set(sold.map(x => x.branch).filter(Boolean))],
+    soldNames = sold.map(x => x.name),
+    tbr = c.br(d),
+    tbs = c.so(d),
+    unknown = [...tbr.filter(b => !branches.includes(b)), ...tbs.filter(n => !soldNames.includes(n))];
+  return (
+    `<div class="grid">${fieldHtml(d, c.by, byLabel, c.sel)}</div>` +
+    (c.byOf(d) === 'branch'
+      ? checksField(
+          '対象兵科(部隊の武将の兵種がこの兵科なら数える)',
+          branches
+            .map(b => checkbox(`name="${p}branch" value="${esc(b)}"`, tbr.includes(b), esc(b)))
+            .join('') || '<span class="note">兵種マスタに兵科がありません</span>',
+        ) +
+        checksField(
+          '対象兵種(部隊の武将の兵種がこの兵種なら数える)',
+          checkbox(`id="f-${p}Own" data-f="${p}Own"`, c.own(d), '自身のもつ兵種') +
+            (soldNames
+              .map(n => checkbox(`name="${p}soldier" value="${esc(n)}"`, tbs.includes(n), esc(n)))
+              .join('') || '<span class="note">兵種マスタが空です</span>'),
+        ) +
+        (unknown.length
+          ? `<p class="msg err">兵種マスタにない兵科・兵種が指定されています:${unknown.map(esc).join('、')}(このまま残ります)</p>`
+          : '')
+      : '') +
+    (c.counts(d)
+      ? `<p class="note">${note}</p><div class="field"><div class="checks">${checkbox(`id="f-${p}Self" data-f="${p}Self"`, c.self(d), '自身をカウントする')}</div></div>`
+      : '')
+  );
+}
 /* スキル・初期スキルの編集画面 */
 function skillEditorBody(d) {
   const ini = toFlag(d.init) === 1,
@@ -481,40 +547,9 @@ function skillEditorBody(d) {
     !ini && ['xskill', 'Xスキル', 'flag'],
     ini ? ['noMimic', '模倣', 'flag'] : ['mimic', '模倣', 'mimic'],
   ].filter(Boolean);
-  /* 総バフの掛け方が「部隊内の姫の数」「部隊内の対象兵科・兵種の数」のとき:自分も数えるか。
-     対象兵科・兵種なら、数える兵科と兵種も選ぶ(どちらかに当てはまれば数える) */
-  const sold = [...M.soldiers.values()].sort((a, b) => bySoldierOrder(['', a], ['', b])),
-    branches = [...new Set(sold.map(x => x.branch).filter(Boolean))],
-    soldNames = sold.map(x => x.name),
-    tbr = tbBranchesOf(d),
-    tbs = tbSoldiersOf(d),
-    unknownBr = [...tbr.filter(b => !branches.includes(b)), ...tbs.filter(n => !soldNames.includes(n))];
-  /* 総バフの設定(掛け方・対象・自分を数えるか)は、特殊効果のチェックのすぐ下に枠でまとめて出す */
-  const tbCountBox =
-    (ini && ef.total
-      ? `<div class="grid">${fieldHtml(d, 'tbBy', `総${sw(d)}バフの掛け方`, 'tbby')}</div>`
-      : '') +
-    (ini && ef.total && tbByOf(d) === 'branch'
-      ? checksField(
-          '対象兵科(部隊の武将の兵種がこの兵科なら数える)',
-          branches
-            .map(b => checkbox(`name="tbbranch" value="${esc(b)}"`, tbr.includes(b), esc(b)))
-            .join('') || '<span class="note">兵種マスタに兵科がありません</span>',
-        ) +
-        checksField(
-          '対象兵種(部隊の武将の兵種がこの兵種なら数える)',
-          checkbox('id="f-tbOwn" data-f="tbOwn"', tbOwnOf(d), '自身のもつ兵種') +
-            (soldNames
-              .map(n => checkbox(`name="tbsoldier" value="${esc(n)}"`, tbs.includes(n), esc(n)))
-              .join('') || '<span class="note">兵種マスタが空です</span>'),
-        ) +
-        (unknownBr.length
-          ? `<p class="msg err">兵種マスタにない兵科・兵種が指定されています:${unknownBr.map(esc).join('、')}(このまま残ります)</p>`
-          : '')
-      : '') +
-    (ini && ef.total && tbCounts(d)
-      ? `<p class="note">${tbCountNote(d)}</p><div class="field"><div class="checks">${checkbox('id="f-tbSelf" data-f="tbSelf"', tbSelfOf(d), '自身をカウントする')}</div></div>`
-      : '');
+  /* 総バフの設定・倍枠の設定(掛け方・対象・自分を数えるか)は、特殊効果のチェックのすぐ下に枠でまとめて出す */
+  const tbCountBox = ini && ef.total ? countBox(d, 'tb', `総${sw(d)}バフの掛け方`, tbCountNote(d)) : '';
+  const mulCountBox = ini && ef.mul ? countBox(d, 'mul', '倍枠の掛け方', mulCountNote(d)) : '';
   const coefMaxBox =
     coefByOf(d) === 'same' && !mm
       ? `<div class="field"><div class="checks">${checkbox('id="f-coefMaxTr"', toFlag(d.coefMaxTr), '係数は部隊内武将のTRの最大値を参照')}</div></div>`
@@ -540,6 +575,7 @@ function skillEditorBody(d) {
         `${effLabel(d, 'stat')}の設定`,
         `<p class="note">チェックを入れると、この武将本人だけにかかります。チェックなしなら、部隊のどこにいても部隊全員にかかります。</p><div class="field"><div class="checks">${checkbox('data-eff2="self"', ef.self, `${effLabel(d, 'stat')}は本人のみ`)}</div></div>`,
       ),
+    mulCountBox && subbox('倍枠の設定', mulCountBox),
     tbCountBox && subbox(`総${sw(d)}バフの設定`, tbCountBox),
     ini &&
       ef.troop &&
@@ -597,6 +633,9 @@ function skillNotes(d) {
       ef.total &&
         tbByOf(d) === 'branch' &&
         `総${b}バフ = 総${b}バフ + 部隊内の対象兵科・兵種の数(部隊の武将のうち、選んだ兵種が対象兵種か、その兵科が対象兵科の武将。「自身のもつ兵種」なら、この武将と同じ兵種の武将も数える。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
+      ef.mul &&
+        mulCounts(d) &&
+        '倍枠 = 倍枠通常・倍枠極限 + 倍枠係数(通常・極限) × 部隊内の数(倍枠の設定で選んだもの。「自身をカウントする」ならこの武将も含む)。係数はそのままの数で、1人あたり +0.2倍なら 0.2 と入力します。',
       ef.total &&
         tbByOf(d) === 'kengou' &&
         `総${b}バフ = 総${b}バフ + 部隊内の剣豪の数(武将マスタで剣豪の武将。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
@@ -653,6 +692,12 @@ function skillTrCols(d) {
     mul: [
       ['mulNormal', '倍枠通常'],
       ['mulLimit', '倍枠極限'],
+      ...(mulCounts(d)
+        ? [
+            ['mulNormalCoef', '倍枠係数(通常)'],
+            ['mulLimitCoef', '倍枠係数(極限)'],
+          ]
+        : []),
     ],
     stat: [['statBuff', `素${b}バフ`]],
     total: [['totalBuff', `総${b}バフ`], ...(tbCoefOn(d) ? [['tbCoef', `総${b}バフ係数(%)`]] : [])],
@@ -832,7 +877,12 @@ $('editor').addEventListener('change', e => {
     renderEditor();
     return;
   }
-  if (draft && (e.target.id === 'f-tbBy' || (draft.coll === 'skills' && e.target.id === 'f-side'))) {
+  if (
+    draft &&
+    (e.target.id === 'f-tbBy' ||
+      e.target.id === 'f-mulBy' ||
+      (draft.coll === 'skills' && e.target.id === 'f-side'))
+  ) {
     syncDraft();
     renderEditor();
     return;
@@ -985,6 +1035,16 @@ function validate(coll, d) {
     !tbOwnOf(d)
   )
     return '対象兵科か対象兵種を1つ以上選んでください';
+  if (
+    coll === 'skills' &&
+    isInitSkill(d) &&
+    effsOf(d).mul &&
+    mulByOf(d) === 'branch' &&
+    !mulBranchesOf(d).length &&
+    !mulSoldiersOf(d).length &&
+    !mulOwnOf(d)
+  )
+    return '倍枠の対象兵科か対象兵種を1つ以上選んでください';
   if (
     coll === 'skills' &&
     isInitSkill(d) &&

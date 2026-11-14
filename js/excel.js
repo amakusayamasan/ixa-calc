@@ -108,6 +108,13 @@ const X_SKILL = [
   '自身のもつ兵種',
   '兵数加算に自身を含む',
   '兵数加算の対象',
+  '倍枠の掛け方',
+  '倍枠の数に自身を含む',
+  '倍枠の対象兵科',
+  '倍枠の対象兵種',
+  '倍枠の自身のもつ兵種',
+  '倍枠係数(通常)',
+  '倍枠係数(極限)',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 const X_JBUFF = [
@@ -196,6 +203,17 @@ async function downloadXlsx(withData) {
                 .map(v => TROOP_TO.find(([k]) => k === v)[1])
                 .join('、')
             : '',
+          ...(ini && effsOf(d).mul && mulCounts(d)
+            ? [
+                MUL_BY[mulByOf(d)],
+                mulSelfOf(d) ? 1 : 0,
+                mulByOf(d) === 'branch' ? mulBranchesOf(d).join('、') : '',
+                mulByOf(d) === 'branch' ? mulSoldiersOf(d).join('、') : '',
+                mulByOf(d) === 'branch' ? (mulOwnOf(d) ? 1 : 0) : '',
+                t.mulNormalCoef ?? '',
+                t.mulLimitCoef ?? '',
+              ]
+            : ['', '', '', '', '', '', '']),
         ]);
     }
   const sold = withData
@@ -415,6 +433,22 @@ function readSkillRow(s, row, ix) {
   for (const h of ['数に自身を含む', '姫数に自身を含む'])
     if (val(ix(h)) != null) s.tbSelf = toFlag(row[ix(h)]);
   if (val(ix('自身のもつ兵種')) != null) s.tbOwn = toFlag(row[ix('自身のもつ兵種')]);
+  /* 倍枠の掛け方と、その数え方(総バフとは別) */
+  if (val(ix('倍枠の掛け方')) != null) {
+    const v = String(row[ix('倍枠の掛け方')]);
+    s.mulBy = /姫/.test(v) ? 'hime' : /剣豪/.test(v) ? 'kengou' : /兵科|兵種/.test(v) ? 'branch' : 'fixed';
+  }
+  if (val(ix('倍枠の数に自身を含む')) != null) s.mulSelf = toFlag(row[ix('倍枠の数に自身を含む')]);
+  if (val(ix('倍枠の自身のもつ兵種')) != null) s.mulOwn = toFlag(row[ix('倍枠の自身のもつ兵種')]);
+  for (const [h, f] of [
+    ['倍枠の対象兵科', 'mulBranches'],
+    ['倍枠の対象兵種', 'mulSoldiers'],
+  ])
+    if (val(ix(h)) != null)
+      s[f] = String(row[ix(h)])
+        .split(/[、,，]/)
+        .map(x => x.trim())
+        .filter(Boolean);
   for (const [h, f] of [
     ['対象兵科', 'tbBranches'],
     ['対象兵種', 'tbSoldiers'],
@@ -439,6 +473,8 @@ function readSkillTr(n, row, ix) {
   for (const [k, l] of EXTRA_EFFS) if (has(ix(l))) tr[k] = N(row[ix(l)]);
   const keepOld = [
     ['tbCoef', '総攻・防バフ係数'],
+    ['mulNormalCoef', '倍枠係数(通常)'],
+    ['mulLimitCoef', '倍枠係数(極限)'],
     ['troopAdd', '兵数加算'],
     ...SKILL_INIT.map(([f, l]) => [f, l]),
   ];
@@ -496,6 +532,8 @@ function finishSkill(s, old) {
   if (s.tbSoldiers == null && old && old.tbSoldiers) s.tbSoldiers = old.tbSoldiers;
   if (s.tbOwn == null && old && old.tbOwn != null) s.tbOwn = old.tbOwn;
   if (s.troopTo == null && old && old.troopTo) s.troopTo = old.troopTo;
+  for (const f of ['mulBy', 'mulSelf', 'mulBranches', 'mulSoldiers', 'mulOwn'])
+    if (s[f] == null && old && old[f] != null) s[f] = old[f];
   if (s.init == null)
     s.init = old
       ? isInitSkill(old)

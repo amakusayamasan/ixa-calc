@@ -84,5 +84,7 @@ const INIT_TR_FIELDS = () => [
   ...SKILL_INIT.map(([f]) => f),
   'troopAdd',
   'tbCoef',
+  'mulNormalCoef',
+  'mulLimitCoef',
   ...SPLIT_FIELDS.map(f => f + 'D'),
 ];
