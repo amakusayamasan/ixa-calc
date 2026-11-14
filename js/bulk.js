@@ -1,4 +1,4 @@
-// まとめて追加(部隊計算画面):スキルを3つまで選んで、1人か全員の 追加スキル・追加スキル2・極限スキル にまとめて入れる
+// 一括スキル追加(部隊計算画面):スキルを3つまで選んで、1人か全員の 追加スキル・追加スキル2・極限スキル にまとめて入れる
 // 使うファイル:core.js、fields.js、skills.js、calc-view.js、master.js(調べ方:node tests/deps.js)
 /* 選んだ順に 通常1 → 通常2 → 極限。選んだスキルをもう一度タップすると外れる(ほかの枠はそのまま、空いた枠に次のタップが入る)。
    反映するときは、選んでいない枠は今のスキルのまま。TRは選択画面で選んだTR(そのTRがないスキルはいちばん大きいTR) */
@@ -81,7 +81,7 @@ function renderBulk() {
     }),
     ['all', '全武将'],
   ];
-  p.innerHTML = `<div class="jbhead"><strong>スキルをまとめて追加</strong></div>
+  p.innerHTML = `<div class="jbhead"><strong>一括スキル追加</strong></div>
     <p class="note">タップした順に 通常1 → 通常2 → 極限 に入ります。もう一度タップすると外れます。並びは選んだTRでのスキル上昇率の高い順です(数字で比べられないスキルは下。自真似・他真似・Xスキルで絞ったときは係数の大きい順)。</p>
     <div class="bulkopts">
       <div class="field"><span class="label">絞り込み</span><div class="seg">${seg(
