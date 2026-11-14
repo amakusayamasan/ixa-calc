@@ -69,14 +69,17 @@ function renderBulk() {
     items
       .map(([v, l]) => `<button type="button" ${attr}="${v}" aria-pressed="${cur === v}">${l}</button>`)
       .join('');
+  /* 次に入るのが極限のときは、Xスキルを選べない見た目にする */
+  const nextLim = bulk.pick.indexOf(null) === 2;
   const rows = bulkItems()
     .map(({ id, d, v }) => {
       const k = bulk.pick.indexOf(id),
-        t = trEntry(d, bulk.tr);
+        t = trEntry(d, bulk.tr),
+        xoff = k < 0 && nextLim && isX(d);
       const val =
         v != null ? fmt(v, 1) : t ? skillLabel(t, d) : `TR${bulk.tr}なし(TR${fitTr(d, bulk.tr)}で反映)`;
-      return `<button type="button" class="bulkrow${k >= 0 ? ' on' : ''}" data-bulk-pick="${esc(id)}" aria-pressed="${k >= 0}">
-        <span class="bmark">${k >= 0 ? BULK_MARK[k] : ''}</span><span class="bname">${esc(d.name)}${isX(d) ? '<span class="note">Xスキル</span>' : ''}</span><span class="num bval">${val}</span></button>`;
+      return `<button type="button" class="bulkrow${k >= 0 ? ' on' : ''}${xoff ? ' off' : ''}" data-bulk-pick="${esc(id)}" aria-pressed="${k >= 0}"${xoff ? ' title="Xスキルは極限に選べません"' : ''}>
+        <span class="bmark">${k >= 0 ? BULK_MARK[k] : ''}</span><span class="bname">${esc(d.name)}${isX(d) ? `<span class="note">Xスキル${xoff ? '(極限には選べません)' : ''}</span>` : ''}</span><span class="num bval">${val}</span></button>`;
     })
     .join('');
   const chosen = BULK_SLOTS.map(
@@ -172,6 +175,11 @@ $('bulkpanel').addEventListener('click', e => {
       const free = bulk.pick.indexOf(null);
       if (free < 0) {
         bulk.msg = '3つまで選べます。外したいスキルをもう一度タップしてください';
+        return renderBulk();
+      }
+      /* Xスキルは極限枠に付けられないので、次に入るのが極限ならXスキルは選べない */
+      if (free === 2 && isX(M.skills.get(id))) {
+        bulk.msg = 'Xスキルは極限に選べません。通常1・通常2が空いているときに選んでください';
         return renderBulk();
       }
       bulk.pick[free] = id;

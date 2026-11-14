@@ -184,20 +184,23 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
     await p.click('[data-bulk-pick="a"]');
     await p.click('[data-bulk-pick="b"]');
     await p.click('[data-bulk-pick="x"]');
+    ok('Xスキルは極限に選べない', await p.textContent('#bulkMsg'), 'Xスキルは極限に選べません。通常1・通常2が空いているときに選んでください');
+    ok('Xスキルの行は薄くなる', await p.$eval('[data-bulk-pick="x"]', e => e.classList.contains('off')), true);
     await p.click('[data-bulk-pick="a"]');
+    await p.click('[data-bulk-pick="x"]');
     await p.click('[data-bulk-pick="c"]');
-    ok('選んだ順(外した通常1に次が入る)', await p.textContent('.bulkchosen'), '通常1:百戦錬磨通常2:剛勇無双極限:Xの技');
+    ok('選んだ順(外した通常1に次が入る)', await p.textContent('.bulkchosen'), '通常1:Xの技通常2:剛勇無双極限:百戦錬磨');
     await p.click('#bulkApply');
     await p.waitForTimeout(150);
     ok(
-      '反映の知らせ(Xスキルは極限に入らない・傑は飛ばす)',
+      '反映の知らせ(傑は飛ばす)',
       await p.textContent('#bulkMsg'),
-      '6か所に反映しました。入れられなかった枠:部隊長の極限(Xスキルは極限に付けられない)、小隊長1の極限(Xスキルは極限に付けられない)、小隊長2の極限(Xスキルは極限に付けられない)、小隊長3(傑は付与不可)',
+      '9か所に反映しました。入れられなかった枠:小隊長3(傑は付与不可)',
     );
     ok(
       '反映されたスキルとTR',
-      await p.evaluate(() => form.slots.map(s => ['s1', 's2'].map(k => (M.skills.get(s[k].id)?.name || '-') + '@' + s[k].tr).join(' '))),
-      ['百戦錬磨@5 剛勇無双@5', '百戦錬磨@5 剛勇無双@5', '百戦錬磨@5 剛勇無双@5', '-@0 -@0'],
+      await p.evaluate(() => form.slots.map(s => ['s1', 's2', 'lim'].map(k => (M.skills.get(s[k].id)?.name || '-') + '@' + s[k].tr).join(' '))),
+      ['Xの技@0 剛勇無双@5 百戦錬磨@5', 'Xの技@0 剛勇無双@5 百戦錬磨@5', 'Xの技@0 剛勇無双@5 百戦錬磨@5', '-@0 -@0 -@0'],
     );
     ok('ページのエラー(3)', p.errs, []);
     await p.close();

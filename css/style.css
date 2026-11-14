@@ -1001,6 +1001,9 @@ tbody tr.editable:hover {
   text-align: left;
   cursor: pointer;
 }
+.bulkrow.off {
+  opacity: 0.45;
+}
 .bulkrow.on {
   border-color: var(--accent);
   background: var(--accent-weak);
