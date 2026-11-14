@@ -1,5 +1,5 @@
 // 一括スキル追加(部隊計算画面):スキルを3つまで選んで、1人か全員の 追加スキル・追加スキル2・極限スキル にまとめて入れる
-// 使うファイル:core.js、fields.js、skills.js、calc-view.js、master.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、skills.js、calc-view.js、master.js(調べ方:node tests/deps.js)
 /* 選んだ順に 通常1 → 通常2 → 極限。選んだスキルをもう一度タップすると外れる(ほかの枠はそのまま、空いた枠に次のタップが入る)。
    反映するときは、選んでいない枠は今のスキルのまま。TRは選択画面で選んだTR(そのTRがないスキルはいちばん大きいTR) */
 const BULK_SLOTS = [
@@ -8,7 +8,17 @@ const BULK_SLOTS = [
   ['lim', '極限'],
 ];
 const BULK_MARK = ['①', '②', '極'];
-const bulk = { open: false, people: '', tr: 0, q: '', pick: [null, null, null], target: 'all', msg: '' };
+/* TRだけはこの端末に覚えておく(開き直しても同じTRから) */
+const BULK_TR_KEY = 'ixa-bulk-tr-v1';
+const bulk = {
+  open: false,
+  people: '',
+  tr: N(store.get(BULK_TR_KEY)),
+  q: '',
+  pick: [null, null, null],
+  target: 'all',
+  msg: '',
+};
 /* 並べ替え・表示の値:今の部隊タイプ(攻撃・防御)の値で、人数・総コストの掛け方だけ数字で比べる */
 function bulkValue(d, tr) {
   const t0 = trEntry(d, tr);
@@ -177,6 +187,7 @@ $('bulkpanel').addEventListener('click', e => {
 $('bulkpanel').addEventListener('change', e => {
   if (e.target.id === 'bulkTr') {
     bulk.tr = N(e.target.value);
+    store.set(BULK_TR_KEY, bulk.tr);
     renderBulk();
   }
 });

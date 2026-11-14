@@ -70,7 +70,18 @@ const skillSide = d => (SIDES.includes(d?.side) ? d.side : '攻撃');
 const forMode = d => skillSide(d) !== MD().opp;
 /* 攻撃と防御で値を分けたスキル(初期スキル・追加スキル):防御部隊では「(防)」の値を使う(空欄なら攻撃と同じ値)。
    追加スキルで分けるのは素スキル上昇率と係数だけ */
-const SPLIT_FIELDS = ['base', 'coef', 'statBuff', 'mulNormal', 'mulLimit', 'totalBuff', 'tbCoef', 'troopAdd'];
+const SPLIT_FIELDS = [
+  'base',
+  'coef',
+  'statBuff',
+  'mulNormal',
+  'mulLimit',
+  'totalBuff',
+  'tbCoef',
+  'troopAdd',
+  'mulNormalCoef',
+  'mulLimitCoef',
+];
 function modeTr(d, t) {
   if (!t || mode !== 'def' || !splitOn(d)) return t;
   const o = { ...t };
@@ -199,6 +210,8 @@ function muzinMul(sel, k) {
 /* 重複上限(スキルの特殊効果のチェック「重複上限」)の設定。部隊内でどれを外すかは unit.js */
 const dupOn = d =>
   d?.effs?.dup != null ? !!d.effs.dup : hasV(d?.dupMax) || (d?.trs || []).some(t => hasV(t.dupMax));
+/* 古い形式(重複上限をTRごとに持っている)のスキル。開いて保存し直すと新しい形式になる */
+const legacyDup = d => dupOn(d) && !hasV(d?.dupMax) && (d?.trs || []).some(t => hasV(t.dupMax));
 /* 重複上限はスキル全体で1つ(TRに左右されない)。TRごとに持っていた古いデータは、いちばん大きい値を使う */
 const skillDupMax = d =>
   hasV(d?.dupMax) ? N(d.dupMax) : Math.max(0, ...(d?.trs || []).map(t => N(t.dupMax)));

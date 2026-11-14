@@ -250,6 +250,13 @@ function renderMaster() {
         `<span id="peopleMsg" class="msg${cfgMsg ? ' ' + cfgMsg.cls : ''}">${esc(cfgMsg?.text || '')}</span>`
       : `<div class="pgrp"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b><span class="note">${PEOPLE_FORMULA}</span></div>` +
         `<div class="pgrp"><span class="label">敵武将の平均コスト</span><b class="num">${fmt(N(config.avgCost), 2)}</b><span class="note">${COST_FORMULA}</span></div>`;
+  /* 古い形式のデータが残っていれば、管理者にだけ知らせる(全部保存し直せば出なくなる) */
+  const legacy =
+    isOwner && mtab === 'skills' ? [...M.skills.values()].filter(legacyDup).map(d => d.name) : [];
+  $('mlegacy').hidden = !legacy.length;
+  $('mlegacy').textContent = legacy.length
+    ? `古い形式(重複上限をTRごとに持つ形)のスキルがあります。開いて「保存」し直すと新しい形式になります:${legacy.join('、')}`
+    : '';
   const q = $('msearch').value.trim();
   const ed = isOwner ? 'editable' : '';
   const named = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q));
@@ -569,13 +576,13 @@ function skillEditorBody(d) {
   /* 特殊効果のチェックで出てくる設定は、チェックのすぐ下に枠でまとめて出す(チェックの並び順) */
   const subbox = (title, inner) => `<fieldset class="subbox"><legend>${title}</legend>${inner}</fieldset>`;
   const subs = [
+    mulCountBox && subbox('倍枠の設定', mulCountBox),
     ini &&
       ef.stat &&
       subbox(
         `${effLabel(d, 'stat')}の設定`,
         `<p class="note">チェックを入れると、この武将本人だけにかかります。チェックなしなら、部隊のどこにいても部隊全員にかかります。</p><div class="field"><div class="checks">${checkbox('data-eff2="self"', ef.self, `${effLabel(d, 'stat')}は本人のみ`)}</div></div>`,
       ),
-    mulCountBox && subbox('倍枠の設定', mulCountBox),
     tbCountBox && subbox(`総${sw(d)}バフの設定`, tbCountBox),
     ini &&
       ef.troop &&
@@ -717,7 +724,9 @@ function splitCols(cols) {
         ? `総${side}バフ`
         : f === 'tbCoef'
           ? `総${side}バフ係数(%)`
-          : `${l}(${side})`;
+          : f === 'mulNormalCoef' || f === 'mulLimitCoef'
+            ? l.replace(')', `・${side})`)
+            : `${l}(${side})`;
   const sp = cols.filter(([f]) => SPLIT_FIELDS.includes(f));
   return [
     ...cols.map(([f, l]) => (SPLIT_FIELDS.includes(f) ? [f, lab(f, l, '攻')] : [f, l])),

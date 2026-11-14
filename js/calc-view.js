@@ -1,5 +1,5 @@
 // 部隊計算画面(編成の保存、武将・スキルの候補、画面の描画、傑バフの選択)
-// 使うファイル:core.js、fields.js、skills.js、cards.js、calc.js、teams.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、fields.js、skills.js、cards.js、calc.js、teams.js、bulk.js(調べ方:node tests/deps.js)
 /* 端末への記憶はIDではなく「カードNo・スキル名・兵種名」で持つ */
 function toKeys(f) {
   return {
