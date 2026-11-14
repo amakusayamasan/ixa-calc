@@ -397,6 +397,9 @@ function syncDraft() {
               : Number(el.value)
             : el.value;
   }
+  /* 兵数加算の対象(すべて・姫・剣豪) */
+  if (draft.coll === 'skills' && $('editor').querySelector('[name=troopto]'))
+    d.troopTo = [...$('editor').querySelectorAll('[name=troopto]')].filter(k => k.checked).map(k => k.value);
   /* 対象兵科・対象兵種のチェック(兵種マスタにない値はそのまま残す) */
   for (const [nm, f, of] of [
     ['tbbranch', 'tbBranches', tbBranchesOf],
@@ -542,7 +545,14 @@ function skillEditorBody(d) {
       ef.troop &&
       subbox(
         '兵数加算の設定',
-        `<p class="note">兵数加算は、同じ部隊のほかの武将の兵数に足します。チェックを入れると、この武将本人の兵数にも足します。</p><div class="field"><div class="checks">${checkbox('data-eff2="troopSelf"', ef.troopSelf, '自身の兵数も増やす')}</div></div>`,
+        `<p class="note">兵数加算を足す相手を選びます(「すべて」ならほかの武将全員、「姫」「剣豪」なら武将マスタで姫・剣豪の武将だけ)。「自身の兵数も増やす」にチェックを入れると、この武将本人の兵数にも足します。</p>` +
+          checksField(
+            '兵数加算の対象(ほかの武将)',
+            TROOP_TO.map(([v, l]) =>
+              checkbox(`name="troopto" value="${v}"`, troopToOf(d).includes(v), l),
+            ).join(''),
+          ) +
+          `<div class="field"><div class="checks">${checkbox('data-eff2="troopSelf"', ef.troopSelf, '自身の兵数も増やす')}</div></div>`,
       ),
     dupOn(d) &&
       subbox(
@@ -580,7 +590,7 @@ function skillNotes(d) {
   ];
   if (ini)
     notes.push(
-      `素${b}バフ〜総${b}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0。「自身の兵数も増やす」なら本人にも足す)。`,
+      `素${b}バフ〜総${b}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将(対象を姫・剣豪にしたときはその武将だけ)の兵数に足します(空欄なら0。「自身の兵数も増やす」なら本人にも足す)。`,
       ef.stat &&
         (ef.self
           ? `素${b}バフは本人だけにかかります。`
@@ -767,6 +777,12 @@ $('editor').addEventListener('change', e => {
     syncDraft();
     renderEditor();
     return;
+  }
+  /* 兵数加算の対象:「すべて」を選んだら姫・剣豪を外し、姫・剣豪を選んだら「すべて」を外す */
+  if (draft && e.target.name === 'troopto' && e.target.checked) {
+    const all = e.target.value === 'all';
+    for (const k of $('editor').querySelectorAll('[name=troopto]'))
+      if (k !== e.target && (all || k.value === 'all')) k.checked = false;
   }
   if (draft && e.target.dataset.eff2 === 'split' && e.target.checked) {
     /* 分けたときは、防御の空欄に攻撃の値を入れておく */
@@ -973,6 +989,15 @@ function validate(coll, d) {
     !tbOwnOf(d)
   )
     return '対象兵科か対象兵種を1つ以上選んでください';
+  if (
+    coll === 'skills' &&
+    isInitSkill(d) &&
+    effsOf(d).troop &&
+    Array.isArray(d.troopTo) &&
+    !d.troopTo.length &&
+    !effsOf(d).troopSelf
+  )
+    return '兵数加算の対象を1つ以上選んでください(または「自身の兵数も増やす」にチェック)';
   if (coll === 'skills') return skillEffectMissing(d);
   return '';
 }

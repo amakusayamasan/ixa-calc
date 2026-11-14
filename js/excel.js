@@ -107,6 +107,7 @@ const X_SKILL = [
   '対象兵種',
   '自身のもつ兵種',
   '兵数加算に自身を含む',
+  '兵数加算の対象',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 const X_JBUFF = [
@@ -190,6 +191,11 @@ async function downloadXlsx(withData) {
           ini && tbByOf(d) === 'branch' ? tbSoldiersOf(d).join('、') : '',
           ini && tbByOf(d) === 'branch' ? (tbOwnOf(d) ? 1 : 0) : '',
           ini && effsOf(d).troop ? (effsOf(d).troopSelf ? 1 : 0) : '',
+          ini && effsOf(d).troop
+            ? troopToOf(d)
+                .map(v => TROOP_TO.find(([k]) => k === v)[1])
+                .join('、')
+            : '',
         ]);
     }
   const sold = withData
@@ -377,6 +383,12 @@ function readSkillRow(s, row, ix) {
   ])
     if (val(ix(col)) != null) s.effFlags = { ...(s.effFlags || {}), [key]: toFlag(row[ix(col)]) === 1 };
   if (val(ix('重複上限')) != null) s.dupMax = N(row[ix('重複上限')]);
+  /* 兵数加算の対象(すべて・姫・剣豪を「、」区切り) */
+  if (val(ix('兵数加算の対象')) != null)
+    s.troopTo = String(row[ix('兵数加算の対象')])
+      .split(/[、,，]/)
+      .map(x => TROOP_TO.find(([, l]) => l === x.trim())?.[0])
+      .filter(Boolean);
   if (val(ix('係数最大TR参照')) != null) s.coefMaxTr = toFlag(row[ix('係数最大TR参照')]);
   if (val(ix('模倣可否')) != null) s.noMimic = /不可|できない/.test(String(row[ix('模倣可否')])) ? 1 : 0;
   if (val(ix('模倣')) != null) {
@@ -483,6 +495,7 @@ function finishSkill(s, old) {
   if (s.tbBranches == null && old && old.tbBranches) s.tbBranches = old.tbBranches;
   if (s.tbSoldiers == null && old && old.tbSoldiers) s.tbSoldiers = old.tbSoldiers;
   if (s.tbOwn == null && old && old.tbOwn != null) s.tbOwn = old.tbOwn;
+  if (s.troopTo == null && old && old.troopTo) s.troopTo = old.troopTo;
   if (s.init == null)
     s.init = old
       ? isInitSkill(old)

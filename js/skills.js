@@ -35,6 +35,16 @@ const tbSelfOf = d => toFlag(d?.tbSelf ?? d?.himeSelf ?? 1) === 1;
 /* 部隊内の対象兵科・兵種の数で数える兵科(兵種マスタの兵科名)と兵種(兵種名) */
 const tbBranchesOf = d => (Array.isArray(d?.tbBranches) ? d.tbBranches : []);
 const tbSoldiersOf = d => (Array.isArray(d?.tbSoldiers) ? d.tbSoldiers : []);
+/* 兵数加算の対象(ほかの武将のうちどれに足すか):'all' すべて / 'hime' 姫 / 'kengou' 剣豪。未設定ならすべて */
+const TROOP_TO = [
+  ['all', 'すべて'],
+  ['hime', '姫'],
+  ['kengou', '剣豪'],
+];
+const troopToOf = d => {
+  const v = Array.isArray(d?.troopTo) ? d.troopTo.filter(x => TROOP_TO.some(([k]) => k === x)) : [];
+  return v.length ? v : ['all'];
+};
 /* 「自身のもつ兵種」:このスキルを持つ武将が選んでいる兵種と同じ兵種の武将も数える */
 const tbOwnOf = d => toFlag(d?.tbOwn) === 1;
 const coefByOf = d => (COEF_BY[d?.coefBy] ? d.coefBy : 'people');
@@ -224,6 +234,7 @@ function normalizeSkill(d) {
       ? {
           tbBy: effsOf(d).total ? tbByOf(d) : 'fixed',
           ...(effsOf(d).total && tbCounts(d) ? { tbSelf: tbSelfOf(d) ? 1 : 0 } : {}),
+          ...(effsOf(d).troop ? { troopTo: troopToOf(d) } : {}),
           ...(effsOf(d).total && tbByOf(d) === 'branch'
             ? { tbBranches: tbBranchesOf(d), tbSoldiers: tbSoldiersOf(d), tbOwn: tbOwnOf(d) ? 1 : 0 }
             : {}),
