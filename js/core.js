@@ -42,6 +42,9 @@ let mode = 'atk';
 const MD = () => MODES[mode];
 const muzinOn = () => !!form && String(M.cards.get(form.slots[0].card)?.no ?? '') === MD().muzinNo;
 const REI_TROOPS = 2000;
+/* レアリティで増える兵数(武将マスタの兵数に足す):覇・天は 1200+1600、傑は対象外、それ以外は 600+1600 */
+const RARITY_TROOPS = { '覇・天': 1200 + 1600, 傑: 0 };
+const rarityTroops = c => (c ? (RARITY_TROOPS[c.rarity] ?? 600 + 1600) : 0);
 const STAT_FACTOR = 690;
 const SAMPLE = {
   jin: 1.05,

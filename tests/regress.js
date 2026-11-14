@@ -87,7 +87,7 @@ await p.evaluate(async()=>{const b=db.batch();const P=(c,id,d)=>putWithLog(b,'�
  ini('斎藤初',[{tr:5,base:0,coef:0,totalBuff:1.8}],{total:true});ini('尼子初',[{tr:2,base:0,coef:0,mulNormal:2,mulLimit:2.3}],{mul:true});
  ini('長宗我部初',[{tr:5,base:990,coef:0,mulNormal:1,mulLimit:4.5}],{mul:true});ini('傑秀吉初',[{tr:0,base:550,coef:0}],{enemy:true});
  ini('攻防初',[{tr:0,base:1000,coef:0,statBuff:2,baseD:3000,statBuffD:1.5}],{stat:true,split:true});
- const card=(id,no,name,initName,troops,bd,gd,rar='天')=>P('cards',id,{no,name,initName,troops,baseStat:1000,baseDef:bd,growth:0,growthDef:gd,rarity:rar,side:'攻撃・防御',cost:5,hime:0,kengou:0});
+ const card=(id,no,name,initName,troops,bd,gd,rar='天')=>P('cards',id,{no,name,initName,troops:troops-({'覇・天':2800,'傑':0}[rar]??2200),baseStat:1000,baseDef:bd,growth:0,growthDef:gd,rarity:rar,side:'攻撃・防御',cost:5,hime:0,kengou:0});
  card('d1',90001,'斎藤覇','斎藤初',8300,1310,10);card('d2',90002,'尼子経久','尼子初',7540,1270,74);card('d3',90003,'長宗我部','長宗我部初',7700,1260,72);card('d4',20003,'傑秀吉B','傑秀吉初',24000,90000,0,'傑');card('d5',90005,'攻防将','攻防初',8000,1000,10);
  const sk=(name,base)=>P('skills','S'+name,{name,init:0,side:'防御',noAdd:0,coefBy:'people',muzin:0,xskill:0,effs:{dup:false},trs:[{tr:0,base,coef:0}]});
  sk('泰厳射手',3220);sk('従魔',2632);sk('魔導',2352);sk('権謀',520);sk('梵天',2850);sk('梵天5',24764.4/(4.5*1.2));

@@ -79,8 +79,12 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  Object.assign(M.skills.get('MB'),{mulBy:'hime',effs:{mul:true,split:true}});
  M.skills.get('MB').trs.forEach(t=>{t.mulNormalCoefD=1;t.mulLimitCoefD=2;});
  out.mulSplitAtk=Math.round(calc().rows[0].sk*100)/100;mode='def';out.mulSplitDef=Math.round(calc().rows[0].sk*100)/100;mode='atk';
+ /* 14. レアリティで増える兵数:覇・天 +2800、傑 +0、それ以外 +2200(兵数加算は外して確かめる) */
+ M.skills.get('TA').trs.forEach(t=>t.troopAdd=0);
+ ['h1','h2','h3','h4'].forEach((c,i)=>M.cards.get(c).rarity=['覇・天','傑','極','天'][i]);
+ out.rarTroops=calc().rows.map(x=>x.troops);
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[1000,1500,1500,1500],troopAll:[1500,1500,1500,1500],toHime:[1000,1500,1000,1500],toKengou:[1000,1500,1500,1000],toBoth:[1000,1500,1500,1500],mulHime:560,mulBranch:730,mulSplitAtk:560,mulSplitDef:900};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[3200,3700,3700,3700],troopAll:[3700,3700,3700,3700],toHime:[3200,3700,3200,3700],toKengou:[3200,3700,3700,3200],toBoth:[3200,3700,3700,3700],mulHime:560,mulBranch:730,mulSplitAtk:560,mulSplitDef:900,rarTroops:[3800,1000,3200,3200]};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();

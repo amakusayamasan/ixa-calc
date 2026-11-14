@@ -36,7 +36,8 @@ function calc() {
           : a,
       0,
     );
-    const troops = N(s.c.troops) + rei * REI_TROOPS + tadd,
+    const rt = rarityTroops(s.c),
+      troops = N(s.c.troops) + rt + rei * REI_TROOPS + tadd,
       atk = MD().statOf(s.c, s.alloc === 'hei');
     const sname = M.soldiers.get(s.soldier)?.name,
       jb = jbBonus(sname),
@@ -58,6 +59,7 @@ function calc() {
       lo: !!s.t?.loOff && !initDrop,
       tadd,
       troops,
+      rt,
       atk,
       satk,
       jb,
@@ -186,7 +188,11 @@ function breakdownHtml(x, r) {
           : '無尽なしで無効'
         : '';
   const lines = [
-    ['兵数', fmt(x.troops), x.tadd ? `兵数加算+${fmt(x.tadd)}` : ''],
+    [
+      '兵数',
+      fmt(x.troops),
+      [x.rt ? `レア+${fmt(x.rt)}` : '', x.tadd ? `兵数加算+${fmt(x.tadd)}` : ''].filter(Boolean).join('・'),
+    ],
     [m.stat, fmt(x.atk), ''],
     [`兵士${m.stat}力`, fmt(x.satk), x.jb ? `傑+${fmt(x.jb, 2)}` : ''],
     [`素${m.st}`, fmt(x.b, 1), x.sb !== 1 ? `素${m.st}バフ×${fmt(x.sb, 2)}` : ''],
