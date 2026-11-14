@@ -37,6 +37,15 @@ function bulkItems() {
     .filter(([, d]) => words.every(w => kana(d.name).includes(w)))
     .sort(byName)
     .map(([id, d]) => ({ id, d, v: bulkValue(d, bulk.tr) }));
+  /* 自真似・他真似・Xスキルで絞ったときは、係数(模倣は模倣倍率、Xスキルは係数)の大きい順。そのTRがなければ下 */
+  if (['self', 'leader', 'x'].includes(bulk.people)) {
+    const coef = d => {
+      const t = trEntry(d, bulk.tr);
+      return t ? N(isMimic(d) ? modeTr(d, t).mimicRate : modeTr(d, t).coef) : null;
+    };
+    for (const x of list) x.c = coef(x.d);
+    return list.sort((a, b) => (a.c == null || b.c == null ? (a.c == null) - (b.c == null) : b.c - a.c));
+  }
   /* スキル上昇率の高い順。数字で比べられないものは一番下(名前順) */
   return list.sort((a, b) => (a.v == null || b.v == null ? (a.v == null) - (b.v == null) : b.v - a.v));
 }
@@ -73,7 +82,7 @@ function renderBulk() {
     ['all', '全武将'],
   ];
   p.innerHTML = `<div class="jbhead"><strong>スキルをまとめて追加</strong></div>
-    <p class="note">タップした順に 通常1 → 通常2 → 極限 に入ります。もう一度タップすると外れます。並びは選んだTRでのスキル上昇率の高い順です(数字で比べられないスキルは下)。</p>
+    <p class="note">タップした順に 通常1 → 通常2 → 極限 に入ります。もう一度タップすると外れます。並びは選んだTRでのスキル上昇率の高い順です(数字で比べられないスキルは下。自真似・他真似・Xスキルで絞ったときは係数の大きい順)。</p>
     <div class="bulkopts">
       <div class="field"><span class="label">絞り込み</span><div class="seg">${seg(
         [
