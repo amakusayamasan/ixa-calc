@@ -1,4 +1,4 @@
-// 画面操作のテスト(マスタの編集画面・一覧の絞り込みと並べ替え・保存した部隊・一括スキル追加)。期待どおりでなければ失敗する。
+// 画面操作のテスト(マスタの編集画面・一覧の絞り込みと並べ替え・保存した部隊・スキル一括追加)。期待どおりでなければ失敗する。
 // 使い方:リポジトリのフォルダで `python3 -m http.server 8765` を起動してから  node tests/ui.js
 const { chromium } = require('playwright');
 const path = require('path');
@@ -146,7 +146,7 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
     await p.close();
   }
 
-  /* ---------- 3. 部隊計算:保存した部隊と一括スキル追加(開き直しを確かめるため、同じ保存領域を使う) ---------- */
+  /* ---------- 3. 部隊計算:保存した部隊とスキル一括追加(開き直しを確かめるため、同じ保存領域を使う) ---------- */
   {
     const ctx = await b.newContext();
     const p = await open(ctx);
@@ -165,10 +165,10 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
     await p.click('#teamBtn');
     ok('保存一覧', await p.$$eval('.teamrow .tname b', e => e.map(x => x.textContent)), ['UI部隊']);
     await p.click('#teamBtn');
-    /* 一括スキル追加 */
+    /* スキル一括追加 */
     await p.click('#bulkBtn');
     await p.waitForTimeout(100);
-    ok('一括スキル追加の見出し', await p.textContent('#bulkpanel .jbhead strong'), '一括スキル追加');
+    ok('スキル一括追加の見出し', await p.textContent('#bulkpanel .jbhead strong'), 'スキル一括追加');
     ok('候補(防御技・付与不可の初期スキルは出ない)', await p.$$eval('.bulkrow .bname', e => e.map(x => x.childNodes[0].textContent)), [
       '百戦錬磨',
       '勇猛果敢',
@@ -202,19 +202,19 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
       await p.evaluate(() => form.slots.map(s => ['s1', 's2', 'lim'].map(k => (M.skills.get(s[k].id)?.name || '-') + '@' + s[k].tr).join(' '))),
       ['Xの技@0 剛勇無双@5 百戦錬磨@5', 'Xの技@0 剛勇無双@5 百戦錬磨@5', 'Xの技@0 剛勇無双@5 百戦錬磨@5', '-@0 -@0 -@0'],
     );
-    /* 一括兵種選択 */
+    /* 兵種一括選択 */
     await p.click('#soldierBtn');
     await p.selectOption('#bulkSoldierSel', 's2');
     await p.click('#soldierApply');
     await p.waitForTimeout(150);
-    ok('一括兵種選択の知らせ', await p.textContent('#soldierpanel .bulkfoot > .note'), '4人の兵種を「焙烙火矢」にしました');
+    ok('兵種一括選択の知らせ', await p.textContent('#soldierpanel .bulkfoot > .note'), '4人の兵種を「焙烙火矢」にしました');
     ok('全武将の兵種', await p.evaluate(() => form.slots.map(s => M.soldiers.get(s.soldier)?.name)), ['焙烙火矢', '焙烙火矢', '焙烙火矢', '焙烙火矢']);
     ok('ページのエラー(3)', p.errs, []);
     await p.close();
-    /* 開き直しても一括スキル追加のTRと保存した部隊は残る */
+    /* 開き直してもスキル一括追加のTRと保存した部隊は残る */
     const q = await open(ctx);
     await q.click('#bulkBtn');
-    ok('一括スキル追加のTRを覚えている', await q.inputValue('#bulkTr'), '5');
+    ok('スキル一括追加のTRを覚えている', await q.inputValue('#bulkTr'), '5');
     ok('保存した部隊が残っている', await q.evaluate(() => loadTeams().map(t => t.name)), ['UI部隊']);
     await q.close();
     await ctx.close();
