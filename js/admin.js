@@ -120,11 +120,9 @@ function setRole(user) {
   me = user || null;
   $('login').hidden = !!user;
   $('logout').hidden = !user;
-  $('userName').textContent = user
-    ? isOwner && myName()
-      ? myName()
-      : user.displayName || user.email || ''
-    : '';
+  /* 名前には「さん」を付ける(名前がなくメールアドレスを出すときは付けない) */
+  const nm = user ? (isOwner && myName()) || user.displayName || '' : '';
+  $('userName').textContent = nm ? nm + ' さん' : user?.email || '';
   const n = $('uidnote');
   if (user && !isOwner) {
     n.hidden = false;
