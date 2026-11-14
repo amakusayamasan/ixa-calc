@@ -1,4 +1,4 @@
-// 部隊計算画面(編成の保存、武将・スキルの候補、画面の描画、傑バフの選択)
+// 部隊計算画面(編成の保存、武将・スキルの候補、画面の描画、バフの選択)
 // 使うファイル:core.js、fields.js、skills.js、cards.js、calc.js、teams.js(調べ方:node tests/deps.js)
 /* 端末への記憶はIDではなく「カードNo・スキル名・兵種名」で持つ */
 function toKeys(f) {
@@ -429,7 +429,7 @@ function renderJb() {
   const parts = [];
   if (out.length) parts.push(`外部${out.length}件`);
   if (inn.length) parts.push(`所属${inn.length}件`);
-  btn.textContent = parts.length ? `傑バフ:${parts.join('・')}` : '傑バフ:なし';
+  btn.textContent = parts.length ? `バフ:${parts.join('・')}` : 'バフ:なし';
   btn.classList.toggle('on', parts.length > 0);
   btn.setAttribute('aria-expanded', String(!panel.hidden));
   if (panel.hidden || !form) return;
@@ -437,25 +437,25 @@ function renderJb() {
     sel = new Set(jbOuter().map(d => String(d.no))),
     innNos = new Set(inn.map(d => String(d.no)));
   const anyOff = list.length && list.some(([, d]) => !sel.has(String(d.no)));
-  const head = `<div class="jbhead"><strong>外部からかける傑バフを選ぶ</strong>${buttonRow(
-    button('傑バフすべてOn', `data-jb-act="all"${anyOff ? '' : ' disabled'}`, 'btn small ghost'),
-    button('傑バフすべてOff', `data-jb-act="clear"${sel.size ? '' : ' disabled'}`, 'btn small ghost'),
+  const head = `<div class="jbhead"><strong>外部からかけるバフを選ぶ</strong>${buttonRow(
+    button('バフすべてOn', `data-jb-act="all"${anyOff ? '' : ' disabled'}`, 'btn small ghost'),
+    button('バフすべてOff', `data-jb-act="clear"${sel.size ? '' : ' disabled'}`, 'btn small ghost'),
     button('閉じる', 'data-jb-act="close"', 'btn small'),
   )}</div>`;
   const rows = list.length
     ? list.map(([, d]) => jbRowHtml(d, sel.has(String(d.no)), innNos.has(String(d.no)))).join('')
-    : `<p class="note">外部${MD().stat}力が登録された傑バフがありません。マスタ管理の「傑バフ」タブで、外部${MD().stat}力を登録してください。</p>`;
+    : `<p class="note">外部${MD().stat}力が登録されたバフがありません。マスタ管理の「バフ」タブで、外部${MD().stat}力を登録してください。</p>`;
   panel.innerHTML = `${head}
     <p class="note">${jbNote()}</p>
     <div class="jblist">${rows}</div>`;
 }
 const jbNote = () => {
   const s = MD().stat;
-  return `チェックした傑バフの「外部」の${s}力が、対象兵種の兵士${s}力に足されます。その傑カードが部隊長・小隊長の枠にいる場合は「所属時」の${s}力が自動で足され、外部にもチェックがあれば両方を合計します。${
+  return `チェックしたバフの「外部」の${s}力が、対象兵種の兵士${s}力に足されます。そのカードが部隊長・小隊長の枠にいる場合は「所属時」の${s}力が自動で足され、外部にもチェックがあれば両方を合計します。${
     mode === 'atk' ? '防御力は防御部隊の計算で使います。' : '攻撃力は攻撃部隊の計算で使います。'
   }`;
 };
-/* 傑バフの選択パネルの1行。on=外部にチェックあり、inU=部隊に所属中 */
+/* バフの選択パネルの1行。on=外部にチェックあり、inU=部隊に所属中 */
 function jbRowHtml(d, on, inU) {
   const no = String(d.no);
   const label = `<label><input type="checkbox" data-jb="${esc(no)}"${on ? ' checked' : ''}><span><b>${esc(d.name)}</b><br><span class="meta">No.${esc(no)} ・ 対象:${esc(targetsLabel(d))}</span></span></label>`;

@@ -474,7 +474,7 @@ function jbuffEditorBody(d) {
   return `<div class="grid">${JBUFF_FIELDS.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
     <div class="field"><span class="label">対象兵種(チェックなしなら全兵種)</span><div class="checks">${boxes}</div>
     ${unknown.length ? `<p class="msg err">兵種マスタにない兵種が指定されています:${unknown.map(esc).join('、')}(このまま残ります)</p>` : ''}</div>
-    <p class="note">傑バフがあると、対象兵種の攻撃力・防御力にこの値が足されます。「所属時」はこの傑カードが部隊に入っているとき、「外部」は部隊の外からかかるときの値です。</p>`;
+    <p class="note">バフがあると、対象兵種の攻撃力・防御力にこの値が足されます。「所属時」はこのカード(カードNoが同じ武将)が部隊に入っているとき、「外部」は部隊の外からかかるときの値です。</p>`;
 }
 function soldierEditorBody(d) {
   return `<div class="grid">${SOLDIER_FIELDS.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div><p class="note">攻撃力は攻撃部隊、防御力は防御部隊の計算に使います。</p>`;
@@ -696,7 +696,7 @@ function msg(t, err) {
     m.className = 'msg ' + (err ? 'err' : 'ok');
   }
 }
-/* 同じカードNoがほかに登録されていれば、そのデータを返す(武将・傑バフ)。M は Firestore と常に同期している */
+/* 同じカードNoがほかに登録されていれば、そのデータを返す(武将・バフ)。M は Firestore と常に同期している */
 function dupNo(coll, no, selfId) {
   if (String(no ?? '').trim() === '') return null;
   const id = findId(M[coll], x => String(x.no) === String(no).trim());

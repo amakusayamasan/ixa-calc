@@ -25,7 +25,7 @@ function renderImport() {
   }
   if (importPlan === 'pick') {
     box.innerHTML = `<div class="import"><strong>Excelから取り込み</strong>
-    <p class="note">「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」シートを読み込みます(列はフォーマットのとおり)(あるシートだけで構いません)。武将と傑バフはカードNo、スキルはスキル名、兵種は兵種名が同じものを上書きし、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
+    <p class="note">「武将データ」「スキルデータ」「兵種データ」「バフデータ」シートを読み込みます(列はフォーマットのとおり)(あるシートだけで構いません)。武将とバフはカードNo、スキルはスキル名、兵種は兵種名が同じものを上書きし、それ以外はそのまま残します。素攻とスキル上昇率は取り込まず、この画面で計算し直します。</p>
     ${buttonRow(
       button('フォーマットをダウンロード(空)', 'data-imp="fmt"', 'btn small ghost'),
       button('今のマスタをダウンロード', 'data-imp="dump"', 'btn small ghost'),
@@ -40,7 +40,7 @@ function renderImport() {
     <li>武将:${p.cards.length}枚 うち新規 ${p.cards.filter(c => !c.id).length}枚</li>
     <li>スキル:${p.skills.length}件 うち新規 ${p.skills.filter(c => !c.id).length}件</li>
     <li>兵種:${p.soldiers.length}件 うち新規 ${p.soldiers.filter(c => !c.id).length}件</li>
-    <li>傑バフ:${p.jbuffs.length}件 うち新規 ${p.jbuffs.filter(c => !c.id).length}件</li>
+    <li>バフ:${p.jbuffs.length}件 うち新規 ${p.jbuffs.filter(c => !c.id).length}件</li>
     ${p.people != null ? `<li>人数:${p.people}</li>` : ''}${p.avgCost != null ? `<li>平均コスト:${p.avgCost}</li>` : ''}${p.warn.map(w => `<li style="color:var(--danger)">${esc(w)}</li>`).join('')}</ul>
     ${buttonRow(button('取り込む', 'data-imp="run"'), button('やめる', 'data-imp="cancel"', 'btn ghost'))}<p class="msg" id="impmsg"></p></div>`;
 }
@@ -200,7 +200,7 @@ async function downloadXlsx(withData) {
   add('武将データ', X_CARD, cards);
   add('スキルデータ', X_SKILL, skills, ['人数', N(config.people), '平均コスト', N(config.avgCost)]);
   add('兵種データ', X_SOLDIER, sold);
-  add('傑バフデータ', X_JBUFF, jb);
+  add('バフデータ', X_JBUFF, jb);
   XLSX.writeFile(
     wb,
     withData
@@ -236,10 +236,10 @@ function planFrom(XLSX, wb) {
   const cr = readSheet(XLSX, wb, '武将データ'),
     sr = readSheet(XLSX, wb, 'スキルデータ'),
     or = readSheet(XLSX, wb, '兵種データ'),
-    jr = readSheet(XLSX, wb, '傑バフデータ');
+    jr = readSheet(XLSX, wb, 'バフデータ') || readSheet(XLSX, wb, '傑バフデータ'); // 旧名のシートも読む
   if (!cr && !sr && !or && !jr)
     throw new Error(
-      '「武将データ」「スキルデータ」「兵種データ」「傑バフデータ」のどのシートも見つかりません',
+      '「武将データ」「スキルデータ」「兵種データ」「バフデータ」のどのシートも見つかりません',
     );
   if (cr) planCards(cr, plan, warn);
   if (sr) planSkills(sr, plan);
@@ -498,7 +498,7 @@ function planSoldiers(or, plan, warn) {
   for (const [n, d] of g) plan.soldiers.push({ id: findId(M.soldiers, x => x.name === n), data: d });
 }
 
-/* 傑バフデータ:カードNo・武将名・対象兵種(「、」区切り。空なら全兵種)・所属時攻撃力・所属時防御力・外部攻撃力・外部防御力。カードNoが同じものを上書き */
+/* バフデータ:カードNo・武将名・対象兵種(「、」区切り。空なら全兵種)・所属時攻撃力・所属時防御力・外部攻撃力・外部防御力。カードNoが同じものを上書き */
 const JBUFF_COLS = {
   no: [['カードNo', 'カードNO', 'No'], 'カードNo'],
   name: [['武将名', 'カード名'], '武将名'],
@@ -513,7 +513,7 @@ function planJbuffs(jr, plan, warn) {
     col = {};
   for (const [k, [names, label]] of Object.entries(JBUFF_COLS)) {
     col[k] = ix(names);
-    if (col[k] < 0) throw new Error(`傑バフデータに「${label}」列がありません`);
+    if (col[k] < 0) throw new Error(`バフデータに「${label}」列がありません`);
   }
   const g = new Map();
   for (const row of jr.slice(1)) {
@@ -522,7 +522,7 @@ function planJbuffs(jr, plan, warn) {
     if ((no == null || String(no).trim() === '') && (name == null || String(name).trim() === '')) continue;
     const n = String(name ?? '').trim();
     if (no == null || !Number.isFinite(Number(no))) {
-      warn.push(`傑バフ「${n || '(名前なし)'}」のカードNoが数値ではないため、取り込みません`);
+      warn.push(`バフ「${n || '(名前なし)'}」のカードNoが数値ではないため、取り込みません`);
       continue;
     }
     const key = String(Number(no)),
@@ -530,15 +530,15 @@ function planJbuffs(jr, plan, warn) {
     const miss = d.targets.filter(t => !findId(M.soldiers, x => x.name === t));
     if (miss.length)
       warn.push(
-        `傑バフ「${n}」の対象兵種「${miss.join('、')}」は兵種マスタにありません(名前のまま登録します)`,
+        `バフ「${n}」の対象兵種「${miss.join('、')}」は兵種マスタにありません(名前のまま登録します)`,
       );
     for (const f of JBUFF_VALS) {
       const v = row[col[f]];
       if (v != null && String(v).trim() !== '' && !Number.isFinite(Number(v)))
-        warn.push(`傑バフ「${n}」の${JBUFF_COLS[f][1]}が数値ではありません(0として取り込みます)`);
+        warn.push(`バフ「${n}」の${JBUFF_COLS[f][1]}が数値ではありません(0として取り込みます)`);
       d[f] = N(v);
     }
-    if (g.has(key)) warn.push(`カードNo ${key} の傑バフが2行あります(後の行を使います)`);
+    if (g.has(key)) warn.push(`カードNo ${key} のバフが2行あります(後の行を使います)`);
     g.set(key, d);
   }
   for (const [key, d] of g) plan.jbuffs.push({ id: findId(M.jbuffs, x => String(x.no) === key), data: d });

@@ -17,8 +17,8 @@ const MODES = {
     st: '攻', // 表示の一文字(素攻・総攻バフなど)
     stat: '攻撃',
     soldierF: 'atk', // 兵種の攻撃力
-    jbIn: 'atkIn', // 傑バフ(所属時)
-    jbOut: 'atkOut', // 傑バフ(外部)
+    jbIn: 'atkIn', // バフ(所属時)
+    jbOut: 'atkOut', // バフ(外部)
     muzinNo: '1274',
     storeKey: 'ixa-form-v2',
     /* ステ振り:攻撃に振ると 素攻撃力 + 攻撃上昇率×690、兵法に振ると 素攻撃力 */

@@ -169,7 +169,7 @@ renderCalc();
       loaded.jbuffs = true;
       settle();
       status(
-        '傑バフマスタを読み込めませんでした(' +
+        'バフマスタを読み込めませんでした(' +
           (err.code || err.message) +
           ')。Firestore のルールを最新の firestore.rules に更新してください。',
         true,

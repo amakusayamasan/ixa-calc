@@ -1,4 +1,4 @@
-// マスタの項目の定義(武将・スキル・兵種・傑バフの入力項目、選択肢、並び順)
+// マスタの項目の定義(武将・スキル・兵種・バフの入力項目、選択肢、並び順)
 // 使うファイル:core.js、skills.js(調べ方:node tests/deps.js)
 /* flag は 0/1 の選択。姫:0=姫ではない 1=姫。無尽は数値(0=なし、1以上=あり) */
 const FLAG_LABELS = {
@@ -40,9 +40,9 @@ const SKILL_INIT = [
 /* スキルの種類:0=スキル(通常枠・極限枠に付けるもの)、1=初期スキル(武将が最初から持つもの)。
  */
 const isInitSkill = d => toFlag(d.init) === 1;
-const LABEL = { cards: '武将', skills: 'スキル', soldiers: '兵種', jbuffs: '傑バフ' };
-/* 傑バフ:レアリティ「傑」の武将が持つ、兵種の攻撃力・防御力への加算値。カードNoで識別する
-   その傑カードが部隊に所属しているときの値(atkIn/defIn)と、外からかかるときの値(atkOut/defOut)を持つ */
+const LABEL = { cards: '武将', skills: 'スキル', soldiers: '兵種', jbuffs: 'バフ' };
+/* バフ(旧:バフ):武将が持つ、兵種の攻撃力・防御力への加算値。カードNoで識別する(レアリティは問わない)
+   そのカードが部隊に所属しているときの値(atkIn/defIn)と、外からかかるときの値(atkOut/defOut)を持つ */
 const JBUFF_FIELDS = [
   ['no', 'カードNo', 'number'],
   ['name', '武将名', 'text'],

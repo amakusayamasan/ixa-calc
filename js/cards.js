@@ -1,4 +1,4 @@
-// 武将と初期スキルのルール(武将のTR、初期スキルの効果、無尽部隊、部隊長限定、傑バフ、保存するときの形)
+// 武将と初期スキルのルール(武将のTR、初期スキルの効果、無尽部隊、部隊長限定、バフ、保存するときの形)
 // 使うファイル:core.js、fields.js、skills.js(調べ方:node tests/deps.js)
 /* 初期スキルの効果(無尽を反映) */
 /* 傑カードは無尽のルールの対象外:初期スキルはそのまま発動し、バフや倍枠も無効にならない */
@@ -80,15 +80,15 @@ function effT(c, t) {
   if (!muzinVoid(c, t.tr)) return t;
   return { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1 };
 }
-/* 傑バフ
-   ・所属時:その傑カード(カードNoが同じ武将)が部隊長・小隊長のどこかの枠にいれば自動でかかる
-   ・外部:傑バフボタンで選んだものがかかる
+/* バフ
+   ・所属時:そのカード(カードNoが同じ武将。傑以外も登録できる)が部隊長・小隊長のどこかの枠にいれば自動でかかる
+   ・外部:バフボタンで選んだものがかかる
    ・両方当てはまれば、所属時と外部の値をすべて合計する。対象兵種が空なら全兵種に効く */
 const jbFind = no => {
   const id = findId(M.jbuffs, d => String(d.no) === String(no));
   return id ? M.jbuffs.get(id) : null;
 };
-/* 外部からかけられるのは、外部の値(攻撃部隊なら外部攻撃力、防御部隊なら外部防御力)が0より大きい傑バフだけ */
+/* 外部からかけられるのは、外部の値(攻撃部隊なら外部攻撃力、防御部隊なら外部防御力)が0より大きいバフだけ */
 const jbHasOuter = d => jv(d, MD().jbOut) > 0;
 const jbOuter = () => (form?.jb || []).map(no => jbFind(no)).filter(d => d && jbHasOuter(d));
 const jbInUnit = () => {
