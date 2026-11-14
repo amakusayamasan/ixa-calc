@@ -1,5 +1,5 @@
 // スキルの値のルール(係数の掛け方、攻撃or防御、初期スキルの特殊効果のチェック、模倣、無尽の倍率、重複上限、保存するときの形)
-// 使うファイル:core.js、fields.js、cards.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、fields.js、cards.js、unit.js(調べ方:node tests/deps.js)
 /* スキル上昇率 = 素スキル上昇率 + 係数 × n
    n はスキルごとの「係数の掛け方」で決まる:人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 */
 const COEF_BY = {
@@ -79,25 +79,9 @@ const splitOn = d => toFlag(d?.init) === 1 && skillSide(d) === '攻撃・防御'
 const effLabel = (d, k) =>
   k === 'stat' ? `素${sw(d)}バフ` : k === 'total' ? `総${sw(d)}バフ` : EFFS.find(x => x[0] === k)[1];
 const skillValue = (t, n) => N(t.base) + N(t.coef) * (n == null ? N(config.people) : n);
-/* 部隊の編成から n を数える。人数のときは null(=設定の人数) */
-/* 部隊内で同じスキルを使っているところのTR(追加・極限スキルと、同じ初期スキルを持つ武将) */
-function sameUses(id) {
-  const out = [];
-  if (!form || !id) return out;
-  form.slots.forEach(s => {
-    for (const k of ['s1', 's2', 'lim']) if (s[k].id === id) out.push(N(s[k].tr));
-    const c = M.cards.get(s.card);
-    if (c && skillByName(c.initName)?.id === id) out.push(N(s.tr));
-  });
-  return out;
-}
 /* 係数を部隊内のTRの最大値から取るか(係数の掛け方が「同じスキルの数」のとき) */
 const coefMax = d => coefByOf(d) === 'same' && toFlag(d?.coefMaxTr) === 1;
-const maxTrOf = id => {
-  const u = sameUses(id);
-  return u.length ? Math.max(...u) : null;
-};
-/* 部隊の中でのスキル上昇率:素スキル上昇率(自分のTR) + 係数(最大TRを参照するなら部隊内の最大TRの係数) × 数 */
+/* 部隊の中でのスキル上昇率(n の数え方は unit.js の coefN):素スキル上昇率(自分のTR) + 係数(最大TRを参照するなら部隊内の最大TRの係数) × 数 */
 function skillValueIn(t, d, id) {
   t = modeTr(d, t);
   const n = coefN(d, id);
@@ -107,56 +91,8 @@ function skillValueIn(t, d, id) {
     e = mt != null && modeTr(d, trEntry(d, mt));
   return N(t.base) + N(e ? e.coef : t.coef) * n;
 }
-/* 部隊内の飛翔の数:4人それぞれの、持っているスキル(初期・追加・極限)の飛翔のいちばん大きい値を、足したもの */
-const hishoOf = (d, tr) => (d && effsOf(d).hisho ? N(trEntry(d, tr)?.hisho) : 0);
-function hishoCount() {
-  if (!form) return 0;
-  return form.slots.reduce((a, s) => {
-    const init = skillByName(M.cards.get(s.card)?.initName)?.d;
-    const vals = [
-      hishoOf(init, s.tr),
-      ...['s1', 's2', 'lim'].map(k => hishoOf(M.skills.get(s[k].id), s[k].tr)),
-    ];
-    return a + Math.max(0, ...vals);
-  }, 0);
-}
-/* 部隊移動速度 = 部隊の兵種の速度のいちばん遅い値 × 速度スキル ÷ 100。
-   速度スキル = 100(基本) + 部隊の全員のスキル(初期・追加・極限)の速度スキルの合計(それぞれのTRの値)。
-   兵種を選んでいない枠は、遅い値を探すときに数えない。速度スキルの値は無尽でも2倍にならない
-   (2倍になるのは、このあとのスキル効果のほう) */
-const speedOf = (d, tr) => (d && effsOf(d).speed ? N(trEntry(d, tr)?.speed) : 0);
-function unitSpeed() {
-  if (!form) return 0;
-  const sp = form.slots
-    .map(s => M.soldiers.get(s.soldier))
-    .filter(o => o && hasV(o.speed))
-    .map(o => N(o.speed));
-  if (!sp.length) return 0;
-  const skill = form.slots.reduce((a, s) => {
-    if (!s.card) return a;
-    const init = skillByName(M.cards.get(s.card)?.initName)?.d;
-    return (
-      a +
-      speedOf(init, s.tr) +
-      ['s1', 's2', 'lim'].reduce((b, k) => b + speedOf(M.skills.get(s[k].id), s[k].tr), 0)
-    );
-  }, 100);
-  return (Math.min(...sp) * skill) / 100;
-}
 /* 係数の掛け方が「部隊移動速度/係数」のスキル:素スキル上昇率 + 部隊移動速度 ÷ 係数 × 100 */
 const speedValue = (t, n) => N(t.base) + (N(t.coef) ? ((n ?? 0) / N(t.coef)) * 100 : 0);
-function coefN(d, id) {
-  const by = coefByOf(d);
-  if (by === 'people' || !form) return null;
-  if (by === 'same') return sameUses(id).length;
-  if (by === 'hisho') return hishoCount();
-  if (by === 'speed') return unitSpeed();
-  return Math.min(
-    8,
-    form.slots.reduce((a, s) => a + ['s1', 's2'].filter(k => isX(M.skills.get(s[k].id))).length, 0),
-  );
-}
-/* 編成がない場面(マスタ一覧など)での表示 */
 /* 模倣スキル:自模倣=自分の初期スキル、他真似=部隊長の初期スキル。部隊の中で計算した初期スキルの値(無尽×2後)× 模倣倍率。
    部隊長に付けた他真似は0。特殊効果は模倣しない。極限枠でも ×1.2 はかけない */
 const MIMIC = { none: 'なし', self: '自模倣', leader: '他真似(部隊長)' };
@@ -206,63 +142,14 @@ function muzinMul(sel, k) {
   const s = M.skills.get(sel.id);
   return skillMuzin(s, sel.tr) > 0 ? 2 : 1;
 }
-/* 重複上限(スキルの特殊効果のチェック「重複上限」):部隊内で同じスキルが付いていても、効果が出るのは
-   倍枠などをかけたあとの実際の上昇値が高い順に、上限の数まで。数(Xスキルの数・同じスキルの数)は全部数える。
-   特殊効果(黎天列光・火焔武闘)は倍枠で変わらないので、上限の数まで */
+/* 重複上限(スキルの特殊効果のチェック「重複上限」)の設定。部隊内でどれを外すかは unit.js */
 const dupOn = d =>
   d?.effs?.dup != null ? !!d.effs.dup : hasV(d?.dupMax) || (d?.trs || []).some(t => hasV(t.dupMax));
 /* 重複上限はスキル全体で1つ(TRに左右されない)。TRごとに持っていた古いデータは、いちばん大きい値を使う */
 const skillDupMax = d =>
   hasV(d?.dupMax) ? N(d.dupMax) : Math.max(0, ...(d?.trs || []).map(t => N(t.dupMax)));
-/* 部隊内でこのスキルが付いているところ。withInit なら、このスキルを初期スキルに持つ武将(k='init')も入れる */
-function dupInstances(id, withInit) {
-  const out = [];
-  if (!form) return out;
-  form.slots.forEach((s, i) => {
-    for (const k of ['s1', 's2', 'lim']) if (s[k].id === id) out.push({ i, k, sel: s[k] });
-    if (withInit && skillByName(M.cards.get(s.card)?.initName)?.id === id)
-      out.push({ i, k: 'init', sel: { id, tr: s.tr } });
-  });
-  return out;
-}
 function dupLimit(d) {
   return dupOn(d) && skillDupMax(d) > 0 ? skillDupMax(d) : null;
-}
-/* 効果を出さない枠の集合("i:k"。初期スキルは k='init') */
-function dupDropped() {
-  const drop = new Set();
-  if (!form) return drop;
-  const ids = new Set(
-    form.slots
-      .flatMap(s => [s.s1.id, s.s2.id, s.lim.id, skillByName(M.cards.get(s.card)?.initName)?.id])
-      .filter(Boolean),
-  );
-  for (const id of ids) {
-    const d = M.skills.get(id),
-      inst = dupInstances(id, true),
-      L = dupLimit(d);
-    if (L == null || inst.length <= L) continue;
-    const val = x => {
-      const t = slotEff(x.i).t;
-      if (x.k === 'init') return t ? initEff(slotEff(x.i).c, t) : 0;
-      const m = !t ? 1 : x.k === 'lim' ? N(t.mulLimit) * limX(x.sel) : N(t.mulNormal);
-      return skillVal(x.sel, x.i) * muzinMul(x.sel, x.k) * m;
-    };
-    inst
-      .map((x, n) => ({ x, n, v: val(x) }))
-      .sort((a, b) => b.v - a.v || a.n - b.n)
-      .slice(L)
-      .forEach(({ x }) => drop.add(x.i + ':' + x.k));
-  }
-  return drop;
-}
-/* 特殊効果の数:重複上限があればその数まで、なければ従来どおり2つまで */
-function spCount(name) {
-  const id = findId(M.skills, d => d.name === name);
-  if (!id || !form) return 0;
-  const inst = dupInstances(id),
-    L = dupLimit(M.skills.get(id));
-  return Math.min(L ?? 2, inst.length);
 }
 
 /* ---------- 保存するときの形(画面から保存するとき) ---------- */
