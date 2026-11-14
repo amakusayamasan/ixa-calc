@@ -534,8 +534,6 @@ function renderModeUi() {
   $('lbl-buff').textContent = `総${m.st}バフ(全枠+火焔)`;
   $('enemyBox').hidden = mode !== 'def';
   $('r-enemy-box').hidden = mode !== 'def';
-  $('note-atk').hidden = mode !== 'atk';
-  $('note-def').hidden = mode !== 'def';
   renderTeams();
   if (form) {
     $('jin').value = form.jin;
