@@ -963,3 +963,72 @@ tbody tr.editable:hover {
   grid-template-columns: minmax(0, 320px);
 }
 
+
+/* まとめて追加 */
+.bulkpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bulkopts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: flex-end;
+}
+.bulkopts select {
+  width: auto;
+}
+.bulkopts input {
+  width: 220px;
+  max-width: 100%;
+}
+.bulklist {
+  max-height: 340px;
+}
+.bulkrow {
+  display: grid;
+  grid-template-columns: 2em minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bulkrow.on {
+  border-color: var(--accent);
+  background: var(--accent-weak);
+}
+.bulkrow .bmark {
+  font-weight: 700;
+  color: var(--accent);
+}
+.bulkrow .bname {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+.bulkchosen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.bulkchosen .on {
+  color: inherit;
+  font-weight: 600;
+}
+.bulkfoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
