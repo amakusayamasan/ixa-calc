@@ -72,16 +72,6 @@ function skillMuzin(d, tr) {
 const splitOn = d => toFlag(d?.init) === 1 && skillSide(d) === '攻撃・防御' && !!effsOf(d).split;
 const effLabel = (d, k) =>
   k === 'stat' ? `素${sw(d)}バフ` : k === 'total' ? `総${sw(d)}バフ` : EFFS.find(x => x[0] === k)[1];
-const initCols = d => {
-  const e = effsOf(d),
-    cols = [...SKILL_INIT, TROOP_ADD].map(([f, l]) => [
-      f,
-      f === 'statBuff' ? `素${sw(d)}バフ` : f === 'totalBuff' ? `総${sw(d)}バフ` : l,
-    ]);
-  return cols.filter(([f]) => EFFS.some(([k, , fs]) => e[k] && fs.includes(f)));
-};
-/* 兵数加算:この初期スキルを持つ武将がいると、同じ部隊の他の武将の兵数に足す */
-const TROOP_ADD = ['troopAdd', '兵数加算'];
 const skillValue = (t, n) => N(t.base) + N(t.coef) * (n == null ? N(config.people) : n);
 /* 部隊の編成から n を数える。人数のときは null(=設定の人数) */
 /* 部隊内で同じスキルを使っているところのTR(追加・極限スキルと、同じ初期スキルを持つ武将) */

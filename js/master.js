@@ -291,23 +291,27 @@ function skillEditorBody(d) {
     coefByOf(d) === 'same' && !mm
       ? `<div class="field"><div class="checks">${checkbox('id="f-coefMaxTr"', toFlag(d.coefMaxTr), '係数は部隊内武将のTRの最大値を参照')}</div></div>`
       : '';
-  const effects = ini
-    ? EFFS.map(
-        ([k]) =>
-          checkbox(`data-eff="${k}"`, ef[k], effLabel(d, k)) +
-          (k === 'stat' && ef.stat
-            ? checkbox('data-eff2="self"', ef.self, `${effLabel(d, 'stat')}は本人のみ`)
-            : ''),
-      ).join('') +
-      checkbox('data-eff2="leader"', ef.leader, '部隊長限定') +
-      checkbox('data-eff2="enemy"', ef.enemy, '敵火力加算') +
-      (skillSide(d) === '攻撃・防御' ? checkbox('data-eff2="split"', ef.split, '攻撃と防御で値を分ける') : '')
-    : checkbox('data-eff="dup"', dupOn(d), '重複上限');
-  const extras = EXTRA_EFFS.map(([k, l]) => checkbox(`data-effx="${k}"`, ef[k], l)).join('');
+  /* 特殊効果のチェック(並び順は EFFECT_ORDER) */
+  const effects = effectOrder(d)
+    .map(k => {
+      if (EXTRA_EFFS.some(([x]) => x === k))
+        return checkbox(`data-effx="${k}"`, ef[k], EXTRA_EFFS.find(([x]) => x === k)[1]);
+      if (k === 'dup') return checkbox('data-eff="dup"', dupOn(d), '重複上限');
+      if (k === 'leader') return checkbox('data-eff2="leader"', ef.leader, '部隊長限定');
+      if (k === 'enemy') return checkbox('data-eff2="enemy"', ef.enemy, '敵火力加算');
+      if (k === 'split') return checkbox('data-eff2="split"', ef.split, '攻撃と防御で値を分ける');
+      return (
+        checkbox(`data-eff="${k}"`, ef[k], effLabel(d, k)) +
+        (k === 'stat' && ef.stat
+          ? checkbox('data-eff2="self"', ef.self, `${effLabel(d, 'stat')}は本人のみ`)
+          : '')
+      );
+    })
+    .join('');
   return (
     `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
     ${coefMaxBox}
-    ${checksField(EFFECT_PROMPT, effects + extras)}
+    ${checksField(EFFECT_PROMPT, effects)}
     <p class="note">${skillNotes(d).join('')}</p>` +
     trTable(skillTrCols(d), d.trs, t => skillLabel(t, d), 'スキル上昇率')
   );
@@ -345,20 +349,52 @@ function skillNotes(d) {
     notes.push('防御スキルの値は、攻撃部隊の計算では使いません(倍枠通常・倍枠極限は使います)。');
   return notes.filter(Boolean);
 }
-/* スキル編集画面のTR表の列 */
+/* 特殊効果のチェックとTR表の列の並び。初期スキルとスキルで出すものが違う */
+const EFFECT_ORDER_INIT = [
+  'speed',
+  'hisho',
+  'fukutsu',
+  'muzin',
+  'mul',
+  'leader',
+  'stat',
+  'total',
+  'troop',
+  'enemy',
+  'split',
+];
+const EFFECT_ORDER_SKILL = ['speed', 'hisho', 'fukutsu', 'muzin', 'dup'];
+const effectOrder = d =>
+  toFlag(d.init) === 1
+    ? EFFECT_ORDER_INIT.filter(k => k !== 'split' || skillSide(d) === '攻撃・防御')
+    : EFFECT_ORDER_SKILL;
+/* TR表の列:TR・素スキル上昇率・係数(模倣は模倣倍率)のあとに、チェックした特殊効果の列を上の並び順で */
 function skillTrCols(d) {
   const ini = toFlag(d.init) === 1,
     ef = effsOf(d),
-    dup = [...(!ini && dupOn(d) ? [['dupMax', '重複上限']] : []), ...EXTRA_EFFS.filter(([k]) => ef[k])];
-  if (!ini && isMimic(d))
-    return [['tr', 'TR'], ['base', '素スキル上昇率'], ['mimicRate', '模倣倍率'], ...dup];
-  if (!ini) return [...SKILL_TR, ...dup];
-  const cols = [
-    ...SKILL_TR,
-    ...initCols(d),
-    ...(effsOf(d).total && tbByOf(d) === 'muzin' ? [['tbCoef', `総${sw(d)}バフ係数(%)`]] : []),
-  ];
-  return [...(splitOn(d) ? splitCols(cols) : cols), ...dup];
+    b = sw(d);
+  const head =
+    !ini && isMimic(d)
+      ? [
+          ['tr', 'TR'],
+          ['base', '素スキル上昇率'],
+          ['mimicRate', '模倣倍率'],
+        ]
+      : SKILL_TR;
+  const colsOf = {
+    mul: [
+      ['mulNormal', '倍枠通常'],
+      ['mulLimit', '倍枠極限'],
+    ],
+    stat: [['statBuff', `素${b}バフ`]],
+    total: [['totalBuff', `総${b}バフ`], ...(tbByOf(d) === 'muzin' ? [['tbCoef', `総${b}バフ係数(%)`]] : [])],
+    troop: [['troopAdd', '兵数加算']],
+    dup: [['dupMax', '重複上限']],
+  };
+  for (const [k, l] of EXTRA_EFFS) colsOf[k] = [[k, l]];
+  const on = k => (k === 'dup' ? dupOn(d) : ef[k]);
+  const cols = [...head, ...effectOrder(d).flatMap(k => (on(k) && colsOf[k]) || [])];
+  return ini && splitOn(d) ? splitCols(cols) : cols;
 }
 /* 攻撃と防御で値を分ける初期スキルのTR表:攻撃の列のあとに、同じ項目の防御の列(項目名+D)を並べる */
 function splitCols(cols) {
