@@ -1,4 +1,4 @@
-// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル・敵武将の総コスト・追加スキルの攻防の値・姫の数・対象兵科の数の総バフ)。期待値と違えば失敗する。
+// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル・敵武将の総コスト・追加スキルの攻防の値・姫・剣豪・対象兵科の数の総バフ)。期待値と違えば失敗する。
 // 使い方:リポジトリのフォルダで `python3 -m http.server 8765` を起動してから  node tests/rules.js
 const {chromium}=require('playwright');const path=require('path');const dir=__dirname;
 (async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
@@ -55,8 +55,12 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  Object.assign(M.skills.get('HI'),{tbBranches:[],tbSoldiers:[],tbOwn:1,tbSelf:1});out.own=Math.round(calc().buff*1000)/1000;
  M.skills.get('HI').tbSelf=0;out.ownNoSelf=Math.round(calc().buff*1000)/1000;
  form.slots[0].soldier='sb';M.skills.get('HI').tbSelf=1;out.ownBushi=Math.round(calc().buff*1000)/1000;form.slots[0].soldier='sa';
+ /* 9. 部隊内の剣豪の数(剣豪2人、持ち主は剣豪でない) */
+ ['h1','h2','h3','h4'].forEach((c,i)=>M.cards.get(c).kengou=[0,1,1,0][i]);
+ Object.assign(M.skills.get('HI'),{tbBy:'kengou',tbSelf:1});out.kengou=Math.round(calc().buff*1000)/1000;
+ M.cards.get('h1').kengou=1;out.kengouSelf=Math.round(calc().buff*1000)/1000;M.skills.get('HI').tbSelf=0;out.kengouNoSelf=Math.round(calc().buff*1000)/1000;
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();

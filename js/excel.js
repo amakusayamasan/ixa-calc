@@ -387,9 +387,15 @@ function readSkillRow(s, row, ix) {
   }
   if (val(ix('総攻・防バフの掛け方')) != null)
     s.tbBy = (v =>
-      /無尽/.test(v) ? 'muzin' : /姫/.test(v) ? 'hime' : /兵科|兵種/.test(v) ? 'branch' : 'fixed')(
-      String(row[ix('総攻・防バフの掛け方')]),
-    );
+      /無尽/.test(v)
+        ? 'muzin'
+        : /姫/.test(v)
+          ? 'hime'
+          : /剣豪/.test(v)
+            ? 'kengou'
+            : /兵科|兵種/.test(v)
+              ? 'branch'
+              : 'fixed')(String(row[ix('総攻・防バフの掛け方')]));
   /* 数に自身を含む(前の列名「姫数に自身を含む」も読む)・対象兵科・対象兵種(「、」区切り) */
   for (const h of ['数に自身を含む', '姫数に自身を含む'])
     if (val(ix(h)) != null) s.tbSelf = toFlag(row[ix(h)]);

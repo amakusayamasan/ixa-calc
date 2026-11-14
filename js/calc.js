@@ -67,11 +67,12 @@ function calc() {
   /* 無尽部隊では、無尽を持つ武将(傑以外)の上乗せ分は2倍 */
   const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c, s.tr) > 0 ? 2 : 1);
   /* 部隊内の姫の数(武将マスタで姫の武将。自分を数えない設定なら自分を除く) */
-  /* 部隊内の姫の数・対象兵科の数(自分を数えない設定なら自分を除く)。
-     姫:武将マスタで姫の武将。対象兵科・兵種:選んだ兵種が、スキルで選んだ兵種のどれかか、その兵科がスキルで選んだ兵科のどれか、
+  /* 部隊内の姫・剣豪・対象兵科の数(自分を数えない設定なら自分を除く)。
+     姫・剣豪:武将マスタで姫・剣豪の武将。対象兵科・兵種:選んだ兵種が、スキルで選んだ兵種のどれかか、その兵科がスキルで選んだ兵科のどれか、
      または「自身のもつ兵種」なら、このスキルを持つ武将と同じ兵種 */
   const hits = (s, r, own) => {
     if (r.tbBy === 'hime') return !!toFlag(s.c.hime);
+    if (r.tbBy === 'kengou') return !!toFlag(s.c.kengou);
     const o = M.soldiers.get(s.soldier);
     return (
       !!o &&
@@ -88,10 +89,10 @@ function calc() {
   const tbN = i => {
     const s = sl[i];
     if (s.t !== s.raw || s.raw?.tbCoef == null) return null;
-    return s.raw.tbBy === 'hime' || s.raw.tbBy === 'branch' ? countN(i) : mc;
+    return s.raw.tbBy === 'muzin' ? mc : countN(i);
   };
   /* 無尽の2倍は「無尽を持つ武将数」の掛け方だけ */
-  const tbX = i => (sl[i].raw?.tbBy === 'hime' || sl[i].raw?.tbBy === 'branch' ? 1 : tbMul(sl[i]));
+  const tbX = i => (sl[i].raw?.tbBy === 'muzin' ? tbMul(sl[i]) : 1);
   const tbOf = (s, i) => {
     if (!s.t) return 1;
     const v = N(s.t.totalBuff) || 1,
@@ -107,7 +108,7 @@ function calc() {
     if (r) {
       r.tb = tbOf(sl[i], i);
       r.tbMc = tbN(i);
-      r.tbKind = { hime: '姫', branch: '対象' }[sl[i].raw?.tbBy] || '無尽';
+      r.tbKind = { hime: '姫', kengou: '剣豪', branch: '対象' }[sl[i].raw?.tbBy] || '無尽';
       r.tbMul = tbX(i);
       r.void = muzinVoid(sl[i].c, sl[i].tr);
     }

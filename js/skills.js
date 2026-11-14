@@ -23,13 +23,14 @@ const TB_BY = {
   fixed: '固定',
   muzin: '無尽を持つ武将数',
   hime: '部隊内の姫の数',
+  kengou: '部隊内の剣豪の数',
   branch: '部隊内の対象兵科・兵種の数',
 };
 const tbByOf = d => (TB_BY[d?.tbBy] ? d.tbBy : 'fixed');
 /* 総攻・総防バフに「係数 × 数」を足す掛け方か(無尽を持つ武将数・部隊内の姫の数) */
 const tbCoefOn = d => tbByOf(d) !== 'fixed';
 /* 部隊内の姫の数・対象兵科の数に、自分も数えるか(初期値は数える。himeSelf は前の名前) */
-const tbCounts = d => ['hime', 'branch'].includes(tbByOf(d));
+const tbCounts = d => ['hime', 'kengou', 'branch'].includes(tbByOf(d));
 const tbSelfOf = d => toFlag(d?.tbSelf ?? d?.himeSelf ?? 1) === 1;
 /* 部隊内の対象兵科・兵種の数で数える兵科(兵種マスタの兵科名)と兵種(兵種名) */
 const tbBranchesOf = d => (Array.isArray(d?.tbBranches) ? d.tbBranches : []);
