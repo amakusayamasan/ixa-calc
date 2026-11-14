@@ -466,7 +466,6 @@ function skillEditorBody(d) {
     !mm && ['coefBy', '係数の掛け方', 'coef'],
     !ini && ['xskill', 'Xスキル', 'flag'],
     ini ? ['noMimic', '模倣', 'flag'] : ['mimic', '模倣', 'mimic'],
-    ini && ef.total && ['tbBy', `総${sw(d)}バフの掛け方`, 'tbby'],
   ].filter(Boolean);
   /* 総バフの掛け方が「部隊内の姫の数」「部隊内の対象兵科・兵種の数」のとき:自分も数えるか。
      対象兵科・兵種なら、数える兵科と兵種も選ぶ(どちらかに当てはまれば数える) */
@@ -476,7 +475,11 @@ function skillEditorBody(d) {
     tbr = tbBranchesOf(d),
     tbs = tbSoldiersOf(d),
     unknownBr = [...tbr.filter(b => !branches.includes(b)), ...tbs.filter(n => !soldNames.includes(n))];
+  /* 総バフの設定(掛け方・対象・自分を数えるか)は、特殊効果のチェックのすぐ下に枠でまとめて出す */
   const tbCountBox =
+    (ini && ef.total
+      ? `<div class="grid">${fieldHtml(d, 'tbBy', `総${sw(d)}バフの掛け方`, 'tbby')}</div>`
+      : '') +
     (ini && ef.total && tbByOf(d) === 'branch'
       ? checksField(
           '対象兵科(部隊の武将の兵種がこの兵科なら数える)',
@@ -521,8 +524,9 @@ function skillEditorBody(d) {
     .join('');
   return (
     `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
-    ${coefMaxBox}${tbCountBox}
+    ${coefMaxBox}
     ${checksField(EFFECT_PROMPT, effects)}
+    ${tbCountBox ? `<fieldset class="subbox"><legend>総${sw(d)}バフの設定</legend>${tbCountBox}</fieldset>` : ''}
     ${dupOn(d) ? `<div class="grid">${fieldHtml(d, 'dupMax', '重複上限(部隊内で効果が出る数)', 'number')}</div>` : ''}
     <p class="note">${skillNotes(d).join('')}</p>` +
     trTable(skillTrCols(d), d.trs, t => skillLabel(t, d), 'スキル上昇率')

@@ -940,3 +940,25 @@ tbody tr.editable:hover {
 .sortnote {
   margin: -6px 0 -6px;
 }
+
+/* 編集画面:特殊効果のチェックで出てくる設定の枠(総バフの設定など) */
+.subbox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 14px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent-weak);
+}
+.subbox > legend {
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.subbox > .grid {
+  grid-template-columns: minmax(0, 320px);
+}
