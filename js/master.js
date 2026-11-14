@@ -454,6 +454,15 @@ const checksField = (label, inner) =>
   `<div class="field">${label ? `<span class="label">${label}</span>` : ''}<div class="checks">${inner}</div></div>`;
 const EFFECT_PROMPT = '特殊効果にチェックを入れてください(チェックした効果の値をTR表で入力)';
 
+/* 総バフの設定の「自身をカウントする」の上に出す、数え方の説明 */
+function tbCountNote(d) {
+  const b = sw(d),
+    what =
+      tbByOf(d) === 'hime'
+        ? '部隊内の姫の数(武将マスタで姫の武将)'
+        : '部隊内の対象兵科・兵種の数(上で選んだ兵科・兵種の武将)';
+  return `総${b}バフ = 総${b}バフ + 総${b}バフ係数(%) × ${what} ÷ 100。例:係数4、3人なら +0.12。チェックを入れると、このスキルを持つ武将自身も人数に数えます。`;
+}
 /* スキル・初期スキルの編集画面 */
 function skillEditorBody(d) {
   const ini = toFlag(d.init) === 1,
@@ -499,7 +508,7 @@ function skillEditorBody(d) {
           : '')
       : '') +
     (ini && ef.total && tbCounts(d)
-      ? `<div class="field"><div class="checks">${checkbox('id="f-tbSelf" data-f="tbSelf"', tbSelfOf(d), '自身をカウントする')}</div></div>`
+      ? `<p class="note">${tbCountNote(d)}</p><div class="field"><div class="checks">${checkbox('id="f-tbSelf" data-f="tbSelf"', tbSelfOf(d), '自身をカウントする')}</div></div>`
       : '');
   const coefMaxBox =
     coefByOf(d) === 'same' && !mm
