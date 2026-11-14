@@ -44,7 +44,8 @@ function cardTrs(c) {
       } else if (tbCoefOn(sk.d)) {
         o.tbCoef = N(e.tbCoef);
         o.tbBy = tbByOf(sk.d);
-        if (o.tbBy === 'hime') o.himeSelf = himeSelfOf(sk.d);
+        if (tbCounts(sk.d)) o.tbSelf = tbSelfOf(sk.d);
+        if (o.tbBy === 'branch') o.tbBranches = tbBranchesOf(sk.d);
       }
       return o;
     });

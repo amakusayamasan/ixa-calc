@@ -396,6 +396,11 @@ function syncDraft() {
               : Number(el.value)
             : el.value;
   }
+  if (draft.coll === 'skills' && $('editor').querySelector('[name=tbbranch]')) {
+    const known = [...$('editor').querySelectorAll('[name=tbbranch]')];
+    const unknown = tbBranchesOf(d).filter(t => !known.some(k => k.value === t));
+    d.tbBranches = [...known.filter(k => k.checked).map(k => k.value), ...unknown];
+  }
   if (draft.coll === 'jbuffs' && $('editor').querySelector('[name=jtarget]')) {
     const known = [...$('editor').querySelectorAll('[name=jtarget]')];
     const unknown = (d.targets || []).filter(t => !known.some(k => k.value === t));
@@ -459,10 +464,25 @@ function skillEditorBody(d) {
     ini && ef.total && ['tbBy', `総${sw(d)}バフの掛け方`, 'tbby'],
   ].filter(Boolean);
   /* 総バフの掛け方が「部隊内の姫の数」のとき:自分も数えるか */
-  const himeSelfBox =
-    ini && ef.total && tbByOf(d) === 'hime'
-      ? `<div class="field"><div class="checks">${checkbox('id="f-himeSelf" data-f="himeSelf"', himeSelfOf(d), '自身をカウントする')}</div></div>`
-      : '';
+  /* 総バフの掛け方が「部隊内の姫の数」「部隊内の対象兵科の数」のとき:自分も数えるか。対象兵科なら兵科も選ぶ */
+  const branches = [...new Set([...M.soldiers.values()].map(x => x.branch).filter(Boolean))],
+    tbr = tbBranchesOf(d),
+    unknownBr = tbr.filter(b => !branches.includes(b));
+  const tbCountBox =
+    (ini && ef.total && tbByOf(d) === 'branch'
+      ? checksField(
+          '対象兵科(部隊の武将の兵種がこの兵科なら数える)',
+          branches
+            .map(b => checkbox(`name="tbbranch" value="${esc(b)}"`, tbr.includes(b), esc(b)))
+            .join('') || '<span class="note">兵種マスタに兵科がありません</span>',
+        ) +
+        (unknownBr.length
+          ? `<p class="msg err">兵種マスタにない兵科が指定されています:${unknownBr.map(esc).join('、')}(このまま残ります)</p>`
+          : '')
+      : '') +
+    (ini && ef.total && tbCounts(d)
+      ? `<div class="field"><div class="checks">${checkbox('id="f-tbSelf" data-f="tbSelf"', tbSelfOf(d), '自身をカウントする')}</div></div>`
+      : '');
   const coefMaxBox =
     coefByOf(d) === 'same' && !mm
       ? `<div class="field"><div class="checks">${checkbox('id="f-coefMaxTr"', toFlag(d.coefMaxTr), '係数は部隊内武将のTRの最大値を参照')}</div></div>`
@@ -486,7 +506,7 @@ function skillEditorBody(d) {
     .join('');
   return (
     `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
-    ${coefMaxBox}${himeSelfBox}
+    ${coefMaxBox}${tbCountBox}
     ${checksField(EFFECT_PROMPT, effects)}
     ${dupOn(d) ? `<div class="grid">${fieldHtml(d, 'dupMax', '重複上限(部隊内で効果が出る数)', 'number')}</div>` : ''}
     <p class="note">${skillNotes(d).join('')}</p>` +
@@ -520,6 +540,9 @@ function skillNotes(d) {
       ef.leader && '部隊長限定:部隊長の枠にいるときだけ、この初期スキルの効果が出ます。',
       ef.enemy &&
         '敵火力加算:防御部隊で、この初期スキルを持つ武将1人につき「敵の推定火力 ÷ 敵の武将数」を合計に足します。',
+      ef.total &&
+        tbByOf(d) === 'branch' &&
+        `総${b}バフ = 総${b}バフ + 部隊内の対象兵科の数(部隊の武将のうち、選んだ兵種の兵科が対象兵科の武将。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
       ef.total &&
         tbByOf(d) === 'hime' &&
         `総${b}バフ = 総${b}バフ + 部隊内の姫の数(武将マスタで姫の武将。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
@@ -889,6 +912,14 @@ function validate(coll, d) {
     const s = d.trs.map(t => N(t.tr));
     if (new Set(s).size !== s.length) return '同じTRが2行あります';
   }
+  if (
+    coll === 'skills' &&
+    isInitSkill(d) &&
+    effsOf(d).total &&
+    tbByOf(d) === 'branch' &&
+    !tbBranchesOf(d).length
+  )
+    return '対象兵科を1つ以上選んでください';
   if (coll === 'skills') return skillEffectMissing(d);
   return '';
 }

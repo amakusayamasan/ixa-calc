@@ -67,15 +67,22 @@ function calc() {
   /* 無尽部隊では、無尽を持つ武将(傑以外)の上乗せ分は2倍 */
   const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c, s.tr) > 0 ? 2 : 1);
   /* 部隊内の姫の数(武将マスタで姫の武将。自分を数えない設定なら自分を除く) */
-  const himeN = i => sl.filter((s, j) => s.c && toFlag(s.c.hime) && (j !== i || sl[i].raw?.himeSelf)).length;
+  /* 部隊内の姫の数・対象兵科の数(自分を数えない設定なら自分を除く)。
+     姫:武将マスタで姫の武将。対象兵科:選んだ兵種の兵科が、スキルで選んだ兵科のどれか */
+  const hits = (s, r) =>
+    r.tbBy === 'hime' ? !!toFlag(s.c.hime) : (r.tbBranches || []).includes(M.soldiers.get(s.soldier)?.branch);
+  const countN = i => {
+    const r = sl[i].raw;
+    return sl.filter((s, j) => s.c && hits(s, r) && (j !== i || r.tbSelf)).length;
+  };
   /* 総バフの「係数 × 数」の数(無尽を持つ武将数 か 部隊内の姫の数)。固定なら null */
   const tbN = i => {
     const s = sl[i];
     if (s.t !== s.raw || s.raw?.tbCoef == null) return null;
-    return s.raw.tbBy === 'hime' ? himeN(i) : mc;
+    return s.raw.tbBy === 'hime' || s.raw.tbBy === 'branch' ? countN(i) : mc;
   };
   /* 無尽の2倍は「無尽を持つ武将数」の掛け方だけ */
-  const tbX = i => (sl[i].raw?.tbBy === 'hime' ? 1 : tbMul(sl[i]));
+  const tbX = i => (sl[i].raw?.tbBy === 'hime' || sl[i].raw?.tbBy === 'branch' ? 1 : tbMul(sl[i]));
   const tbOf = (s, i) => {
     if (!s.t) return 1;
     const v = N(s.t.totalBuff) || 1,
@@ -91,7 +98,7 @@ function calc() {
     if (r) {
       r.tb = tbOf(sl[i], i);
       r.tbMc = tbN(i);
-      r.tbHime = sl[i].raw?.tbBy === 'hime';
+      r.tbKind = { hime: '姫', branch: '対象兵科' }[sl[i].raw?.tbBy] || '無尽';
       r.tbMul = tbX(i);
       r.void = muzinVoid(sl[i].c, sl[i].tr);
     }
@@ -176,7 +183,7 @@ function breakdownHtml(x, r) {
     [
       `総${m.st}バフ`,
       '×' + fmt(x.tb, 2),
-      x.tbMc != null ? `${x.tbHime ? '姫' : '無尽'}${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''}` : '',
+      x.tbMc != null ? `${x.tbKind}${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''}` : '',
     ],
   ];
   return lines

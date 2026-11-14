@@ -1,4 +1,4 @@
-// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル・敵武将の総コスト・追加スキルの攻防の値・姫の数の総バフ)。期待値と違えば失敗する。
+// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル・敵武将の総コスト・追加スキルの攻防の値・姫の数・対象兵科の数の総バフ)。期待値と違えば失敗する。
 // 使い方:リポジトリのフォルダで `python3 -m http.server 8765` を起動してから  node tests/rules.js
 const {chromium}=require('playwright');const path=require('path');const dir=__dirname;
 (async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
@@ -36,15 +36,20 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  out.splitAtk=skillVal({id:'SPL',tr:0},1);mode='def';out.splitDef=skillVal({id:'SPL',tr:0},1);mode='atk';
  /* 5. 総攻バフの掛け方「部隊内の姫の数」(係数4% × 姫の数。自身をカウントする/しない) */
  for(const k of [...M.skills.keys()])M.skills.delete(k);for(const k of [...M.cards.keys()])M.cards.delete(k);
- M.skills.set('HI',{name:'姫初',init:1,side:'攻撃・防御',coefBy:'people',tbBy:'hime',himeSelf:1,effs:{total:true},trs:tr(t=>({base:0,coef:0,totalBuff:1,tbCoef:4}))});
+ M.skills.set('HI',{name:'姫初',init:1,side:'攻撃・防御',coefBy:'people',tbBy:'hime',tbSelf:1,effs:{total:true},trs:tr(t=>({base:0,coef:0,totalBuff:1,tbCoef:4}))});
  const hc=(no,h,init)=>({no,rarity:'天',side:'攻撃・防御',name:'姫'+no,initName:init,troops:1000,baseStat:1000,growth:0,baseDef:1000,growthDef:0,hime:h});
  M.cards.set('h1',hc(3001,1,'姫初'));M.cards.set('h2',hc(3002,1,''));M.cards.set('h3',hc(3003,0,''));M.cards.set('h4',hc(3004,1,''));
  form={jin:1,slots:['h1','h2','h3','h4'].map(c=>({card:c,tr:0,soldier:'',alloc:'atk',s1:e,s2:e,lim:e}))};
  out.himeSelf=Math.round(calc().buff*1000)/1000;
- M.skills.get('HI').himeSelf=0;out.himeNoSelf=Math.round(calc().buff*1000)/1000;
+ M.skills.get('HI').tbSelf=0;out.himeNoSelf=Math.round(calc().buff*1000)/1000;
  mode='def';out.himeDef=Math.round(calc().buff*1000)/1000;mode='atk';
+ /* 6. 総攻バフの掛け方「部隊内の対象兵科の数」(兵器兵科を数える。係数5%) */
+ M.soldiers.set('sa',{name:'鉄砲足軽',branch:'兵器兵科',atk:31,def:33});M.soldiers.set('sb',{name:'武士',branch:'槍兵科',atk:26,def:27});
+ M.skills.set('HI',{name:'姫初',init:1,side:'攻撃・防御',coefBy:'people',tbBy:'branch',tbBranches:['兵器兵科'],tbSelf:1,effs:{total:true},trs:tr(t=>({base:0,coef:0,totalBuff:1,tbCoef:5}))});
+ form.slots[0].soldier='sa';form.slots[1].soldier='sa';form.slots[2].soldier='sb';form.slots[3].soldier='sa';
+ out.brSelf=Math.round(calc().buff*1000)/1000;M.skills.get('HI').tbSelf=0;out.brNoSelf=Math.round(calc().buff*1000)/1000;
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();
