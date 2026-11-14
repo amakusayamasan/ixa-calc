@@ -533,7 +533,9 @@ $('editor').addEventListener('change', e => {
     const d = draft.data,
       k = e.target.dataset.effx;
     /* 無尽にチェックしたら、空欄に今の無尽(古いスキルはスキル全体の値、なければ1)を入れる */
-    if (k === 'muzin' && e.target.checked) d.trs.forEach(t => hasV(t.muzin) || (t.muzin = N(d.muzin) || 1));
+    /* 古い形式(スキル全体の無尽)を持つスキルは、その値をTR表に入れる */
+    if (k === 'muzin' && e.target.checked && N(d.muzin) > 0)
+      d.trs.forEach(t => hasV(t.muzin) || (t.muzin = N(d.muzin)));
     d.effs = { ...(d.effs || {}), [k]: e.target.checked };
     renderEditor();
     return;
@@ -542,7 +544,6 @@ $('editor').addEventListener('change', e => {
     syncDraft();
     const d = draft.data;
     d.effs = { ...(d.effs || {}), dup: e.target.checked };
-    if (e.target.checked && !hasV(d.dupMax)) d.dupMax = 2;
     renderEditor();
     return;
   }
@@ -550,13 +551,8 @@ $('editor').addEventListener('change', e => {
     syncDraft();
     const d = draft.data,
       k = e.target.dataset.eff;
+    /* チェックした項目は空欄のまま出す(値の入れ忘れは保存時に知らせる) */
     d.effs = { ...effsOf(d), [k]: e.target.checked };
-    /* チェックしたら空欄に最初の値(バフ・倍枠は1)を入れる */
-    if (e.target.checked && k !== 'troop')
-      for (const f of EFFS.find(x => x[0] === k)[2])
-        d.trs.forEach(t => {
-          if (!hasV(t[f])) t[f] = 1;
-        });
     renderEditor();
     return;
   }
@@ -714,6 +710,17 @@ function validate(coll, d) {
     const s = d.trs.map(t => N(t.tr));
     if (new Set(s).size !== s.length) return '同じTRが2行あります';
   }
+  if (coll === 'skills') return skillEffectMissing(d);
+  return '';
+}
+/* 特殊効果にチェックを入れた項目は、すべてのTRで値が必須(攻撃と防御で分けるときの(防)の列は空欄なら攻撃と同じ値なので任意) */
+function skillEffectMissing(d) {
+  if (dupOn(d) && !(N(d.dupMax) > 0)) return '重複上限を入力してください(1以上)';
+  const head = ['tr', 'base', 'coef', 'mimicRate'];
+  const cols = skillTrCols(d).filter(([f]) => !head.includes(f) && !SPLIT_FIELDS.some(x => f === x + 'D'));
+  for (const t of trsOf(d))
+    for (const [f, l] of cols)
+      if (!hasV(t[f])) return `TR${N(t.tr)}の「${l}」を入力してください(特殊効果にチェックを入れた項目は必須です)`;
   return '';
 }
 function clean(coll, d) {
