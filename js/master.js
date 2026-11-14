@@ -63,19 +63,21 @@ function renderFilters(named) {
   const fs = MFILTERS.filter(f => f.tabs.includes(mtab)),
     box = $('mfilters');
   box.hidden = !fs.length;
-  box.innerHTML = fs
-    .map(f => {
-      const pool = named.filter(([, d]) => filterOk(d, f)),
-        items = typeof f.items === 'function' ? f.items() : f.items;
-      const btns = items
-        .map(([v, l]) => {
-          const n = v ? pool.filter(([, d]) => f.test(d, v)).length : pool.length;
-          return `<button type="button" data-fk="${f.key}" data-fv="${esc(v)}" aria-pressed="${mfilter[f.key] === v}">${esc(l)}<span class="cnt">${n}</span></button>`;
-        })
-        .join('');
-      return `<div class="mfrow"><span class="label">${f.label}</span><div class="seg sidefilter" role="group" aria-label="${f.label}で絞り込み">${btns}</div></div>`;
-    })
-    .join('');
+  box.innerHTML =
+    '<legend>絞り込み条件</legend>' +
+    fs
+      .map(f => {
+        const pool = named.filter(([, d]) => filterOk(d, f)),
+          items = typeof f.items === 'function' ? f.items() : f.items;
+        const btns = items
+          .map(([v, l]) => {
+            const n = v ? pool.filter(([, d]) => f.test(d, v)).length : pool.length;
+            return `<button type="button" data-fk="${f.key}" data-fv="${esc(v)}" aria-pressed="${mfilter[f.key] === v}">${esc(l)}<span class="cnt">${n}</span></button>`;
+          })
+          .join('');
+        return `<div class="mfrow"><span class="label">${f.label}</span><div class="seg sidefilter" role="group" aria-label="${f.label}で絞り込み">${btns}</div></div>`;
+      })
+      .join('');
 }
 $('mfilters').addEventListener('click', e => {
   const b = e.target.closest('[data-fk]');

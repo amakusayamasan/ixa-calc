@@ -893,7 +893,16 @@ tbody tr.editable:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
   margin: 4px 0 12px;
+  padding: 8px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.mfilters > legend {
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--muted);
 }
 .mfrow {
   display: flex;
