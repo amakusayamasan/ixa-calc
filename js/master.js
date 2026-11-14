@@ -226,6 +226,7 @@ function renderMaster() {
   const named = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q));
   const list = sortSkills(named.filter(([, d]) => filterOk(d)).sort(byName));
   renderFilters(named);
+  $('msortnote').hidden = mtab !== 'skills';
   const rows = mtab === 'jbuffs' ? jbuffList(q) : mtab === 'soldiers' ? soldierList(q) : list;
   const cols = LIST_COLS[mtab](rows);
   const emptyRow = `<tr><td class="l" colspan="${cols.length}" style="color:var(--muted)">${

@@ -931,3 +931,8 @@ tbody tr.editable:hover {
   font-size: 11px;
   opacity: 0.75;
 }
+
+/* スキル一覧の並べ替えの案内 */
+.sortnote {
+  margin: -4px 0 8px;
+}
