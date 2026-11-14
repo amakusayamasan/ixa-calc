@@ -202,6 +202,13 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
       await p.evaluate(() => form.slots.map(s => ['s1', 's2', 'lim'].map(k => (M.skills.get(s[k].id)?.name || '-') + '@' + s[k].tr).join(' '))),
       ['Xの技@0 剛勇無双@5 百戦錬磨@5', 'Xの技@0 剛勇無双@5 百戦錬磨@5', 'Xの技@0 剛勇無双@5 百戦錬磨@5', '-@0 -@0 -@0'],
     );
+    /* 一括兵種選択 */
+    await p.click('#soldierBtn');
+    await p.selectOption('#bulkSoldierSel', 's2');
+    await p.click('#soldierApply');
+    await p.waitForTimeout(150);
+    ok('一括兵種選択の知らせ', await p.textContent('#soldierpanel .bulkfoot > .note'), '4人の兵種を「焙烙火矢」にしました');
+    ok('全武将の兵種', await p.evaluate(() => form.slots.map(s => M.soldiers.get(s.soldier)?.name)), ['焙烙火矢', '焙烙火矢', '焙烙火矢', '焙烙火矢']);
     ok('ページのエラー(3)', p.errs, []);
     await p.close();
     /* 開き直しても一括スキル追加のTRと保存した部隊は残る */

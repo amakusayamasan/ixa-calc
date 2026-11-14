@@ -536,6 +536,7 @@ function renderModeUi() {
   $('r-enemy-box').hidden = mode !== 'def';
   renderTeams();
   if (bulk.open) renderBulk(); // 部隊タイプを変えたら、一括スキル追加の候補も描き直す
+  if (bulkSoldier.open) renderSoldierBulk(); // 兵種の攻撃力・防御力の表示も切り替える
   if (form) {
     $('jin').value = form.jin;
     $('enemyCount').value = form.enemyCount ?? ENEMY_DEFAULT.count;

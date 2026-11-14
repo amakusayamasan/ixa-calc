@@ -1,4 +1,4 @@
-// 一括スキル追加(部隊計算画面):スキルを3つまで選んで、1人か全員の 追加スキル・追加スキル2・極限スキル にまとめて入れる
+// 一括スキル追加・一括兵種選択(部隊計算画面):スキルを3つまで選んで、1人か全員の 追加スキル・追加スキル2・極限スキル にまとめて入れる
 // 使うファイル:core.js、skills.js、calc-view.js、master.js(調べ方:node tests/deps.js)
 /* 選んだ順に 通常1 → 通常2 → 極限。選んだスキルをもう一度タップすると外れる(ほかの枠はそのまま、空いた枠に次のタップが入る)。
    反映するときは、選んでいない枠は今のスキルのまま。TRは選択画面で選んだTR(そのTRがないスキルはいちばん大きいTR) */
@@ -207,4 +207,46 @@ $('bulkpanel').addEventListener('input', e => {
   const q = $('bulkQ');
   q.focus();
   q.setSelectionRange(pos, pos);
+});
+
+/* ---------- 一括兵種選択:選んだ兵種を、武将のいる枠すべてに入れる ---------- */
+const bulkSoldier = { open: false, id: '', msg: '' };
+function renderSoldierBulk() {
+  const p = $('soldierpanel');
+  $('soldierBtn').setAttribute('aria-expanded', bulkSoldier.open);
+  p.hidden = !bulkSoldier.open;
+  if (!bulkSoldier.open) return;
+  p.innerHTML = `<div class="jbhead"><strong>一括兵種選択</strong></div>
+    <p class="note">選んだ兵種を、武将のいる枠すべて(部隊長・小隊長1〜3)に入れます。</p>
+    <div class="bulkfoot"><div class="field"><label class="label" for="bulkSoldierSel">兵種</label><select id="bulkSoldierSel">${soldierOpts(bulkSoldier.id)}</select></div>
+    ${button('全武将に反映', `id="soldierApply"${bulkSoldier.id ? '' : ' disabled'}`)}${button('閉じる', 'id="soldierClose"', 'btn ghost')}<span class="note" aria-live="polite">${esc(bulkSoldier.msg)}</span></div>`;
+}
+$('soldierBtn').addEventListener('click', () => {
+  bulkSoldier.open = !bulkSoldier.open;
+  bulkSoldier.msg = '';
+  renderSoldierBulk();
+});
+$('soldierpanel').addEventListener('change', e => {
+  if (e.target.id !== 'bulkSoldierSel') return;
+  bulkSoldier.id = e.target.value;
+  bulkSoldier.msg = '';
+  renderSoldierBulk();
+});
+$('soldierpanel').addEventListener('click', e => {
+  if (e.target.id === 'soldierClose') {
+    bulkSoldier.open = false;
+    return renderSoldierBulk();
+  }
+  if (e.target.id !== 'soldierApply' || !form || !bulkSoldier.id) return;
+  let n = 0;
+  for (const s of form.slots)
+    if (s.card) {
+      s.soldier = bulkSoldier.id;
+      n++;
+    }
+  renderCalc();
+  bulkSoldier.msg = n
+    ? `${n}人の兵種を「${M.soldiers.get(bulkSoldier.id)?.name}」にしました`
+    : '武将が選ばれていません';
+  renderSoldierBulk();
 });
