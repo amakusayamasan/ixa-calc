@@ -172,7 +172,13 @@ async function downloadXlsx(withData) {
                 splitOn(d) ? 1 : 0,
                 ...SPLIT_FIELDS.map(f => (splitOn(d) ? (t[f + 'D'] ?? '') : '')),
               ]
-            : ['', '', '', '', '', '', '', '', '', '', ...SPLIT_FIELDS.map(() => '')]),
+            : [
+                ...['', '', '', '', '', '', '', '', ''],
+                splitOn(d) ? 1 : 0,
+                ...SPLIT_FIELDS.map(f =>
+                  splitOn(d) && (f === 'base' || f === 'coef') ? (t[f + 'D'] ?? '') : '',
+                ),
+              ]),
           ...['hisho', 'fukutsu', 'speed'].map(k => (effsOf(d)[k] && hasV(t[k]) ? N(t[k]) : '')),
         ]);
     }
@@ -432,6 +438,8 @@ function finishSkill(s, old) {
         : {}),
       ...(s.effFlags || {}),
     };
+  /* 追加スキルの「攻防で値を分ける」:列があればその値、なければ登録済みの値(種類が決まってから使う) */
+  const spFlag = s.effFlags?.split;
   delete s.effFlags;
   if (s.dupMax == null && old && dupOn(old)) s.dupMax = skillDupMax(old);
   if (!(N(s.dupMax) > 0)) delete s.dupMax;
@@ -449,10 +457,11 @@ function finishSkill(s, old) {
         : 0;
   /* 新しく登録する初期スキルは、模倣可否の列がなければ「模倣できない」 */
   if (s.init && s.noMimic == null && !old) s.noMimic = 1;
+  if (!s.init && (spFlag ?? !!old?.effs?.split)) s.effs = { ...(s.effs || {}), split: true };
   if (!s.init)
     s.trs = s.trs.map(t => {
       const o = { ...t };
-      for (const f of INIT_TR_FIELDS()) delete o[f];
+      for (const f of INIT_TR_FIELDS()) if (!(splitOn(s) && (f === 'baseD' || f === 'coefD'))) delete o[f];
       return o;
     });
 }

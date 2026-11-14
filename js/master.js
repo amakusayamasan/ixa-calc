@@ -343,6 +343,7 @@ function skillNotes(d) {
       '重複上限:部隊内でこのスキルが上限より多いときは、値の大きいものから上限の数だけ効果が出ます(TRに関係なく1つの値)。初期スキルが外れたときは特殊効果も出ません。',
     coefMax(d) && '係数は、部隊内でこのスキルを持つ武将のうち、いちばん高いTRの係数を使います。',
     'Xスキルは通常枠にしか付けられません。',
+    splitOn(d) && '攻撃と防御で値を分ける:防御部隊では(防)の列の値を使います(空欄なら攻撃と同じ値)。',
   ];
   if (ini)
     notes.push(
@@ -354,7 +355,6 @@ function skillNotes(d) {
       ef.leader && '部隊長限定:部隊長の枠にいるときだけ、この初期スキルの効果が出ます。',
       ef.enemy &&
         '敵火力加算:防御部隊で、この初期スキルを持つ武将1人につき「敵の推定火力 ÷ 敵の武将数」を合計に足します。',
-      splitOn(d) && '攻撃と防御で値を分ける:防御部隊では(防)の列の値を使います(空欄なら攻撃と同じ値)。',
       ef.total &&
         tbByOf(d) === 'muzin' &&
         `総${b}バフ = 総${b}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${b}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`,
@@ -382,11 +382,12 @@ const EFFECT_ORDER_INIT = [
   'enemy',
   'dup',
 ];
-const EFFECT_ORDER_SKILL = ['speed', 'hisho', 'fukutsu', 'muzin', 'dup'];
+const EFFECT_ORDER_SKILL = ['split', 'speed', 'hisho', 'fukutsu', 'muzin', 'dup'];
+/* 「攻撃と防御で値を分ける」は、攻撃or防御が「攻撃・防御」のときだけ(模倣スキルは出さない) */
 const effectOrder = d =>
-  toFlag(d.init) === 1
-    ? EFFECT_ORDER_INIT.filter(k => k !== 'split' || skillSide(d) === '攻撃・防御')
-    : EFFECT_ORDER_SKILL;
+  (toFlag(d.init) === 1 ? EFFECT_ORDER_INIT : EFFECT_ORDER_SKILL).filter(
+    k => k !== 'split' || (skillSide(d) === '攻撃・防御' && (toFlag(d.init) === 1 || !isMimic(d))),
+  );
 /* TR表の列:TR・素スキル上昇率・係数(模倣は模倣倍率)のあとに、チェックした特殊効果の列を上の並び順で */
 function skillTrCols(d) {
   const ini = toFlag(d.init) === 1,
@@ -412,9 +413,9 @@ function skillTrCols(d) {
   for (const [k, l] of EXTRA_EFFS) colsOf[k] = [[k, l]];
   const on = k => (k === 'dup' ? dupOn(d) : ef[k]);
   const cols = [...head, ...effectOrder(d).flatMap(k => (on(k) && colsOf[k]) || [])];
-  return ini && splitOn(d) ? splitCols(cols) : cols;
+  return splitOn(d) ? splitCols(cols) : cols;
 }
-/* 攻撃と防御で値を分ける初期スキルのTR表:攻撃の列のあとに、同じ項目の防御の列(項目名+D)を並べる */
+/* 攻撃と防御で値を分けるスキルのTR表:攻撃の列のあとに、同じ項目の防御の列(項目名+D)を並べる */
 function splitCols(cols) {
   const lab = (f, l, side) =>
     f === 'statBuff'

@@ -1,4 +1,4 @@
-// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル・敵武将の総コスト)。期待値と違えば失敗する。
+// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル・敵武将の総コスト・追加スキルの攻防の値)。期待値と違えば失敗する。
 // 使い方:リポジトリのフォルダで `python3 -m http.server 8765` を起動してから  node tests/rules.js
 const {chromium}=require('playwright');const path=require('path');const dir=__dirname;
 (async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
@@ -31,8 +31,11 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  config.people=280;config.avgCost=4.5;
  M.skills.set('CO',{name:'総コスト',init:0,side:'攻撃',coefBy:'cost',trs:tr(t=>({base:0,coef:0.5}))});
  out.costVal=skillVal({id:'CO',tr:0},1);out.costLabel=skillLabel(M.skills.get('CO').trs[0],M.skills.get('CO'));
+ /* 4. 追加スキルを攻撃と防御で分ける(防御部隊では(防)の値) */
+ M.skills.set('SPL',{name:'分け',init:0,side:'攻撃・防御',coefBy:'people',effs:{split:true},trs:tr(t=>({base:250,coef:0.5,baseD:300,coefD:0.5}))});
+ out.splitAtk=skillVal({id:'SPL',tr:0},1);mode='def';out.splitDef=skillVal({id:'SPL',tr:0},1);mode='atk';
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630'};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();

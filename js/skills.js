@@ -28,7 +28,8 @@ const SIDES = ['攻撃', '防御', '攻撃・防御'];
 const skillSide = d => (SIDES.includes(d?.side) ? d.side : '攻撃');
 /* この部隊(攻撃部隊・防御部隊)で使うスキルか。「攻撃・防御」はどちらでも使う */
 const forMode = d => skillSide(d) !== MD().opp;
-/* 攻撃と防御で値を分けた初期スキル:防御部隊では「(防)」の値を使う(空欄なら攻撃と同じ値) */
+/* 攻撃と防御で値を分けたスキル(初期スキル・追加スキル):防御部隊では「(防)」の値を使う(空欄なら攻撃と同じ値)。
+   追加スキルで分けるのは素スキル上昇率と係数だけ */
 const SPLIT_FIELDS = ['base', 'coef', 'statBuff', 'mulNormal', 'mulLimit', 'totalBuff', 'tbCoef', 'troopAdd'];
 function modeTr(d, t) {
   if (!t || mode !== 'def' || !splitOn(d)) return t;
@@ -83,7 +84,9 @@ function skillMuzin(d, tr) {
   return N(trEntry(d, tr)?.muzin);
 }
 /* 攻撃と防御で値を分けるのは、攻撃or防御が「攻撃・防御」の初期スキルだけ */
-const splitOn = d => toFlag(d?.init) === 1 && skillSide(d) === '攻撃・防御' && !!effsOf(d).split;
+/* 攻撃と防御で値を分けるのは、攻撃or防御が「攻撃・防御」のスキル(模倣スキルは模倣元の初期スキルに従うので分けない) */
+const splitOn = d =>
+  skillSide(d) === '攻撃・防御' && !!effsOf(d).split && (toFlag(d?.init) === 1 || !isMimic(d));
 const effLabel = (d, k) =>
   k === 'stat' ? `素${sw(d)}バフ` : k === 'total' ? `総${sw(d)}バフ` : EFFS.find(x => x[0] === k)[1];
 const skillValue = (t, n) => N(t.base) + N(t.coef) * (n == null ? N(config.people) : n);
@@ -186,6 +189,9 @@ function normalizeSkill(d) {
           o.coef = 0;
         }
         for (const [k] of EXTRA_EFFS) if (effsOf(d)[k] && hasV(t[k])) o[k] = N(t[k]);
+        /* 追加スキルを攻撃と防御で分けるときは、素スキル上昇率・係数の(防)の値も保存する */
+        if (!toFlag(d.init) && splitOn(d))
+          for (const f of ['base', 'coef']) if (hasV(t[f + 'D'])) o[f + 'D'] = N(t[f + 'D']);
         if (toFlag(d.init)) {
           const ef = effsOf(d);
           for (const [k, , fs] of EFFS) if (ef[k]) for (const f of fs) if (hasV(t[f])) o[f] = N(t[f]);
@@ -203,7 +209,7 @@ function normalizeSkill(d) {
           tbBy: effsOf(d).total ? tbByOf(d) : 'fixed',
           effs: { ...effsOf(d), split: splitOn(d), dup: dupOn(d) },
         }
-      : { effs: { dup: dupOn(d), ...extraEffs(d) } }),
+      : { effs: { dup: dupOn(d), split: splitOn(d), ...extraEffs(d) } }),
   };
 }
 const extraEffs = d => Object.fromEntries(EXTRA_EFFS.map(([k]) => [k, !!effsOf(d)[k]]));
