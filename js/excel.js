@@ -104,6 +104,7 @@ const X_SKILL = [
   '速度スキル',
   '数に自身を含む',
   '対象兵科',
+  '対象兵種',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 const X_JBUFF = [
@@ -184,6 +185,7 @@ async function downloadXlsx(withData) {
           ...['hisho', 'fukutsu', 'speed'].map(k => (effsOf(d)[k] && hasV(t[k]) ? N(t[k]) : '')),
           ini && tbCounts(d) ? (tbSelfOf(d) ? 1 : 0) : '',
           ini && tbByOf(d) === 'branch' ? tbBranchesOf(d).join('、') : '',
+          ini && tbByOf(d) === 'branch' ? tbSoldiersOf(d).join('、') : '',
         ]);
     }
   const sold = withData
@@ -382,17 +384,22 @@ function readSkillRow(s, row, ix) {
     s.side = /攻/.test(v) && /防/.test(v) ? '攻撃・防御' : /防/.test(v) ? '防御' : '攻撃';
   }
   if (val(ix('総攻・防バフの掛け方')) != null)
-    s.tbBy = (v => (/無尽/.test(v) ? 'muzin' : /姫/.test(v) ? 'hime' : /兵科/.test(v) ? 'branch' : 'fixed'))(
+    s.tbBy = (v =>
+      /無尽/.test(v) ? 'muzin' : /姫/.test(v) ? 'hime' : /兵科|兵種/.test(v) ? 'branch' : 'fixed')(
       String(row[ix('総攻・防バフの掛け方')]),
     );
-  /* 数に自身を含む(前の列名「姫数に自身を含む」も読む)・対象兵科(「、」区切り) */
+  /* 数に自身を含む(前の列名「姫数に自身を含む」も読む)・対象兵科・対象兵種(「、」区切り) */
   for (const h of ['数に自身を含む', '姫数に自身を含む'])
     if (val(ix(h)) != null) s.tbSelf = toFlag(row[ix(h)]);
-  if (val(ix('対象兵科')) != null)
-    s.tbBranches = String(row[ix('対象兵科')])
-      .split(/[、,，]/)
-      .map(x => x.trim())
-      .filter(Boolean);
+  for (const [h, f] of [
+    ['対象兵科', 'tbBranches'],
+    ['対象兵種', 'tbSoldiers'],
+  ])
+    if (val(ix(h)) != null)
+      s[f] = String(row[ix(h)])
+        .split(/[、,，]/)
+        .map(x => x.trim())
+        .filter(Boolean);
 }
 /* TRごとの値(1行分)。初期スキル用の値は、列がなければ登録済みの値を残す */
 function readSkillTr(n, row, ix) {
@@ -461,6 +468,7 @@ function finishSkill(s, old) {
   if (s.tbBy == null && old && old.tbBy) s.tbBy = tbByOf(old);
   if (s.tbSelf == null && old && (old.tbSelf ?? old.himeSelf) != null) s.tbSelf = old.tbSelf ?? old.himeSelf;
   if (s.tbBranches == null && old && old.tbBranches) s.tbBranches = old.tbBranches;
+  if (s.tbSoldiers == null && old && old.tbSoldiers) s.tbSoldiers = old.tbSoldiers;
   if (s.init == null)
     s.init = old
       ? isInitSkill(old)

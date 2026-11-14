@@ -23,7 +23,7 @@ const TB_BY = {
   fixed: '固定',
   muzin: '無尽を持つ武将数',
   hime: '部隊内の姫の数',
-  branch: '部隊内の対象兵科の数',
+  branch: '部隊内の対象兵科・兵種の数',
 };
 const tbByOf = d => (TB_BY[d?.tbBy] ? d.tbBy : 'fixed');
 /* 総攻・総防バフに「係数 × 数」を足す掛け方か(無尽を持つ武将数・部隊内の姫の数) */
@@ -31,8 +31,9 @@ const tbCoefOn = d => tbByOf(d) !== 'fixed';
 /* 部隊内の姫の数・対象兵科の数に、自分も数えるか(初期値は数える。himeSelf は前の名前) */
 const tbCounts = d => ['hime', 'branch'].includes(tbByOf(d));
 const tbSelfOf = d => toFlag(d?.tbSelf ?? d?.himeSelf ?? 1) === 1;
-/* 部隊内の対象兵科の数で数える兵科(兵種マスタの兵科名) */
+/* 部隊内の対象兵科・兵種の数で数える兵科(兵種マスタの兵科名)と兵種(兵種名) */
 const tbBranchesOf = d => (Array.isArray(d?.tbBranches) ? d.tbBranches : []);
+const tbSoldiersOf = d => (Array.isArray(d?.tbSoldiers) ? d.tbSoldiers : []);
 const coefByOf = d => (COEF_BY[d?.coefBy] ? d.coefBy : 'people');
 const isX = d => toFlag(d?.xskill) === 1;
 /* スキルの攻防:攻撃 / 防御 / 攻撃・防御。値は1組だけ持ち、攻撃部隊では「防御」スキルの値を使わない(未設定は攻撃) */
@@ -220,7 +221,9 @@ function normalizeSkill(d) {
       ? {
           tbBy: effsOf(d).total ? tbByOf(d) : 'fixed',
           ...(effsOf(d).total && tbCounts(d) ? { tbSelf: tbSelfOf(d) ? 1 : 0 } : {}),
-          ...(effsOf(d).total && tbByOf(d) === 'branch' ? { tbBranches: tbBranchesOf(d) } : {}),
+          ...(effsOf(d).total && tbByOf(d) === 'branch'
+            ? { tbBranches: tbBranchesOf(d), tbSoldiers: tbSoldiersOf(d) }
+            : {}),
           effs: { ...effsOf(d), split: splitOn(d), dup: dupOn(d) },
         }
       : { effs: { dup: dupOn(d), split: splitOn(d), ...extraEffs(d) } }),

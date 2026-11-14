@@ -45,7 +45,10 @@ function cardTrs(c) {
         o.tbCoef = N(e.tbCoef);
         o.tbBy = tbByOf(sk.d);
         if (tbCounts(sk.d)) o.tbSelf = tbSelfOf(sk.d);
-        if (o.tbBy === 'branch') o.tbBranches = tbBranchesOf(sk.d);
+        if (o.tbBy === 'branch') {
+          o.tbBranches = tbBranchesOf(sk.d);
+          o.tbSoldiers = tbSoldiersOf(sk.d);
+        }
       }
       return o;
     });

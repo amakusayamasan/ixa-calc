@@ -68,9 +68,13 @@ function calc() {
   const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c, s.tr) > 0 ? 2 : 1);
   /* 部隊内の姫の数(武将マスタで姫の武将。自分を数えない設定なら自分を除く) */
   /* 部隊内の姫の数・対象兵科の数(自分を数えない設定なら自分を除く)。
-     姫:武将マスタで姫の武将。対象兵科:選んだ兵種の兵科が、スキルで選んだ兵科のどれか */
+     姫:武将マスタで姫の武将。対象兵科・兵種:選んだ兵種が、スキルで選んだ兵種のどれかか、その兵科がスキルで選んだ兵科のどれか */
   const hits = (s, r) =>
-    r.tbBy === 'hime' ? !!toFlag(s.c.hime) : (r.tbBranches || []).includes(M.soldiers.get(s.soldier)?.branch);
+    r.tbBy === 'hime'
+      ? !!toFlag(s.c.hime)
+      : (o => !!o && ((r.tbSoldiers || []).includes(o.name) || (r.tbBranches || []).includes(o.branch)))(
+          M.soldiers.get(s.soldier),
+        );
   const countN = i => {
     const r = sl[i].raw;
     return sl.filter((s, j) => s.c && hits(s, r) && (j !== i || r.tbSelf)).length;
@@ -98,7 +102,7 @@ function calc() {
     if (r) {
       r.tb = tbOf(sl[i], i);
       r.tbMc = tbN(i);
-      r.tbKind = { hime: '姫', branch: '対象兵科' }[sl[i].raw?.tbBy] || '無尽';
+      r.tbKind = { hime: '姫', branch: '対象' }[sl[i].raw?.tbBy] || '無尽';
       r.tbMul = tbX(i);
       r.void = muzinVoid(sl[i].c, sl[i].tr);
     }

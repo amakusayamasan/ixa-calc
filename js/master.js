@@ -396,11 +396,16 @@ function syncDraft() {
               : Number(el.value)
             : el.value;
   }
-  if (draft.coll === 'skills' && $('editor').querySelector('[name=tbbranch]')) {
-    const known = [...$('editor').querySelectorAll('[name=tbbranch]')];
-    const unknown = tbBranchesOf(d).filter(t => !known.some(k => k.value === t));
-    d.tbBranches = [...known.filter(k => k.checked).map(k => k.value), ...unknown];
-  }
+  /* 対象兵科・対象兵種のチェック(兵種マスタにない値はそのまま残す) */
+  for (const [nm, f, of] of [
+    ['tbbranch', 'tbBranches', tbBranchesOf],
+    ['tbsoldier', 'tbSoldiers', tbSoldiersOf],
+  ])
+    if (draft.coll === 'skills' && $('editor').querySelector(`[name=${nm}]`)) {
+      const known = [...$('editor').querySelectorAll(`[name=${nm}]`)];
+      const unknown = of(d).filter(t => !known.some(k => k.value === t));
+      d[f] = [...known.filter(k => k.checked).map(k => k.value), ...unknown];
+    }
   if (draft.coll === 'jbuffs' && $('editor').querySelector('[name=jtarget]')) {
     const known = [...$('editor').querySelectorAll('[name=jtarget]')];
     const unknown = (d.targets || []).filter(t => !known.some(k => k.value === t));
@@ -463,11 +468,14 @@ function skillEditorBody(d) {
     ini ? ['noMimic', '模倣', 'flag'] : ['mimic', '模倣', 'mimic'],
     ini && ef.total && ['tbBy', `総${sw(d)}バフの掛け方`, 'tbby'],
   ].filter(Boolean);
-  /* 総バフの掛け方が「部隊内の姫の数」のとき:自分も数えるか */
-  /* 総バフの掛け方が「部隊内の姫の数」「部隊内の対象兵科の数」のとき:自分も数えるか。対象兵科なら兵科も選ぶ */
-  const branches = [...new Set([...M.soldiers.values()].map(x => x.branch).filter(Boolean))],
+  /* 総バフの掛け方が「部隊内の姫の数」「部隊内の対象兵科・兵種の数」のとき:自分も数えるか。
+     対象兵科・兵種なら、数える兵科と兵種も選ぶ(どちらかに当てはまれば数える) */
+  const sold = [...M.soldiers.values()].sort((a, b) => bySoldierOrder(['', a], ['', b])),
+    branches = [...new Set(sold.map(x => x.branch).filter(Boolean))],
+    soldNames = sold.map(x => x.name),
     tbr = tbBranchesOf(d),
-    unknownBr = tbr.filter(b => !branches.includes(b));
+    tbs = tbSoldiersOf(d),
+    unknownBr = [...tbr.filter(b => !branches.includes(b)), ...tbs.filter(n => !soldNames.includes(n))];
   const tbCountBox =
     (ini && ef.total && tbByOf(d) === 'branch'
       ? checksField(
@@ -476,8 +484,14 @@ function skillEditorBody(d) {
             .map(b => checkbox(`name="tbbranch" value="${esc(b)}"`, tbr.includes(b), esc(b)))
             .join('') || '<span class="note">兵種マスタに兵科がありません</span>',
         ) +
+        checksField(
+          '対象兵種(部隊の武将の兵種がこの兵種なら数える)',
+          soldNames
+            .map(n => checkbox(`name="tbsoldier" value="${esc(n)}"`, tbs.includes(n), esc(n)))
+            .join('') || '<span class="note">兵種マスタが空です</span>',
+        ) +
         (unknownBr.length
-          ? `<p class="msg err">兵種マスタにない兵科が指定されています:${unknownBr.map(esc).join('、')}(このまま残ります)</p>`
+          ? `<p class="msg err">兵種マスタにない兵科・兵種が指定されています:${unknownBr.map(esc).join('、')}(このまま残ります)</p>`
           : '')
       : '') +
     (ini && ef.total && tbCounts(d)
@@ -542,7 +556,7 @@ function skillNotes(d) {
         '敵火力加算:防御部隊で、この初期スキルを持つ武将1人につき「敵の推定火力 ÷ 敵の武将数」を合計に足します。',
       ef.total &&
         tbByOf(d) === 'branch' &&
-        `総${b}バフ = 総${b}バフ + 部隊内の対象兵科の数(部隊の武将のうち、選んだ兵種の兵科が対象兵科の武将。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
+        `総${b}バフ = 総${b}バフ + 部隊内の対象兵科・兵種の数(部隊の武将のうち、選んだ兵種が対象兵種か、その兵科が対象兵科の武将。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
       ef.total &&
         tbByOf(d) === 'hime' &&
         `総${b}バフ = 総${b}バフ + 部隊内の姫の数(武将マスタで姫の武将。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
@@ -917,9 +931,10 @@ function validate(coll, d) {
     isInitSkill(d) &&
     effsOf(d).total &&
     tbByOf(d) === 'branch' &&
-    !tbBranchesOf(d).length
+    !tbBranchesOf(d).length &&
+    !tbSoldiersOf(d).length
   )
-    return '対象兵科を1つ以上選んでください';
+    return '対象兵科か対象兵種を1つ以上選んでください';
   if (coll === 'skills') return skillEffectMissing(d);
   return '';
 }
