@@ -792,9 +792,17 @@ tbody tr.editable:hover {
 }
 .people {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  font-size: 13px;
+}
+.people .pgrp {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  min-width: 0;
 }
 .people input {
   width: 90px;

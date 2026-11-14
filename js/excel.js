@@ -41,7 +41,7 @@ function renderImport() {
     <li>スキル:${p.skills.length}件 うち新規 ${p.skills.filter(c => !c.id).length}件</li>
     <li>兵種:${p.soldiers.length}件 うち新規 ${p.soldiers.filter(c => !c.id).length}件</li>
     <li>傑バフ:${p.jbuffs.length}件 うち新規 ${p.jbuffs.filter(c => !c.id).length}件</li>
-    ${p.people != null ? `<li>人数:${p.people}</li>` : ''}${p.warn.map(w => `<li style="color:var(--danger)">${esc(w)}</li>`).join('')}</ul>
+    ${p.people != null ? `<li>人数:${p.people}</li>` : ''}${p.avgCost != null ? `<li>平均コスト:${p.avgCost}</li>` : ''}${p.warn.map(w => `<li style="color:var(--danger)">${esc(w)}</li>`).join('')}</ul>
     ${buttonRow(button('取り込む', 'data-imp="run"'), button('やめる', 'data-imp="cancel"', 'btn ghost'))}<p class="msg" id="impmsg"></p></div>`;
 }
 /* 取り込み用のExcelを作る(列名は取り込みと同じ)。withData=false なら見出しだけ */
@@ -192,7 +192,7 @@ async function downloadXlsx(withData) {
     XLSX.utils.book_append_sheet(wb, ws, name);
   };
   add('武将データ', X_CARD, cards);
-  add('スキルデータ', X_SKILL, skills, ['人数', N(config.people)]);
+  add('スキルデータ', X_SKILL, skills, ['人数', N(config.people), '平均コスト', N(config.avgCost)]);
   add('兵種データ', X_SOLDIER, sold);
   add('傑バフデータ', X_JBUFF, jb);
   XLSX.writeFile(
@@ -226,7 +226,7 @@ const oldSkillTr = (name, tr) => {
 };
 function planFrom(XLSX, wb) {
   const warn = [],
-    plan = { cards: [], skills: [], soldiers: [], jbuffs: [], people: null, warn };
+    plan = { cards: [], skills: [], soldiers: [], jbuffs: [], people: null, avgCost: null, warn };
   const cr = readSheet(XLSX, wb, '武将データ'),
     sr = readSheet(XLSX, wb, 'スキルデータ'),
     or = readSheet(XLSX, wb, '兵種データ'),
@@ -304,6 +304,13 @@ function planSkills(sr, plan) {
       break;
     }
   }
+  for (const row of sr) {
+    const k = row.findIndex(x => String(x ?? '').trim() === '平均コスト');
+    if (k >= 0 && hasV(row[k + 1]) && Number(row[k + 1]) > 0) {
+      plan.avgCost = Number(row[k + 1]);
+      break;
+    }
+  }
   const g = new Map();
   for (const row of sr.slice(1)) {
     const name = row[ix('スキル名')];
@@ -342,7 +349,9 @@ function readSkillRow(s, row, ix) {
             ? 'hisho'
             : /速度/.test(v) || v === 'speed'
               ? 'speed'
-              : 'people';
+              : /コスト/.test(v) || v === 'cost'
+                ? 'cost'
+                : 'people';
   }
   if (val(ix('種類')) != null) s.init = /初期/.test(String(row[ix('種類')])) ? 1 : 0;
   for (const [col, key] of [
@@ -573,7 +582,11 @@ $('importbox').addEventListener('click', async e => {
   b.disabled = true;
   let done = 0;
   const total =
-    p.cards.length + p.skills.length + p.soldiers.length + p.jbuffs.length + (p.people != null ? 1 : 0);
+    p.cards.length +
+    p.skills.length +
+    p.soldiers.length +
+    p.jbuffs.length +
+    (p.people != null || p.avgCost != null ? 1 : 0);
   try {
     for (const c of p.cards) {
       await writeWithLog(
@@ -596,8 +609,12 @@ $('importbox').addEventListener('click', async e => {
       await writeWithLog('Excel取り込み', 'jbuffs', j.id || 'j' + j.data.no, j.data);
       m.textContent = `取り込み中 ${++done}/${total}`;
     }
-    if (p.people != null) {
-      await writeWithLog('Excel取り込み', 'config', 'main', { ...plain(config), people: p.people });
+    if (p.people != null || p.avgCost != null) {
+      await writeWithLog('Excel取り込み', 'config', 'main', {
+        ...plain(config),
+        ...(p.people != null ? { people: p.people } : {}),
+        ...(p.avgCost != null ? { avgCost: p.avgCost } : {}),
+      });
       done++;
     }
     importPlan = null;

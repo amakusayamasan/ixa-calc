@@ -1,4 +1,4 @@
-// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル)。期待値と違えば失敗する。
+// 部隊内で数えるルールのテスト(飛翔の数・部隊移動速度・重複上限で外れた初期スキル・敵武将の総コスト)。期待値と違えば失敗する。
 // 使い方:リポジトリのフォルダで `python3 -m http.server 8765` を起動してから  node tests/rules.js
 const {chromium}=require('playwright');const path=require('path');const dir=__dirname;
 (async()=>{const b=await chromium.launch();const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
@@ -27,8 +27,12 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  for(let i=0;i<4;i++)M.cards.set('c'+i,{no:(i?2000+i:1274),rarity:'天',side:'攻撃',name:'武'+i,initName:'初',troops:1000,baseStat:1000,growth:0});
  form={jin:1,slots:[{card:'c0',tr:0,soldier:'o1',alloc:'atk',s1:{id:'SC',tr:0},s2:e,lim:e},{card:'c1',tr:0,soldier:'o2',alloc:'atk',s1:{id:'SP',tr:0},s2:e,lim:e},{card:'c2',tr:0,soldier:'',alloc:'atk',s1:e,s2:e,lim:e},{card:'c3',tr:0,soldier:'o1',alloc:'atk',s1:e,s2:e,lim:e}]};
  out.speed=unitSpeed();out.speedVal=Math.round(skillVal(form.slots[0].s1,0)*100)/100;out.speedMuzin=muzinMul(form.slots[0].s1,'s1');
+ /* 3. 敵武将の総コスト(係数 × 平均コスト × 人数) */
+ config.people=280;config.avgCost=4.5;
+ M.skills.set('CO',{name:'総コスト',init:0,side:'攻撃',coefBy:'cost',trs:tr(t=>({base:0,coef:0.5}))});
+ out.costVal=skillVal({id:'CO',tr:0},1);out.costLabel=skillLabel(M.skills.get('CO').trs[0],M.skills.get('CO'));
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630'};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();

@@ -19,7 +19,9 @@ const effVal = (x, k) => (effsOf(x.d)[k] ? N(trEntry(x.d, x.sel.tr)?.[k]) : 0);
 /* ---------- 係数の n(人数のときは null = 設定の人数) ---------- */
 function coefN(d, id) {
   const by = coefByOf(d);
-  if (by === 'people' || !form) return null;
+  if (by === 'people') return null;
+  if (by === 'cost') return enemyCost();
+  if (!form) return null;
   if (by === 'same') return sameUses(id).length;
   if (by === 'hisho') return hishoCount();
   if (by === 'speed') return unitSpeed();

@@ -78,7 +78,7 @@ const before=await p.evaluate(()=>Math.round(calc().total));
 await p.evaluate(()=>{importPlan=planFrom(window.XLSX,window.__wb);renderImport()});await W(40);out.importPlan=await p.$eval('#importbox',e=>e.innerHTML);await p.click('[data-imp=run]');await W(500);
 out.afterImport=[before,await p.evaluate(()=>Math.round(calc().total))];
 // 人数・削除・不要データ
-await p.click('[data-m=skills]');await p.fill('#peopleIn','300');await p.click('#peopleSave');await W(80);out.people=await p.evaluate(()=>config.people);
+await p.click('[data-m=skills]');await p.fill('#peopleIn','300');await p.click('[data-cfg=people]');await W(80);out.people=await p.evaluate(()=>config.people);
 await p.click('[data-m=soldiers]');await p.locator('#mtable tbody tr').first().click();await W(40);await p.click('[data-act=delete]');await W(20);await p.click('[data-act=delete]');await W(100);
 
 // 防御部隊(Excel「柳生部隊」と同じ編成。期待値 2,935,090,108.339...)

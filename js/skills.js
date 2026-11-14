@@ -8,8 +8,16 @@ const COEF_BY = {
   x: '部隊内のXスキルの数',
   hisho: '部隊内の飛翔の数',
   speed: '部隊移動速度/係数',
+  cost: '敵武将の総コスト',
 };
-const COEF_SHORT = { people: '人数', same: '同スキル数', x: 'Xスキル数', hisho: '飛翔数', speed: '移動速度' };
+const COEF_SHORT = {
+  people: '人数',
+  same: '同スキル数',
+  x: 'Xスキル数',
+  hisho: '飛翔数',
+  speed: '移動速度',
+  cost: '総コスト',
+};
 /* 初期スキルの総攻・防バフの掛け方:固定、または 総攻・防バフ + 無尽を持つ武将数 × 総攻・防バフ係数 ÷ 100 × 無尽2倍 */
 const TB_BY = { fixed: '固定', muzin: '無尽を持つ武将数' };
 const tbByOf = d => (TB_BY[d?.tbBy] ? d.tbBy : 'fixed');
@@ -79,6 +87,8 @@ const splitOn = d => toFlag(d?.init) === 1 && skillSide(d) === '攻撃・防御'
 const effLabel = (d, k) =>
   k === 'stat' ? `素${sw(d)}バフ` : k === 'total' ? `総${sw(d)}バフ` : EFFS.find(x => x[0] === k)[1];
 const skillValue = (t, n) => N(t.base) + N(t.coef) * (n == null ? N(config.people) : n);
+/* 敵武将の総コスト = 平均コスト × 人数(どちらも全員共通の設定) */
+const enemyCost = () => N(config.avgCost) * N(config.people);
 /* 係数を部隊内のTRの最大値から取るか(係数の掛け方が「同じスキルの数」のとき) */
 const coefMax = d => coefByOf(d) === 'same' && toFlag(d?.coefMaxTr) === 1;
 /* 部隊の中でのスキル上昇率(n の数え方は unit.js の coefN):素スキル上昇率(自分のTR) + 係数(最大TRを参照するなら部隊内の最大TRの係数) × 数 */
@@ -117,6 +127,7 @@ function skillLabel(t, d) {
 function skillLabelBase(t, d) {
   const by = coefByOf(d);
   if (by === 'speed') return `${N(t.base) ? fmt(N(t.base), 1) + '+' : ''}移動速度÷${fmt(N(t.coef), 2)}×100`;
+  if (by === 'cost') return fmt(skillValue(t, enemyCost()), 1);
   return by === 'people'
     ? fmt(skillValue(t), 1)
     : `${fmt(N(t.base), 1)}+${fmt(N(t.coef), 2)}×${COEF_SHORT[by]}`;

@@ -83,6 +83,9 @@ const soldierList = q =>
     .sort(bySoldierOrder);
 
 const PEOPLE_FORMULA = 'スキル上昇率 = 素スキル上昇率 + 係数×人数';
+/* 人数・平均コストを保存したときのメッセージ(保存で画面が描き直されても残す) */
+let cfgMsg = null;
+const COST_FORMULA = '係数の掛け方「敵武将の総コスト」:素スキル上昇率 + 係数×平均コスト×人数';
 function renderMaster() {
   $('madd').hidden = !isOwner || mtab === 'skills';
   $('maddSkill').hidden = $('maddInit').hidden = !isOwner || mtab !== 'skills';
@@ -94,10 +97,15 @@ function renderMaster() {
   pp.hidden = mtab !== 'skills';
   if (mtab === 'skills')
     pp.innerHTML = isOwner
-      ? `<label class="label" for="peopleIn">人数(${PEOPLE_FORMULA})</label>` +
+      ? `<div class="pgrp"><label class="label" for="peopleIn">人数(${PEOPLE_FORMULA})</label>` +
         `<input id="peopleIn" type="number" value="${esc(config.people)}">` +
-        '<button id="peopleSave" class="btn small ghost" type="button">人数を保存</button><span id="peopleMsg" class="msg"></span>'
-      : `<span class="label">人数</span><b class="num">${fmt(N(config.people))}</b><span class="note">${PEOPLE_FORMULA}</span>`;
+        '<button class="btn small ghost" type="button" data-cfg="people">人数を保存</button></div>' +
+        `<div class="pgrp"><label class="label" for="avgCostIn">敵武将の平均コスト(${COST_FORMULA})</label>` +
+        `<input id="avgCostIn" type="number" step="0.1" value="${esc(config.avgCost)}">` +
+        '<button class="btn small ghost" type="button" data-cfg="avgCost">平均コストを保存</button></div>' +
+        `<span id="peopleMsg" class="msg${cfgMsg ? ' ' + cfgMsg.cls : ''}">${esc(cfgMsg?.text || '')}</span>`
+      : `<div class="pgrp"><span class="label">人数</span><b class="num">${fmt(N(config.people))}</b><span class="note">${PEOPLE_FORMULA}</span></div>` +
+        `<div class="pgrp"><span class="label">敵武将の平均コスト</span><b class="num">${fmt(N(config.avgCost), 2)}</b><span class="note">${COST_FORMULA}</span></div>`;
   const q = $('msearch').value.trim();
   const ed = isOwner ? 'editable' : '';
   const list = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q)).sort(byName);
@@ -326,7 +334,7 @@ function skillNotes(d) {
     ef = effsOf(d),
     b = sw(d);
   const notes = [
-    'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 / 部隊内の飛翔の数)。「部隊移動速度/係数」は計算のしかたが違います(下の説明)。',
+    'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 / 部隊内の飛翔の数 / 敵武将の総コスト)。敵武将の総コスト = 平均コスト × 人数。「部隊移動速度/係数」は計算のしかたが違います(下の説明)。',
     coefByOf(d) === 'speed' &&
       'スキル上昇率 = 素スキル上昇率 + 部隊移動速度 ÷ 係数 × 100。部隊移動速度 = 部隊の兵種の速度のいちばん遅い値 × (100 + 部隊全員のスキルの速度スキルの合計) ÷ 100。無尽のとき、速度スキルの値は2倍になりませんが、このスキルの効果はほかのスキルと同じく2倍になります。',
     coefByOf(d) === 'hisho' &&

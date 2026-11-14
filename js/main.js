@@ -6,6 +6,7 @@ $('mtabs').addEventListener('click', e => {
   if (!b) return;
   mtab = b.dataset.m;
   draft = null;
+  cfgMsg = null;
   importPlan = null;
   [...$('mtabs').children].forEach(x => x.setAttribute('aria-pressed', x === b));
   renderEditor();
@@ -36,22 +37,27 @@ $('mtable').addEventListener('click', e => {
   openEditor(mtab, tr.dataset.id);
 });
 $('people').addEventListener('click', async e => {
-  if (e.target.id !== 'peopleSave') return;
-  const v = Number($('peopleIn').value),
-    m = $('peopleMsg');
+  /* 人数・平均コストの保存(全員共通の設定) */
+  const k = e.target.dataset.cfg;
+  if (!k) return;
+  const label = k === 'people' ? '人数' : '平均コスト',
+    v = Number($(k === 'people' ? 'peopleIn' : 'avgCostIn').value),
+    say = (cls, text) => {
+      cfgMsg = { cls, text };
+      const m = $('peopleMsg');
+      m.className = 'msg ' + cls;
+      m.textContent = text;
+    };
   if (!Number.isFinite(v) || v <= 0) {
-    m.className = 'msg err';
-    m.textContent = '人数は正の数で入力してください';
+    say('err', label + 'は正の数で入力してください');
     return;
   }
   if (needName()) return;
   try {
-    await writeWithLog('更新', 'config', 'main', { ...plain(config), people: v });
-    m.className = 'msg ok';
-    m.textContent = '保存しました';
+    await writeWithLog('更新', 'config', 'main', { ...plain(config), [k]: v });
+    say('ok', label + 'を保存しました');
   } catch (err) {
-    m.className = 'msg err';
-    m.textContent = '保存できませんでした(' + logErr(err) + ')';
+    say('err', '保存できませんでした(' + logErr(err) + ')');
   }
 });
 document.querySelector('.tabs').addEventListener('click', e => {
@@ -171,7 +177,7 @@ renderCalc();
     },
   );
   db.doc(`${BASE}/config/main`).onSnapshot(snap => {
-    if (snap.exists) config = { people: 280, ...snap.data() };
+    if (snap.exists) config = { ...CONFIG_DEFAULT, ...snap.data() };
     loaded.config = true;
     settle();
     updateResults();

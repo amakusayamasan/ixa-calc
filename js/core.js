@@ -85,7 +85,9 @@ const nowStamp = () => ({
   updatedAt: window.firebase?.firestore?.FieldValue?.serverTimestamp?.() || new Date(),
 });
 const loaded = { cards: false, skills: false, soldiers: false, jbuffs: false, config: false };
-let config = { people: 280 };
+/* 全員共通の設定。人数(係数×人数)と、敵武将の平均コスト(係数×平均コスト×人数) */
+const CONFIG_DEFAULT = { people: 280, avgCost: 4.5 };
+let config = { ...CONFIG_DEFAULT };
 let db = null,
   isOwner = false,
   mtab = 'cards',
