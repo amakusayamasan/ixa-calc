@@ -86,8 +86,11 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  /* 15. 黎天は「列」「烈」どちらの名前でも特殊効果(兵数+2000)が出る */
  M.skills.set('RE',{name:'黎天烈光',init:0,side:'攻撃・防御',coefBy:'x',xskill:1,trs:[{tr:0,base:0,coef:500}]});
  form.slots[1].s1={id:'RE',tr:0};out.reiTroops=calc().rows[1].troops;
+ /* 16. 剣豪は +1600 だけ(覇・天・天・極でも)。傑の剣豪は対象外のまま */
+ form.slots[1].s1={id:'',tr:0};['h1','h2','h3','h4'].forEach((c,i)=>{M.cards.get(c).rarity=['覇・天','傑','極','天'][i];M.cards.get(c).kengou=1;});
+ out.kengouTroops=calc().rows.map(x=>x.troops);
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[3200,3700,3700,3700],troopAll:[3700,3700,3700,3700],toHime:[3200,3700,3200,3700],toKengou:[3200,3700,3700,3200],toBoth:[3200,3700,3700,3700],mulHime:560,mulBranch:730,mulSplitAtk:560,mulSplitDef:900,rarTroops:[3800,1000,3200,3200],reiTroops:3000};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[2600,3100,3100,3700],troopAll:[3100,3100,3100,3700],toHime:[3200,3100,2600,3700],toKengou:[3200,3100,3100,3200],toBoth:[3200,3100,3100,3700],mulHime:560,mulBranch:730,mulSplitAtk:560,mulSplitDef:900,rarTroops:[3800,1000,2600,3200],reiTroops:3000,kengouTroops:[2600,1000,2600,2600]};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();

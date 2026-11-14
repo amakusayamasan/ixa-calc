@@ -60,6 +60,7 @@ function calc() {
       tadd,
       troops,
       rt,
+      rtKengou: !!toFlag(s.c.kengou) && s.c.rarity !== '傑',
       atk,
       satk,
       jb,
@@ -192,7 +193,9 @@ function breakdownHtml(x, r) {
     [
       '兵数',
       fmt(x.troops),
-      [x.rt ? `レア+${fmt(x.rt)}` : '', x.tadd ? `兵数加算+${fmt(x.tadd)}` : ''].filter(Boolean).join('・'),
+      [x.rt ? `${x.rtKengou ? '剣豪' : 'レア'}+${fmt(x.rt)}` : '', x.tadd ? `兵数加算+${fmt(x.tadd)}` : '']
+        .filter(Boolean)
+        .join('・'),
     ],
     [m.stat, fmt(x.atk), ''],
     [`兵士${m.stat}力`, fmt(x.satk), x.jb ? `傑+${fmt(x.jb, 2)}` : ''],
