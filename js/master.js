@@ -1,5 +1,30 @@
 // マスタ管理画面(一覧・編集パネル・保存)
 // 使うファイル:core.js、fields.js、skills.js、cards.js、admin.js(調べ方:node tests/deps.js)
+/* 一覧の「攻撃・防御・攻・防」の絞り込み(武将マスタ・スキルマスタ)。'' はすべて */
+let sideFilter = '';
+const SIDE_FILTERS = [
+  ['', 'すべて'],
+  ['攻撃', '攻撃'],
+  ['防御', '防御'],
+  ['攻撃・防御', '攻・防'],
+];
+const sideFilterOn = () => sideFilter && (mtab === 'cards' || mtab === 'skills');
+function renderSideFilter(named) {
+  const box = $('sidefilter');
+  box.hidden = !(mtab === 'cards' || mtab === 'skills');
+  if (box.hidden) return;
+  const n = v => (v ? named.filter(([, d]) => skillSide(d) === v).length : named.length);
+  box.innerHTML = SIDE_FILTERS.map(
+    ([v, l]) =>
+      `<button type="button" data-side="${v}" aria-pressed="${sideFilter === v}">${l}<span class="cnt">${n(v)}</span></button>`,
+  ).join('');
+}
+$('sidefilter').addEventListener('click', e => {
+  const b = e.target.closest('[data-side]');
+  if (!b) return;
+  sideFilter = b.dataset.side;
+  renderMaster();
+});
 /* ---------- マスタ一覧の列 ----------
    各列は [見出し, 左寄せか, セルの中身(d)=>HTML, 追加の属性(d)=>文字列] */
 const sideChip = side =>
@@ -108,11 +133,13 @@ function renderMaster() {
         `<div class="pgrp"><span class="label">敵武将の平均コスト</span><b class="num">${fmt(N(config.avgCost), 2)}</b><span class="note">${COST_FORMULA}</span></div>`;
   const q = $('msearch').value.trim();
   const ed = isOwner ? 'editable' : '';
-  const list = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q)).sort(byName);
+  const named = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q));
+  const list = named.filter(([, d]) => !sideFilterOn() || skillSide(d) === sideFilter).sort(byName);
+  renderSideFilter(named);
   const rows = mtab === 'jbuffs' ? jbuffList(q) : mtab === 'soldiers' ? soldierList(q) : list;
   const cols = LIST_COLS[mtab](rows);
   const emptyRow = `<tr><td class="l" colspan="${cols.length}" style="color:var(--muted)">${
-    loaded[mtab] ? (q ? '該当なし' : `${LABEL[mtab]}はまだ登録されていません。`) : '読み込み中…'
+    loaded[mtab] ? (q || sideFilterOn() ? '該当なし' : `${LABEL[mtab]}はまだ登録されていません。`) : '読み込み中…'
   }</td></tr>`;
   const head = cols.map(([h, l]) => `<th${l ? ' class="l"' : ''}>${h}</th>`).join('');
   const body = rows.length
