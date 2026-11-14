@@ -351,6 +351,7 @@ function skillNotes(d) {
 }
 /* 特殊効果のチェックとTR表の列の並び。初期スキルとスキルで出すものが違う */
 const EFFECT_ORDER_INIT = [
+  'split',
   'speed',
   'hisho',
   'fukutsu',
@@ -361,7 +362,7 @@ const EFFECT_ORDER_INIT = [
   'total',
   'troop',
   'enemy',
-  'split',
+  'dup',
 ];
 const EFFECT_ORDER_SKILL = ['speed', 'hisho', 'fukutsu', 'muzin', 'dup'];
 const effectOrder = d =>

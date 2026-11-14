@@ -162,11 +162,14 @@ function muzinMul(sel, k) {
    倍枠などをかけたあとの実際の上昇値が高い順に、上限の数まで。数(Xスキルの数・同じスキルの数)は全部数える。
    特殊効果(黎天列光・火焔武闘)は倍枠で変わらないので、上限の数まで */
 const dupOn = d => (d?.effs?.dup != null ? !!d.effs.dup : (d?.trs || []).some(t => hasV(t.dupMax)));
-function dupInstances(id) {
+/* 部隊内でこのスキルが付いているところ。withInit なら、このスキルを初期スキルに持つ武将(k='init')も入れる */
+function dupInstances(id, withInit) {
   const out = [];
   if (!form) return out;
   form.slots.forEach((s, i) => {
     for (const k of ['s1', 's2', 'lim']) if (s[k].id === id) out.push({ i, k, sel: s[k] });
+    if (withInit && skillByName(M.cards.get(s.card)?.initName)?.id === id)
+      out.push({ i, k: 'init', sel: { id, tr: s.tr } });
   });
   return out;
 }
@@ -175,18 +178,23 @@ function dupLimit(d, inst) {
   const ls = inst.map(x => N(trEntry(d, x.sel.tr)?.dupMax)).filter(v => v > 0);
   return ls.length ? Math.max(...ls) : null;
 }
-/* 効果を出さない枠の集合("i:k") */
+/* 効果を出さない枠の集合("i:k"。初期スキルは k='init') */
 function dupDropped() {
   const drop = new Set();
   if (!form) return drop;
-  const ids = new Set(form.slots.flatMap(s => [s.s1.id, s.s2.id, s.lim.id]).filter(Boolean));
+  const ids = new Set(
+    form.slots
+      .flatMap(s => [s.s1.id, s.s2.id, s.lim.id, skillByName(M.cards.get(s.card)?.initName)?.id])
+      .filter(Boolean),
+  );
   for (const id of ids) {
     const d = M.skills.get(id),
-      inst = dupInstances(id),
+      inst = dupInstances(id, true),
       L = dupLimit(d, inst);
     if (L == null || inst.length <= L) continue;
     const val = x => {
       const t = slotEff(x.i).t;
+      if (x.k === 'init') return t ? initEff(slotEff(x.i).c, t) : 0;
       const m = !t ? 1 : x.k === 'lim' ? N(t.mulLimit) * limX(x.sel) : N(t.mulNormal);
       return skillVal(x.sel, x.i) * muzinMul(x.sel, x.k) * m;
     };
@@ -228,7 +236,7 @@ function normalizeSkill(d) {
           o.mimicRate = N(t.mimicRate);
           o.coef = 0;
         }
-        if (!toFlag(d.init) && dupOn(d) && hasV(t.dupMax)) o.dupMax = N(t.dupMax);
+        if (dupOn(d) && hasV(t.dupMax)) o.dupMax = N(t.dupMax);
         for (const [k] of EXTRA_EFFS) if (effsOf(d)[k] && hasV(t[k])) o[k] = N(t[k]);
         if (toFlag(d.init)) {
           const ef = effsOf(d);
@@ -243,7 +251,10 @@ function normalizeSkill(d) {
       }),
     }),
     ...(toFlag(d.init)
-      ? { tbBy: effsOf(d).total ? tbByOf(d) : 'fixed', effs: { ...effsOf(d), split: splitOn(d) } }
+      ? {
+          tbBy: effsOf(d).total ? tbByOf(d) : 'fixed',
+          effs: { ...effsOf(d), split: splitOn(d), dup: dupOn(d) },
+        }
       : { effs: { dup: dupOn(d), ...extraEffs(d) } }),
   };
 }

@@ -29,7 +29,8 @@ function calc() {
       satk = N(M.soldiers.get(s.soldier)?.[MD().soldierF]) + jb;
     const sb = sbOf(s),
       b = satk * troops * 1.4 + atk * 1.4 * sb;
-    const init = initEff(s.c, s.t);
+    const initDrop = drop.has(i + ':init'),
+      init = initDrop ? 0 : initEff(s.c, s.t);
     const sk =
       init +
       (dv(s.s1, i, 's1') * muzinMul(s.s1, 's1') + dv(s.s2, i, 's2') * muzinMul(s.s2, 's2')) *
@@ -37,7 +38,20 @@ function calc() {
       dv(s.lim, i, 'lim') * muzinMul(s.lim, 'lim') * N(s.t.mulLimit) * limX(s.lim);
     base += b;
     skill += sk;
-    return { sb, lo: !!s.t?.loOff, tadd, troops, atk, satk, jb, b, sk, init, initRaw: initBase(s.c, s.t) };
+    return {
+      sb,
+      initDrop,
+      lo: !!s.t?.loOff,
+      tadd,
+      troops,
+      atk,
+      satk,
+      jb,
+      b,
+      sk,
+      init,
+      initRaw: initBase(s.c, s.t),
+    };
   });
   /* 無尽を持つ武将の数(武将の無尽、初期スキル・追加スキル・極限スキルのどれかが無尽なら1人。本人も含む) */
   const mz = x => skillMuzin(M.skills.get(x?.id), x?.tr) > 0;
@@ -128,11 +142,13 @@ function breakdownHtml(x, r) {
   const m = MD();
   const initNote = x.lo
     ? '部隊長限定のため無効'
-    : r.muzin && x.initRaw && x.init !== x.initRaw
-      ? x.init
-        ? '無尽×2'
-        : '無尽なしで無効'
-      : '';
+    : x.initDrop
+      ? '重複上限のため無効'
+      : r.muzin && x.initRaw && x.init !== x.initRaw
+        ? x.init
+          ? '無尽×2'
+          : '無尽なしで無効'
+        : '';
   const lines = [
     ['兵数', fmt(x.troops), x.tadd ? `兵数加算+${fmt(x.tadd)}` : ''],
     [m.stat, fmt(x.atk), ''],
