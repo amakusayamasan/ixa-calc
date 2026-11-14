@@ -105,8 +105,8 @@ function dupDropped() {
   return drop;
 }
 /* 特殊効果(黎天列光・火焔武闘)の数:重複上限があればその数まで、なければ従来どおり2つまで */
-function spCount(name) {
-  const id = findId(M.skills, d => d.name === name);
+function spCount(names) {
+  const id = findId(M.skills, d => names.includes(String(d.name).trim()));
   if (!id || !form) return 0;
   return Math.min(dupLimit(M.skills.get(id)) ?? 2, dupInstances(id).length);
 }
