@@ -105,6 +105,7 @@ const X_SKILL = [
   '数に自身を含む',
   '対象兵科',
   '対象兵種',
+  '自身のもつ兵種',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 const X_JBUFF = [
@@ -186,6 +187,7 @@ async function downloadXlsx(withData) {
           ini && tbCounts(d) ? (tbSelfOf(d) ? 1 : 0) : '',
           ini && tbByOf(d) === 'branch' ? tbBranchesOf(d).join('、') : '',
           ini && tbByOf(d) === 'branch' ? tbSoldiersOf(d).join('、') : '',
+          ini && tbByOf(d) === 'branch' ? (tbOwnOf(d) ? 1 : 0) : '',
         ]);
     }
   const sold = withData
@@ -391,6 +393,7 @@ function readSkillRow(s, row, ix) {
   /* 数に自身を含む(前の列名「姫数に自身を含む」も読む)・対象兵科・対象兵種(「、」区切り) */
   for (const h of ['数に自身を含む', '姫数に自身を含む'])
     if (val(ix(h)) != null) s.tbSelf = toFlag(row[ix(h)]);
+  if (val(ix('自身のもつ兵種')) != null) s.tbOwn = toFlag(row[ix('自身のもつ兵種')]);
   for (const [h, f] of [
     ['対象兵科', 'tbBranches'],
     ['対象兵種', 'tbSoldiers'],
@@ -469,6 +472,7 @@ function finishSkill(s, old) {
   if (s.tbSelf == null && old && (old.tbSelf ?? old.himeSelf) != null) s.tbSelf = old.tbSelf ?? old.himeSelf;
   if (s.tbBranches == null && old && old.tbBranches) s.tbBranches = old.tbBranches;
   if (s.tbSoldiers == null && old && old.tbSoldiers) s.tbSoldiers = old.tbSoldiers;
+  if (s.tbOwn == null && old && old.tbOwn != null) s.tbOwn = old.tbOwn;
   if (s.init == null)
     s.init = old
       ? isInitSkill(old)

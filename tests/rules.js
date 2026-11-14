@@ -51,8 +51,12 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  /* 7. 対象兵種:兵科は選ばず「武士」だけ(自身をカウントしない。自分は鉄砲足軽なので変わらない) */
  M.skills.get('HI').tbBranches=[];M.skills.get('HI').tbSoldiers=['武士'];M.skills.get('HI').tbSelf=1;out.soldOnly=Math.round(calc().buff*1000)/1000;
  M.skills.get('HI').tbBranches=['兵器兵科'];out.soldOr=Math.round(calc().buff*1000)/1000;
+ /* 8. 自身のもつ兵種:持ち主(1人目)は鉄砲足軽 → 鉄砲足軽の武将3人(自身を含む) */
+ Object.assign(M.skills.get('HI'),{tbBranches:[],tbSoldiers:[],tbOwn:1,tbSelf:1});out.own=Math.round(calc().buff*1000)/1000;
+ M.skills.get('HI').tbSelf=0;out.ownNoSelf=Math.round(calc().buff*1000)/1000;
+ form.slots[0].soldier='sb';M.skills.get('HI').tbSelf=1;out.ownBushi=Math.round(calc().buff*1000)/1000;form.slots[0].soldier='sa';
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();

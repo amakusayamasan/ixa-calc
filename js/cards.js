@@ -48,6 +48,7 @@ function cardTrs(c) {
         if (o.tbBy === 'branch') {
           o.tbBranches = tbBranchesOf(sk.d);
           o.tbSoldiers = tbSoldiersOf(sk.d);
+          o.tbOwn = tbOwnOf(sk.d);
         }
       }
       return o;

@@ -486,9 +486,10 @@ function skillEditorBody(d) {
         ) +
         checksField(
           '対象兵種(部隊の武将の兵種がこの兵種なら数える)',
-          soldNames
-            .map(n => checkbox(`name="tbsoldier" value="${esc(n)}"`, tbs.includes(n), esc(n)))
-            .join('') || '<span class="note">兵種マスタが空です</span>',
+          checkbox('id="f-tbOwn" data-f="tbOwn"', tbOwnOf(d), '自身のもつ兵種') +
+            (soldNames
+              .map(n => checkbox(`name="tbsoldier" value="${esc(n)}"`, tbs.includes(n), esc(n)))
+              .join('') || '<span class="note">兵種マスタが空です</span>'),
         ) +
         (unknownBr.length
           ? `<p class="msg err">兵種マスタにない兵科・兵種が指定されています:${unknownBr.map(esc).join('、')}(このまま残ります)</p>`
@@ -556,7 +557,7 @@ function skillNotes(d) {
         '敵火力加算:防御部隊で、この初期スキルを持つ武将1人につき「敵の推定火力 ÷ 敵の武将数」を合計に足します。',
       ef.total &&
         tbByOf(d) === 'branch' &&
-        `総${b}バフ = 総${b}バフ + 部隊内の対象兵科・兵種の数(部隊の武将のうち、選んだ兵種が対象兵種か、その兵科が対象兵科の武将。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
+        `総${b}バフ = 総${b}バフ + 部隊内の対象兵科・兵種の数(部隊の武将のうち、選んだ兵種が対象兵種か、その兵科が対象兵科の武将。「自身のもつ兵種」なら、この武将と同じ兵種の武将も数える。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
       ef.total &&
         tbByOf(d) === 'hime' &&
         `総${b}バフ = 総${b}バフ + 部隊内の姫の数(武将マスタで姫の武将。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
@@ -932,7 +933,8 @@ function validate(coll, d) {
     effsOf(d).total &&
     tbByOf(d) === 'branch' &&
     !tbBranchesOf(d).length &&
-    !tbSoldiersOf(d).length
+    !tbSoldiersOf(d).length &&
+    !tbOwnOf(d)
   )
     return '対象兵科か対象兵種を1つ以上選んでください';
   if (coll === 'skills') return skillEffectMissing(d);
