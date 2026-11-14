@@ -30,18 +30,18 @@ const inits=[
  {n:'初M',eff:['mul'],muz:1,coefBy:'same',coefMax:true,v:{mulNormal:3,mulLimit:2},base:500,coef:[10,20,30,40,50,60]},
 ];
 out.msgs=[];
-for(const s of inits){await p.click('#maddInit');await W(40);await p.fill('#f-name',s.n);if(s.muz)await p.fill('#f-muzin',String(s.muz));
+for(const s of inits){await p.click('#maddInit');await W(40);await p.fill('#f-name',s.n);
   if(s.coefBy){await p.selectOption('#f-coefBy',s.coefBy);await W(30)}if(s.coefMax){await p.check('#f-coefMaxTr');await W(30)}
   for(const e of s.eff){await p.check(`[data-eff=${e}]`);await W(30)}if(s.self){await p.check('[data-eff2=self]');await W(30)}if(s.lead){await p.check('[data-eff2=leader]');await W(30)}
-  if(s.tb){await p.selectOption('#f-tbBy',s.tb);await W(30)}await addTr(5);
+  if(s.tb){await p.selectOption('#f-tbBy',s.tb);await W(30)}await addTr(5);if(s.muz){await p.check('[data-effx=muzin]');await W(30);for(let k=0;k<6;k++)await p.fill(`[data-t="${k}:muzin"]`,String(s.muz))}
   for(let k=0;k<6;k++){await p.fill(`[data-t="${k}:base"]`,String(s.base+k*100));if(s.coef)await p.fill(`[data-t="${k}:coef"]`,String(s.coef[k]));for(const [f,v] of Object.entries(s.v))await p.fill(`[data-t="${k}:${f}"]`,String(v))}
   out['editorText_'+s.n]=await p.$eval('#edform',e=>e.innerHTML.replace(/ value="[^"]*"/g,''));out.msgs.push(await save())}
 const skills=[
  {n:'自模倣S',mimic:'self',rate:[1,1,1,1.05,1.1,1.15]},{n:'他真似S',mimic:'leader',rate:[1.1,1.1,1.2,1.2,1.25,1.25],base:100},
  {n:'火焔武闘',x:true,coefBy:'x',coef:720,dup:2},{n:'同数S',coefBy:'same',coef:50,base:300,coefMax:true},{n:'防御S',side:'防御',base:5000},{n:'無尽S',muz:1,base:2000,coef:3}];
-for(const s of skills){await p.click('#maddSkill');await W(40);await p.fill('#f-name',s.n);if(s.side)await p.selectOption('#f-side',s.side);if(s.muz)await p.fill('#f-muzin',String(s.muz));
+for(const s of skills){await p.click('#maddSkill');await W(40);await p.fill('#f-name',s.n);if(s.side)await p.selectOption('#f-side',s.side);
   if(s.x)await p.selectOption('#f-xskill','1');if(s.coefBy){await p.selectOption('#f-coefBy',s.coefBy);await W(30)}if(s.coefMax){await p.check('#f-coefMaxTr');await W(30)}
-  if(s.mimic){await p.selectOption('#f-mimic',s.mimic);await W(30)}if(s.dup){await p.check('[data-eff=dup]');await W(30)}await addTr(5);
+  if(s.mimic){await p.selectOption('#f-mimic',s.mimic);await W(30)}if(s.dup){await p.check('[data-eff=dup]');await W(30)}await addTr(5);if(s.muz){await p.check('[data-effx=muzin]');await W(30);for(let k=0;k<6;k++)await p.fill(`[data-t="${k}:muzin"]`,String(s.muz))}
   for(let k=0;k<6;k++){if(s.base!=null)await p.fill(`[data-t="${k}:base"]`,String(s.base+k*10));if(s.coef!=null&&!s.mimic)await p.fill(`[data-t="${k}:coef"]`,String(s.coef));if(s.rate)await p.fill(`[data-t="${k}:mimicRate"]`,String(s.rate[k]));if(s.dup)await p.fill(`[data-t="${k}:dupMax"]`,String(s.dup))}
   out['editorText_'+s.n]=await p.$eval('#edform',e=>e.innerHTML.replace(/ value="[^"]*"/g,''));out.msgs.push(await save())}
 out.skillList=await p.$eval('#mtable',e=>e.innerHTML);

@@ -32,11 +32,24 @@ const EFFS = [
   ['total', '総攻バフ', ['totalBuff']],
   ['troop', '兵数加算', ['troopAdd']],
 ];
-const effsOf = d => {
-  if (d?.effs) return { ...d.effs };
+/* スキル・初期スキル共通の特殊効果:チェックするとTR表に数値の列が出る(無尽は計算に使う。飛翔・不屈・速度スキルは記録のみ) */
+const EXTRA_EFFS = [
+  ['muzin', '無尽'],
+  ['hisho', '飛翔'],
+  ['fukutsu', '不屈'],
+  ['speed', '速度スキル'],
+];
+/* 特殊効果のチェック。保存したチェックを優先し、保存していない項目は値の入り方から決める */
+const effsOf = d => ({ ...derivedEffs(d), ...(d?.effs || {}) });
+const derivedEffs = d => {
   const tr = d?.trs || [],
-    ne1 = f => tr.some(t => hasV(t[f]) && N(t[f]) !== 1);
+    ne1 = f => tr.some(t => hasV(t[f]) && N(t[f]) !== 1),
+    has = f => tr.some(t => hasV(t[f]));
   return {
+    muzin: N(d?.muzin) > 0 || has('muzin'),
+    hisho: has('hisho'),
+    fukutsu: has('fukutsu'),
+    speed: has('speed'),
     stat: ne1('statBuff'),
     mul: ne1('mulNormal') || ne1('mulLimit'),
     total: ne1('totalBuff') || tbByOf(d) === 'muzin',
@@ -47,6 +60,14 @@ const effsOf = d => {
     split: false,
   };
 };
+/* スキルの無尽(TRごと)。tr を省くと、いちばん大きい値。TRごとの値がない古いスキルは、スキル全体の無尽を使う */
+function skillMuzin(d, tr) {
+  if (!d || !effsOf(d).muzin) return 0;
+  const trs = d.trs || [];
+  if (!trs.some(t => hasV(t.muzin))) return N(d.muzin);
+  if (tr == null) return Math.max(0, ...trs.map(t => N(t.muzin)));
+  return N(trEntry(d, tr)?.muzin);
+}
 /* 攻撃と防御で値を分けるのは、攻撃or防御が「攻撃・防御」の初期スキルだけ */
 const splitOn = d => toFlag(d?.init) === 1 && skillSide(d) === '攻撃・防御' && !!effsOf(d).split;
 const effLabel = (d, k) =>
@@ -145,7 +166,7 @@ function muzinMul(sel, k) {
   if (!muzinOn()) return 1;
   if (k === 'lim') return 2;
   const s = M.skills.get(sel.id);
-  return s && N(s.muzin) > 0 ? 2 : 1;
+  return skillMuzin(s, sel.tr) > 0 ? 2 : 1;
 }
 /* 重複上限(スキルの特殊効果のチェック「重複上限」):部隊内で同じスキルが付いていても、効果が出るのは
    倍枠などをかけたあとの実際の上昇値が高い順に、上限の数まで。数(Xスキルの数・同じスキルの数)は全部数える。
@@ -206,7 +227,7 @@ function normalizeSkill(d) {
     ...(!toFlag(d.init) && isMimic(d) ? { mimic: mimicOf(d) } : {}),
     ...(toFlag(d.init) ? { noMimic: toFlag(d.noMimic) } : {}),
     name: String(d.name).trim(),
-    muzin: N(d.muzin),
+    muzin: effsOf(d).muzin ? Math.max(0, ...d.trs.map(t => N(t.muzin))) : 0,
     xskill: toFlag(d.init) ? 0 : toFlag(d.xskill),
     noAdd: toFlag(d.noAdd),
     coefBy: coefByOf(d),
@@ -218,6 +239,7 @@ function normalizeSkill(d) {
           o.coef = 0;
         }
         if (!toFlag(d.init) && dupOn(d) && hasV(t.dupMax)) o.dupMax = N(t.dupMax);
+        for (const [k] of EXTRA_EFFS) if (effsOf(d)[k] && hasV(t[k])) o[k] = N(t[k]);
         if (toFlag(d.init)) {
           const ef = effsOf(d);
           for (const [k, , fs] of EFFS) if (ef[k]) for (const f of fs) if (hasV(t[f])) o[f] = N(t[f]);
@@ -232,6 +254,7 @@ function normalizeSkill(d) {
     }),
     ...(toFlag(d.init)
       ? { tbBy: effsOf(d).total ? tbByOf(d) : 'fixed', effs: { ...effsOf(d), split: splitOn(d) } }
-      : { effs: { dup: dupOn(d) } }),
+      : { effs: { dup: dupOn(d), ...extraEffs(d) } }),
   };
 }
+const extraEffs = d => Object.fromEntries(EXTRA_EFFS.map(([k]) => [k, !!effsOf(d)[k]]));

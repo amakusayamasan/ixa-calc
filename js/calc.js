@@ -40,13 +40,13 @@ function calc() {
     return { sb, lo: !!s.t?.loOff, tadd, troops, atk, satk, jb, b, sk, init, initRaw: initBase(s.c, s.t) };
   });
   /* 無尽を持つ武将の数(武将の無尽、初期スキル・追加スキル・極限スキルのどれかが無尽なら1人。本人も含む) */
-  const mz = x => N(M.skills.get(x?.id)?.muzin) > 0;
+  const mz = x => skillMuzin(M.skills.get(x?.id), x?.tr) > 0;
   const mc = Math.min(
     4,
-    sl.filter(s => s.c && (cardMuzin(s.c) > 0 || mz(s.s1) || mz(s.s2) || mz(s.lim))).length,
+    sl.filter(s => s.c && (cardMuzin(s.c, s.tr) > 0 || mz(s.s1) || mz(s.s2) || mz(s.lim))).length,
   );
   /* 無尽部隊では、無尽を持つ武将(傑以外)の上乗せ分は2倍 */
-  const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c) > 0 ? 2 : 1);
+  const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c, s.tr) > 0 ? 2 : 1);
   const tbOf = s => {
     if (!s.t) return 1;
     const v = N(s.t.totalBuff) || 1;
@@ -62,13 +62,15 @@ function calc() {
       r.tb = tbOf(sl[i]);
       r.tbMc = sl[i].t === sl[i].raw && sl[i].raw.tbCoef != null ? mc : null;
       r.tbMul = tbMul(sl[i]);
-      r.void = muzinVoid(sl[i].c);
+      r.void = muzinVoid(sl[i].c, sl[i].tr);
     }
   });
   /* 防御部隊:敵火力加算の初期スキルを持つ武将1人につき、敵の推定火力 ÷ 敵の武将数 を足す
      (部隊長限定で小隊長にいるとき、無尽部隊で初期スキルが無効のときは足さない) */
   const enemyN =
-    mode === 'def' ? sl.filter(s => s.c && s.raw?.enemyAdd && !s.t?.loOff && !muzinVoid(s.c)).length : 0;
+    mode === 'def'
+      ? sl.filter(s => s.c && s.raw?.enemyAdd && !s.t?.loOff && !muzinVoid(s.c, s.tr)).length
+      : 0;
   const enemyAdd = enemyN && N(form.enemyCount) > 0 ? (enemyN * N(form.enemyFire)) / N(form.enemyCount) : 0;
   return {
     rows,

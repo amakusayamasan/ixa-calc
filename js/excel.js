@@ -99,6 +99,9 @@ const X_SKILL = [
   '敵火力加算',
   '攻防で値を分ける',
   ...SPLIT_FIELDS.map(f => SPLIT_COL[f]),
+  '飛翔',
+  '不屈',
+  '速度スキル',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 const X_JBUFF = [
@@ -145,7 +148,7 @@ async function downloadXlsx(withData) {
           toFlag(d.noAdd) ? '付与できない' : '付与できる',
           COEF_BY[coefByOf(d)],
           coefMax(d) ? 1 : 0,
-          N(d.muzin),
+          effsOf(d).muzin ? skillMuzin(d, t.tr) : 0,
           isX(d) ? 1 : 0,
           ini ? TB_BY[tbByOf(d)] : '',
           ini ? '' : MIMIC[mimicOf(d)],
@@ -170,6 +173,7 @@ async function downloadXlsx(withData) {
                 ...SPLIT_FIELDS.map(f => (splitOn(d) ? (t[f + 'D'] ?? '') : '')),
               ]
             : ['', '', '', '', '', '', '', '', '', '', ...SPLIT_FIELDS.map(() => '')]),
+          ...['hisho', 'fukutsu', 'speed'].map(k => (effsOf(d)[k] && hasV(t[k]) ? N(t[k]) : '')),
         ]);
     }
   const sold = withData
@@ -322,7 +326,6 @@ function planSkills(sr, plan) {
 function readSkillRow(s, row, ix) {
   const val = c => (c >= 0 && hasV(row[c]) ? row[c] : null);
   const str = c => String(row[c]).trim();
-  if (val(ix('無尽')) != null) s.muzin = N(row[ix('無尽')]);
   const addCol = ix('付与不可') >= 0 ? ix('付与不可') : ix('スキル付与') >= 0 ? ix('スキル付与') : ix('付与');
   if (val(addCol) != null)
     s.noAdd =
@@ -365,6 +368,8 @@ function readSkillTr(n, row, ix) {
   if (has(ix('模倣倍率'))) tr.mimicRate = N(row[ix('模倣倍率')]);
   for (const f of SPLIT_FIELDS) if (has(ix(SPLIT_COL[f]))) tr[f + 'D'] = N(row[ix(SPLIT_COL[f])]);
   if (has(ix('重複上限'))) tr.dupMax = N(row[ix('重複上限')]);
+  /* 無尽・飛翔・不屈・速度スキルはTRごと(1行ごと)の値 */
+  for (const [k, l] of EXTRA_EFFS) if (has(ix(l))) tr[k] = N(row[ix(l)]);
   const keepOld = [
     ['tbCoef', '総攻・防バフ係数'],
     ['troopAdd', '兵数加算'],
@@ -382,7 +387,14 @@ function readSkillTr(n, row, ix) {
 /* シートに無かった項目は登録済みの値を使い、種類に合わない値を消す */
 function finishSkill(s, old) {
   s.trs = trsOf(s);
-  if (s.muzin == null) s.muzin = old ? N(old.muzin) : 0;
+  /* 無尽などの列が無いシートなら、登録済みのTRごとの値を残す */
+  for (const [k] of EXTRA_EFFS)
+    if (!s.trs.some(t => hasV(t[k])) && old)
+      for (const t of s.trs) {
+        const v = k === 'muzin' ? skillMuzin(old, t.tr) : trEntry(old, t.tr)?.[k];
+        if (hasV(v) && (k !== 'muzin' || v > 0)) t[k] = N(v);
+      }
+  s.muzin = Math.max(0, ...s.trs.map(t => N(t.muzin)));
   if (s.xskill == null) s.xskill = old ? toFlag(old.xskill) : 0;
   if (s.noAdd == null) s.noAdd = old ? toFlag(old.noAdd) : 0;
   if (s.coefBy == null) s.coefBy = old ? coefByOf(old) : 'people';

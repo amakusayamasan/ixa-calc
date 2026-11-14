@@ -32,7 +32,7 @@ const LIST_COLS = {
       ['攻撃or防御', 1, d => sideChip(skillSide(d))],
       ['スキル付与', 0, d => (toFlag(d.noAdd) ? '不可' : '可')],
       ['係数の掛け方', 1, d => (isMimic(d) ? '—' : COEF_SHORT[coefByOf(d)])],
-      ['無尽', 0, d => (N(d.muzin) > 0 ? fmt(N(d.muzin), 2) : '—')],
+      ['無尽', 0, d => (skillMuzin(d) > 0 ? fmt(skillMuzin(d), 2) : '—')],
       ['Xスキル', 0, d => (isX(d) ? '○' : '—')],
       ['総攻バフの掛け方', 1, d => (isInitSkill(d) ? TB_BY[tbByOf(d)] : '—')],
       ...[...Array(maxTr + 1).keys()].map(t => [
@@ -157,6 +157,10 @@ function openEditor(coll, id, kind) {
             side: skillSide(d),
             init: isInitSkill(d) ? 1 : 0,
             muzin: N(d.muzin),
+            /* TRごとの無尽がない古いスキルは、スキル全体の無尽をTR表に入れて開く */
+            trs: (d.trs || []).map(t =>
+              effsOf(d).muzin && !hasV(t.muzin) ? { ...t, muzin: skillMuzin(d, t.tr) } : t,
+            ),
             xskill: toFlag(d.xskill),
             noAdd: toFlag(d.noAdd),
             coefBy: coefByOf(d),
@@ -279,7 +283,6 @@ function skillEditorBody(d) {
     ['side', '攻撃or防御', 'side'],
     ['noAdd', 'スキル付与', 'flag'],
     !mm && ['coefBy', '係数の掛け方', 'coef'],
-    ['muzin', '無尽(0:なし、1以上:あり)', 'number'],
     !ini && ['xskill', 'Xスキル', 'flag'],
     ini ? ['noMimic', '模倣', 'flag'] : ['mimic', '模倣', 'mimic'],
     ini && ef.total && ['tbBy', `総${sw(d)}バフの掛け方`, 'tbby'],
@@ -300,10 +303,11 @@ function skillEditorBody(d) {
       checkbox('data-eff2="enemy"', ef.enemy, '敵火力加算') +
       (skillSide(d) === '攻撃・防御' ? checkbox('data-eff2="split"', ef.split, '攻撃と防御で値を分ける') : '')
     : checkbox('data-eff="dup"', dupOn(d), '重複上限');
+  const extras = EXTRA_EFFS.map(([k, l]) => checkbox(`data-effx="${k}"`, ef[k], l)).join('');
   return (
     `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
     ${coefMaxBox}
-    ${checksField(EFFECT_PROMPT, effects)}
+    ${checksField(EFFECT_PROMPT, effects + extras)}
     <p class="note">${skillNotes(d).join('')}</p>` +
     trTable(skillTrCols(d), d.trs, t => skillLabel(t, d), 'スキル上昇率')
   );
@@ -344,7 +348,8 @@ function skillNotes(d) {
 /* スキル編集画面のTR表の列 */
 function skillTrCols(d) {
   const ini = toFlag(d.init) === 1,
-    dup = dupOn(d) ? [['dupMax', '重複上限']] : [];
+    ef = effsOf(d),
+    dup = [...(!ini && dupOn(d) ? [['dupMax', '重複上限']] : []), ...EXTRA_EFFS.filter(([k]) => ef[k])];
   if (!ini && isMimic(d))
     return [['tr', 'TR'], ['base', '素スキル上昇率'], ['mimicRate', '模倣倍率'], ...dup];
   if (!ini) return [...SKILL_TR, ...dup];
@@ -353,7 +358,7 @@ function skillTrCols(d) {
     ...initCols(d),
     ...(effsOf(d).total && tbByOf(d) === 'muzin' ? [['tbCoef', `総${sw(d)}バフ係数(%)`]] : []),
   ];
-  return splitOn(d) ? splitCols(cols) : cols;
+  return [...(splitOn(d) ? splitCols(cols) : cols), ...dup];
 }
 /* 攻撃と防御で値を分ける初期スキルのTR表:攻撃の列のあとに、同じ項目の防御の列(項目名+D)を並べる */
 function splitCols(cols) {
@@ -476,6 +481,16 @@ $('editor').addEventListener('change', e => {
     syncDraft();
     const d = draft.data;
     d.effs = { ...effsOf(d), [e.target.dataset.eff2]: e.target.checked };
+    renderEditor();
+    return;
+  }
+  if (draft && e.target.dataset.effx) {
+    syncDraft();
+    const d = draft.data,
+      k = e.target.dataset.effx;
+    /* 無尽にチェックしたら、空欄に今の無尽(古いスキルはスキル全体の値、なければ1)を入れる */
+    if (k === 'muzin' && e.target.checked) d.trs.forEach(t => hasV(t.muzin) || (t.muzin = N(d.muzin) || 1));
+    d.effs = { ...(d.effs || {}), [k]: e.target.checked };
     renderEditor();
     return;
   }

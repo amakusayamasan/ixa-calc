@@ -51,20 +51,20 @@ function cardT(c, tr) {
   return cardTrs(c).find(t => N(t.tr) === N(tr));
 }
 /* 武将が無尽を持つか:初期スキル(スキルマスタ)の無尽で決める */
-const cardMuzin = c => {
+const cardMuzin = (c, tr) => {
   if (!c) return 0;
   const sk = skillByName(c.initName);
-  return sk ? N(sk.d.muzin) : 0;
+  return sk ? skillMuzin(sk.d, tr) : 0;
 };
 function initEff(c, t) {
   if (t?.loOff) return 0;
   const v = initBase(c, t);
   if (!muzinOn() || c?.rarity === '傑') return v;
-  return cardMuzin(c) > 0 ? v * 2 : 0;
+  return cardMuzin(c, t?.tr) > 0 ? v * 2 : 0;
 }
 /* 無尽が有効で、初期スキルに無尽がない武将は、初期スキル由来の効果がすべて無効:
    総攻バフ・素攻バフ・倍枠通常・倍枠極限を1(等倍)として扱う */
-const muzinVoid = c => muzinOn() && !!c && c.rarity !== '傑' && !(cardMuzin(c) > 0);
+const muzinVoid = (c, tr) => muzinOn() && !!c && c.rarity !== '傑' && !(cardMuzin(c, tr) > 0);
 /* 部隊長限定の初期スキル:部隊長の枠にいないときは、初期スキルの効果(スキル上昇率・バフ・倍枠・兵数加算)がすべて出ない */
 function slotEff(i) {
   const s = form?.slots[i];
@@ -77,7 +77,7 @@ function slotEff(i) {
 }
 function effT(c, t) {
   if (!t) return t;
-  if (!muzinVoid(c)) return t;
+  if (!muzinVoid(c, t.tr)) return t;
   return { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1 };
 }
 /* 傑バフ
