@@ -1035,3 +1035,16 @@ tbody tr.editable:hover {
   gap: 8px 12px;
   align-items: center;
 }
+
+/* 部隊計算の上の段:「編成の道具(一括〜)」と「保存」の間の区切り線 */
+.teamsep {
+  align-self: stretch;
+  width: 1px;
+  margin: 0 10px;
+  background: var(--line);
+}
+@media (max-width: 560px) {
+  .teamsep {
+    display: none;
+  }
+}
