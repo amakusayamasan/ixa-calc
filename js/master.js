@@ -85,9 +85,11 @@ $('mfilters').addEventListener('click', e => {
   mfilter[b.dataset.fk] = b.dataset.fv;
   renderMaster();
 });
-/* スキル一覧の並べ替え:TRの見出しをクリックするたびに 大きい順 → 小さい順 → 名前順。
-   数字で比べられないもの(模倣スキル、部隊で値が変わる掛け方、そのTRがない)は、いつも一番下 */
-let msort = null; // { tr, dir: 'desc' | 'asc' }
+/* 一覧の並べ替え(武将・スキル・兵種・バフのすべての列):見出しをクリックするたびに
+   数字の列は 大きい順 ▼ → 小さい順 ▲ → 元の並び、文字の列は 昇順 ▲ → 降順 ▼ → 元の並び。
+   比べられない値(「—」、模倣スキル、部隊で値が変わる掛け方のTR列など)は、いつも一番下 */
+const msorts = {}; // タブごと { col: 列の番号, dir: 'desc' | 'asc' }
+/* スキルのTR列の並べ替えの値:人数・総コストの掛け方だけ数字で比べる */
 const sortValue = (d, tr) => {
   const t = trEntry(d, tr);
   if (!t || isMimic(d)) return null;
@@ -96,22 +98,49 @@ const sortValue = (d, tr) => {
   if (by === 'cost') return skillValue(t, enemyCost());
   return null;
 };
-function sortSkills(list) {
-  if (!msort || mtab !== 'skills') return list;
-  const k = msort.dir === 'asc' ? 1 : -1,
-    v = new Map(list.map(([id, d]) => [id, sortValue(d, msort.tr)]));
-  return [...list].sort(([a], [b]) => {
+/* 列の並べ替えの値:列に5つ目の要素(関数)があればそれ、なければセルの文字から(数字なら数として) */
+const cellText = html =>
+  String(html)
+    .replace(/<[^>]*>/g, '')
+    .trim();
+function colValue(col, d) {
+  if (typeof col[4] === 'function') return col[4](d);
+  const t = cellText(col[2](d));
+  if (!t || t === '—') return null;
+  const n = t.replace(/[,+]/g, '');
+  return /^-?\d+(\.\d+)?$/.test(n) ? Number(n) : t;
+}
+const msortOf = () => msorts[mtab] || null;
+function sortRows(rows, cols) {
+  const msort = msortOf();
+  if (!msort || !cols[msort.col]) return rows;
+  const col = cols[msort.col],
+    v = new Map(rows.map(([id, d]) => [id, colValue(col, d)])),
+    k = msort.dir === 'asc' ? 1 : -1;
+  return [...rows].sort(([a], [b]) => {
     const x = v.get(a),
       y = v.get(b);
     if (x == null || y == null) return (x == null) - (y == null);
-    return (x - y) * k;
+    if (typeof x === 'number' && typeof y === 'number') return (x - y) * k;
+    return String(x).localeCompare(String(y), 'ja') * k;
   });
 }
+/* 数字の列か(大きい順から始める) */
+let mcols = [],
+  mrows = [];
+const numericCol = c => {
+  const vs = mrows.map(([, d]) => colValue(mcols[c], d)).filter(x => x != null);
+  return vs.length > 0 && vs.every(x => typeof x === 'number');
+};
 $('mtable').addEventListener('click', e => {
-  const th = e.target.closest('th[data-sort-tr]');
+  const th = e.target.closest('th[data-sort]');
   if (!th) return;
-  const tr = N(th.dataset.sortTr);
-  msort = msort?.tr !== tr ? { tr, dir: 'desc' } : msort.dir === 'desc' ? { tr, dir: 'asc' } : null;
+  const col = N(th.dataset.sort),
+    first = numericCol(col) ? 'desc' : 'asc',
+    second = first === 'desc' ? 'asc' : 'desc';
+  const cur = msortOf();
+  msorts[mtab] =
+    !cur || cur.col !== col ? { col, dir: first } : cur.dir === first ? { col, dir: second } : null;
   renderMaster();
 });
 /* ---------- マスタ一覧の列 ----------
@@ -121,7 +150,7 @@ const sideChip = side =>
 const orDash = (v, f) => (v == null ? '—' : f(v));
 const LIST_COLS = {
   cards: () => [
-    ['カード名', 1, d => esc(d.name) + sideChip(d.side)],
+    ['カード名', 1, d => esc(d.name) + sideChip(d.side), undefined, d => d.name],
     ['初期スキル名', 1, d => esc(d.initName || '—')],
     ['カードNo', 0, d => esc(d.no)],
     ['レアリティ', 1, d => esc(d.rarity)],
@@ -150,14 +179,14 @@ const LIST_COLS = {
       ['Xスキル', 0, d => (isX(d) ? '○' : '—')],
       ['総攻バフの掛け方', 1, d => (isInitSkill(d) ? TB_BY[tbByOf(d)] : '—')],
       ...[...Array(maxTr + 1).keys()].map(t => [
-        `TR${t}${msort?.tr === t ? (msort.dir === 'desc' ? ' ▼' : ' ▲') : ''}`,
+        `TR${t}`,
         0,
         d => (trEntry(d, t) ? skillLabel(trEntry(d, t), d) : '—'),
         d => {
           const e = trEntry(d, t);
           return `title="${e ? (coefByOf(d) === 'speed' ? `素${N(e.base)} + 移動速度÷${N(e.coef)}×100` : `素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}`) : ''}"`;
         },
-        t,
+        d => sortValue(d, t),
       ]),
     ];
   },
@@ -224,11 +253,13 @@ function renderMaster() {
   const q = $('msearch').value.trim();
   const ed = isOwner ? 'editable' : '';
   const named = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q));
-  const list = sortSkills(named.filter(([, d]) => filterOk(d)).sort(byName));
+  const list = named.filter(([, d]) => filterOk(d)).sort(byName);
   renderFilters(named);
-  $('msortnote').hidden = mtab !== 'skills';
-  const rows = mtab === 'jbuffs' ? jbuffList(q) : mtab === 'soldiers' ? soldierList(q) : list;
-  const cols = LIST_COLS[mtab](rows);
+  const base = mtab === 'jbuffs' ? jbuffList(q) : mtab === 'soldiers' ? soldierList(q) : list;
+  const cols = LIST_COLS[mtab](base),
+    rows = sortRows(base, cols);
+  mcols = cols;
+  mrows = base;
   const emptyRow = `<tr><td class="l" colspan="${cols.length}" style="color:var(--muted)">${
     loaded[mtab]
       ? q || anyFilter()
@@ -236,13 +267,13 @@ function renderMaster() {
         : `${LABEL[mtab]}はまだ登録されていません。`
       : '読み込み中…'
   }</td></tr>`;
-  /* 5つ目の要素(TR)がある列は、見出しのクリックで並べ替えられる */
+  /* 見出しはどの列もクリックで並べ替えられる */
   const head = cols
-    .map(([h, l, , , st]) =>
-      st == null
-        ? `<th${l ? ' class="l"' : ''}>${h}</th>`
-        : `<th class="sortable${msort?.tr === st ? ' sorted' : ''}" data-sort-tr="${st}" title="クリックで並べ替え(大きい順 → 小さい順 → 名前順)" aria-sort="${msort?.tr === st ? (msort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}">${h}</th>`,
-    )
+    .map(([h, l], c) => {
+      const msort = msortOf(),
+        on = !!msort && msort.col === c;
+      return `<th class="sortable${l ? ' l' : ''}${on ? ' sorted' : ''}" data-sort="${c}" title="クリックで並べ替え" aria-sort="${on ? (msort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}">${h}${on ? (msort.dir === 'desc' ? ' ▼' : ' ▲') : ''}</th>`;
+    })
     .join('');
   const body = rows.length
     ? rows
