@@ -66,21 +66,33 @@ function calc() {
   );
   /* 無尽部隊では、無尽を持つ武将(傑以外)の上乗せ分は2倍 */
   const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c, s.tr) > 0 ? 2 : 1);
-  const tbOf = s => {
+  /* 部隊内の姫の数(武将マスタで姫の武将。自分を数えない設定なら自分を除く) */
+  const himeN = i => sl.filter((s, j) => s.c && toFlag(s.c.hime) && (j !== i || sl[i].raw?.himeSelf)).length;
+  /* 総バフの「係数 × 数」の数(無尽を持つ武将数 か 部隊内の姫の数)。固定なら null */
+  const tbN = i => {
+    const s = sl[i];
+    if (s.t !== s.raw || s.raw?.tbCoef == null) return null;
+    return s.raw.tbBy === 'hime' ? himeN(i) : mc;
+  };
+  /* 無尽の2倍は「無尽を持つ武将数」の掛け方だけ */
+  const tbX = i => (sl[i].raw?.tbBy === 'hime' ? 1 : tbMul(sl[i]));
+  const tbOf = (s, i) => {
     if (!s.t) return 1;
-    const v = N(s.t.totalBuff) || 1;
-    return s.t === s.raw && s.raw.tbCoef != null ? v + ((mc * N(s.raw.tbCoef)) / 100) * tbMul(s) : v;
+    const v = N(s.t.totalBuff) || 1,
+      n = tbN(i);
+    return n != null ? v + ((n * N(s.raw.tbCoef)) / 100) * tbX(i) : v;
   };
   /* 総攻バフは全枠の武将から集めて足し算(1+各(バフ-1)の和)。火焔武闘は最後に+0.2ずつ */
-  const buffs = sl.filter(s => s.t).map(tbOf);
+  const buffs = sl.map(tbOf).filter((v, i) => sl[i].t);
   const combined = 1 + buffs.reduce((a, b) => a + (b - 1), 0);
   const buff = combined + hi * 0.2,
     jin = N(form.jin);
   rows.forEach((r, i) => {
     if (r) {
-      r.tb = tbOf(sl[i]);
-      r.tbMc = sl[i].t === sl[i].raw && sl[i].raw.tbCoef != null ? mc : null;
-      r.tbMul = tbMul(sl[i]);
+      r.tb = tbOf(sl[i], i);
+      r.tbMc = tbN(i);
+      r.tbHime = sl[i].raw?.tbBy === 'hime';
+      r.tbMul = tbX(i);
       r.void = muzinVoid(sl[i].c, sl[i].tr);
     }
   });
@@ -164,7 +176,7 @@ function breakdownHtml(x, r) {
     [
       `総${m.st}バフ`,
       '×' + fmt(x.tb, 2),
-      x.tbMc != null ? `無尽${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''}` : '',
+      x.tbMc != null ? `${x.tbHime ? '姫' : '無尽'}${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''}` : '',
     ],
   ];
   return lines

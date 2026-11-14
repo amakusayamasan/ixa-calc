@@ -458,6 +458,11 @@ function skillEditorBody(d) {
     ini ? ['noMimic', '模倣', 'flag'] : ['mimic', '模倣', 'mimic'],
     ini && ef.total && ['tbBy', `総${sw(d)}バフの掛け方`, 'tbby'],
   ].filter(Boolean);
+  /* 総バフの掛け方が「部隊内の姫の数」のとき:自分も数えるか */
+  const himeSelfBox =
+    ini && ef.total && tbByOf(d) === 'hime'
+      ? `<div class="field"><div class="checks">${checkbox('id="f-himeSelf" data-f="himeSelf"', himeSelfOf(d), '自身をカウントする')}</div></div>`
+      : '';
   const coefMaxBox =
     coefByOf(d) === 'same' && !mm
       ? `<div class="field"><div class="checks">${checkbox('id="f-coefMaxTr"', toFlag(d.coefMaxTr), '係数は部隊内武将のTRの最大値を参照')}</div></div>`
@@ -481,7 +486,7 @@ function skillEditorBody(d) {
     .join('');
   return (
     `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
-    ${coefMaxBox}
+    ${coefMaxBox}${himeSelfBox}
     ${checksField(EFFECT_PROMPT, effects)}
     ${dupOn(d) ? `<div class="grid">${fieldHtml(d, 'dupMax', '重複上限(部隊内で効果が出る数)', 'number')}</div>` : ''}
     <p class="note">${skillNotes(d).join('')}</p>` +
@@ -515,6 +520,9 @@ function skillNotes(d) {
       ef.leader && '部隊長限定:部隊長の枠にいるときだけ、この初期スキルの効果が出ます。',
       ef.enemy &&
         '敵火力加算:防御部隊で、この初期スキルを持つ武将1人につき「敵の推定火力 ÷ 敵の武将数」を合計に足します。',
+      ef.total &&
+        tbByOf(d) === 'hime' &&
+        `総${b}バフ = 総${b}バフ + 部隊内の姫の数(武将マスタで姫の武将。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
       ef.total &&
         tbByOf(d) === 'muzin' &&
         `総${b}バフ = 総${b}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${b}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`,
@@ -567,7 +575,7 @@ function skillTrCols(d) {
       ['mulLimit', '倍枠極限'],
     ],
     stat: [['statBuff', `素${b}バフ`]],
-    total: [['totalBuff', `総${b}バフ`], ...(tbByOf(d) === 'muzin' ? [['tbCoef', `総${b}バフ係数(%)`]] : [])],
+    total: [['totalBuff', `総${b}バフ`], ...(tbCoefOn(d) ? [['tbCoef', `総${b}バフ係数(%)`]] : [])],
     troop: [['troopAdd', '兵数加算']],
   };
   for (const [k, l] of EXTRA_EFFS) colsOf[k] = [[k, l]];

@@ -102,6 +102,7 @@ const X_SKILL = [
   '飛翔',
   '不屈',
   '速度スキル',
+  '姫数に自身を含む',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 const X_JBUFF = [
@@ -139,7 +140,7 @@ async function downloadXlsx(withData) {
   if (withData)
     for (const [, d] of [...M.skills].sort(byName)) {
       const ini = isInitSkill(d),
-        tb = ini && tbByOf(d) === 'muzin';
+        tb = ini && tbCoefOn(d);
       for (const t of trsOf(d))
         skills.push([
           d.name,
@@ -180,6 +181,7 @@ async function downloadXlsx(withData) {
                 ),
               ]),
           ...['hisho', 'fukutsu', 'speed'].map(k => (effsOf(d)[k] && hasV(t[k]) ? N(t[k]) : '')),
+          ini && tbByOf(d) === 'hime' ? (himeSelfOf(d) ? 1 : 0) : '',
         ]);
     }
   const sold = withData
@@ -238,9 +240,7 @@ function planFrom(XLSX, wb) {
     or = readSheet(XLSX, wb, '兵種データ'),
     jr = readSheet(XLSX, wb, 'バフデータ') || readSheet(XLSX, wb, '傑バフデータ'); // 旧名のシートも読む
   if (!cr && !sr && !or && !jr)
-    throw new Error(
-      '「武将データ」「スキルデータ」「兵種データ」「バフデータ」のどのシートも見つかりません',
-    );
+    throw new Error('「武将データ」「スキルデータ」「兵種データ」「バフデータ」のどのシートも見つかりません');
   if (cr) planCards(cr, plan, warn);
   if (sr) planSkills(sr, plan);
   if (or && or.length) planSoldiers(or, plan, warn);
@@ -380,7 +380,12 @@ function readSkillRow(s, row, ix) {
     s.side = /攻/.test(v) && /防/.test(v) ? '攻撃・防御' : /防/.test(v) ? '防御' : '攻撃';
   }
   if (val(ix('総攻・防バフの掛け方')) != null)
-    s.tbBy = /無尽/.test(String(row[ix('総攻・防バフの掛け方')])) ? 'muzin' : 'fixed';
+    s.tbBy = /無尽/.test(String(row[ix('総攻・防バフの掛け方')]))
+      ? 'muzin'
+      : /姫/.test(String(row[ix('総攻・防バフの掛け方')]))
+        ? 'hime'
+        : 'fixed';
+  if (val(ix('姫数に自身を含む')) != null) s.himeSelf = toFlag(row[ix('姫数に自身を含む')]);
 }
 /* TRごとの値(1行分)。初期スキル用の値は、列がなければ登録済みの値を残す */
 function readSkillTr(n, row, ix) {
@@ -447,6 +452,7 @@ function finishSkill(s, old) {
   if (!s.coefMaxTr || s.coefBy !== 'same') delete s.coefMaxTr;
   if (s.noMimic == null && old && old.noMimic != null) s.noMimic = toFlag(old.noMimic);
   if (s.tbBy == null && old && old.tbBy) s.tbBy = tbByOf(old);
+  if (s.himeSelf == null && old && old.himeSelf != null) s.himeSelf = old.himeSelf;
   if (s.init == null)
     s.init = old
       ? isInitSkill(old)
@@ -529,9 +535,7 @@ function planJbuffs(jr, plan, warn) {
       d = { no: Number(no), name: n, targets: splitTargets(row[col.targets]) };
     const miss = d.targets.filter(t => !findId(M.soldiers, x => x.name === t));
     if (miss.length)
-      warn.push(
-        `バフ「${n}」の対象兵種「${miss.join('、')}」は兵種マスタにありません(名前のまま登録します)`,
-      );
+      warn.push(`バフ「${n}」の対象兵種「${miss.join('、')}」は兵種マスタにありません(名前のまま登録します)`);
     for (const f of JBUFF_VALS) {
       const v = row[col[f]];
       if (v != null && String(v).trim() !== '' && !Number.isFinite(Number(v)))

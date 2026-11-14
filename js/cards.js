@@ -41,7 +41,11 @@ function cardTrs(c) {
       if (!forMode(sk.d)) {
         o.statBuff = 1;
         o.totalBuff = 1;
-      } else if (tbByOf(sk.d) === 'muzin') o.tbCoef = N(e.tbCoef);
+      } else if (tbCoefOn(sk.d)) {
+        o.tbCoef = N(e.tbCoef);
+        o.tbBy = tbByOf(sk.d);
+        if (o.tbBy === 'hime') o.himeSelf = himeSelfOf(sk.d);
+      }
       return o;
     });
   return [{ ...CARD_DEFAULT_TR }];
