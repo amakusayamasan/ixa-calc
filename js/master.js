@@ -1,55 +1,115 @@
 // マスタ管理画面(一覧・編集パネル・保存)
 // 使うファイル:core.js、fields.js、skills.js、cards.js、admin.js(調べ方:node tests/deps.js)
-/* 一覧の「攻撃・防御・攻・防」の絞り込み(武将マスタ・スキルマスタ)。'' はすべて */
-let sideFilter = '';
+/* ---------- マスタ一覧の絞り込みと並べ替え ----------
+   絞り込みは1段ずつボタンの行で出す。tabs はその段を出すタブ。'' はすべて。
+   件数は、その段以外の絞り込み(と名前の絞り込み)をかけた中での数 */
 const SIDE_FILTERS = [
   ['', 'すべて'],
   ['攻撃', '攻撃'],
   ['防御', '防御'],
   ['攻撃・防御', '攻・防'],
 ];
-const sideFilterOn = () => sideFilter && (mtab === 'cards' || mtab === 'skills');
-/* レアリティの絞り込み(武将マスタだけ)。'' はすべて */
-let rarFilter = '';
-const rarFilterOn = () => rarFilter && mtab === 'cards';
-const sideOk = d => !sideFilterOn() || skillSide(d) === sideFilter;
-const rarOk = d => !rarFilterOn() || d.rarity === rarFilter;
-/* 絞り込みボタン。件数は、もう一方の絞り込みをかけた中での数 */
-const filterBtns = (items, cur, attr, n) =>
-  items
-    .map(
-      ([v, l]) =>
-        `<button type="button" ${attr}="${esc(v)}" aria-pressed="${cur === v}">${esc(l)}<span class="cnt">${n(v)}</span></button>`,
-    )
+/* スキルの種類:初期スキル / 模倣スキル / 追加スキル(模倣でないもの) */
+const skillKind = d => (isInitSkill(d) ? 'init' : isMimic(d) ? 'mimic' : 'add');
+/* 人数系:人数で値が変わるスキル(係数の掛け方が「人数」か「敵武将の総コスト」で、係数が0でないTRがあるもの) */
+const peopleSkill = d =>
+  !isMimic(d) &&
+  ['people', 'cost'].includes(coefByOf(d)) &&
+  trsOf(d).some(t => N(t.coef) !== 0 || (splitOn(d) && N(t.coefD) !== 0));
+const MFILTERS = [
+  {
+    key: 'side',
+    label: '攻撃or防御',
+    tabs: ['cards', 'skills'],
+    items: SIDE_FILTERS,
+    test: (d, v) => skillSide(d) === v,
+  },
+  {
+    key: 'kind',
+    label: '種類',
+    tabs: ['skills'],
+    items: [
+      ['', 'すべて'],
+      ['add', '追加スキル'],
+      ['init', '初期スキル'],
+      ['mimic', '模倣スキル'],
+    ],
+    test: (d, v) => skillKind(d) === v,
+  },
+  {
+    key: 'people',
+    label: '人数',
+    tabs: ['skills'],
+    items: [
+      ['', 'すべて'],
+      ['yes', '人数系'],
+      ['no', '人数系以外'],
+    ],
+    test: (d, v) => (peopleSkill(d) ? 'yes' : 'no') === v,
+  },
+  {
+    key: 'rar',
+    label: 'レアリティ',
+    tabs: ['cards'],
+    items: () => [['', 'すべて'], ...RARITIES.map(r => [r, r])],
+    test: (d, v) => d.rarity === v,
+  },
+];
+const mfilter = { side: '', kind: '', people: '', rar: '' };
+const fOn = f => f.tabs.includes(mtab) && !!mfilter[f.key];
+const anyFilter = () => MFILTERS.some(fOn);
+const filterOk = (d, skip) => MFILTERS.every(f => f === skip || !fOn(f) || f.test(d, mfilter[f.key]));
+function renderFilters(named) {
+  const fs = MFILTERS.filter(f => f.tabs.includes(mtab)),
+    box = $('mfilters');
+  box.hidden = !fs.length;
+  box.innerHTML = fs
+    .map(f => {
+      const pool = named.filter(([, d]) => filterOk(d, f)),
+        items = typeof f.items === 'function' ? f.items() : f.items;
+      const btns = items
+        .map(([v, l]) => {
+          const n = v ? pool.filter(([, d]) => f.test(d, v)).length : pool.length;
+          return `<button type="button" data-fk="${f.key}" data-fv="${esc(v)}" aria-pressed="${mfilter[f.key] === v}">${esc(l)}<span class="cnt">${n}</span></button>`;
+        })
+        .join('');
+      return `<div class="mfrow"><span class="label">${f.label}</span><div class="seg sidefilter" role="group" aria-label="${f.label}で絞り込み">${btns}</div></div>`;
+    })
     .join('');
-function renderSideFilter(named) {
-  const box = $('sidefilter'),
-    rbox = $('rarfilter');
-  box.hidden = !(mtab === 'cards' || mtab === 'skills');
-  rbox.hidden = mtab !== 'cards';
-  if (!box.hidden) {
-    const pool = named.filter(([, d]) => rarOk(d));
-    box.innerHTML = filterBtns(SIDE_FILTERS, sideFilter, 'data-side', v =>
-      v ? pool.filter(([, d]) => skillSide(d) === v).length : pool.length,
-    );
-  }
-  if (!rbox.hidden) {
-    const pool = named.filter(([, d]) => sideOk(d));
-    rbox.innerHTML = filterBtns([['', 'すべて'], ...RARITIES.map(r => [r, r])], rarFilter, 'data-rar', v =>
-      v ? pool.filter(([, d]) => d.rarity === v).length : pool.length,
-    );
-  }
 }
-$('sidefilter').addEventListener('click', e => {
-  const b = e.target.closest('[data-side]');
+$('mfilters').addEventListener('click', e => {
+  const b = e.target.closest('[data-fk]');
   if (!b) return;
-  sideFilter = b.dataset.side;
+  mfilter[b.dataset.fk] = b.dataset.fv;
   renderMaster();
 });
-$('rarfilter').addEventListener('click', e => {
-  const b = e.target.closest('[data-rar]');
-  if (!b) return;
-  rarFilter = b.dataset.rar;
+/* スキル一覧の並べ替え:TRの見出しをクリックするたびに 大きい順 → 小さい順 → 名前順。
+   数字で比べられないもの(模倣スキル、部隊で値が変わる掛け方、そのTRがない)は、いつも一番下 */
+let msort = null; // { tr, dir: 'desc' | 'asc' }
+const sortValue = (d, tr) => {
+  const t = trEntry(d, tr);
+  if (!t || isMimic(d)) return null;
+  const by = coefByOf(d);
+  if (by === 'people') return skillValue(t);
+  if (by === 'cost') return skillValue(t, enemyCost());
+  return null;
+};
+function sortSkills(list) {
+  if (!msort || mtab !== 'skills') return list;
+  const k = msort.dir === 'asc' ? 1 : -1,
+    v = new Map(list.map(([id, d]) => [id, sortValue(d, msort.tr)]));
+  return [...list].sort(([a], [b]) => {
+    const x = v.get(a),
+      y = v.get(b);
+    if (x == null || y == null) return (x == null) - (y == null);
+    return (x - y) * k;
+  });
+}
+$('mtable').addEventListener('click', e => {
+  const th = e.target.closest('th[data-sort-tr]');
+  if (!th) return;
+  const tr = N(th.dataset.sortTr);
+  msort = msort?.tr !== tr ? { tr, dir: 'desc' } : msort.dir === 'desc' ? { tr, dir: 'asc' } : null;
   renderMaster();
 });
 /* ---------- マスタ一覧の列 ----------
@@ -80,7 +140,7 @@ const LIST_COLS = {
     const maxTr = Math.max(5, ...list.flatMap(([, d]) => trsOf(d).map(t => N(t.tr))));
     return [
       ['スキル名', 1, d => esc(d.name)],
-      ['種類', 1, d => (isInitSkill(d) ? '初期スキル' : 'スキル')],
+      ['種類', 1, d => ({ init: '初期スキル', mimic: '模倣スキル', add: 'スキル' })[skillKind(d)]],
       ['攻撃or防御', 1, d => sideChip(skillSide(d))],
       ['スキル付与', 0, d => (toFlag(d.noAdd) ? '不可' : '可')],
       ['係数の掛け方', 1, d => (isMimic(d) ? '—' : COEF_SHORT[coefByOf(d)])],
@@ -88,13 +148,14 @@ const LIST_COLS = {
       ['Xスキル', 0, d => (isX(d) ? '○' : '—')],
       ['総攻バフの掛け方', 1, d => (isInitSkill(d) ? TB_BY[tbByOf(d)] : '—')],
       ...[...Array(maxTr + 1).keys()].map(t => [
-        `TR${t}`,
+        `TR${t}${msort?.tr === t ? (msort.dir === 'desc' ? ' ▼' : ' ▲') : ''}`,
         0,
         d => (trEntry(d, t) ? skillLabel(trEntry(d, t), d) : '—'),
         d => {
           const e = trEntry(d, t);
           return `title="${e ? (coefByOf(d) === 'speed' ? `素${N(e.base)} + 移動速度÷${N(e.coef)}×100` : `素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}`) : ''}"`;
         },
+        t,
       ]),
     ];
   },
@@ -161,18 +222,25 @@ function renderMaster() {
   const q = $('msearch').value.trim();
   const ed = isOwner ? 'editable' : '';
   const named = [...M[mtab]].filter(([, d]) => !q || String(d.name).includes(q));
-  const list = named.filter(([, d]) => sideOk(d) && rarOk(d)).sort(byName);
-  renderSideFilter(named);
+  const list = sortSkills(named.filter(([, d]) => filterOk(d)).sort(byName));
+  renderFilters(named);
   const rows = mtab === 'jbuffs' ? jbuffList(q) : mtab === 'soldiers' ? soldierList(q) : list;
   const cols = LIST_COLS[mtab](rows);
   const emptyRow = `<tr><td class="l" colspan="${cols.length}" style="color:var(--muted)">${
     loaded[mtab]
-      ? q || sideFilterOn() || rarFilterOn()
+      ? q || anyFilter()
         ? '該当なし'
         : `${LABEL[mtab]}はまだ登録されていません。`
       : '読み込み中…'
   }</td></tr>`;
-  const head = cols.map(([h, l]) => `<th${l ? ' class="l"' : ''}>${h}</th>`).join('');
+  /* 5つ目の要素(TR)がある列は、見出しのクリックで並べ替えられる */
+  const head = cols
+    .map(([h, l, , , st]) =>
+      st == null
+        ? `<th${l ? ' class="l"' : ''}>${h}</th>`
+        : `<th class="sortable${msort?.tr === st ? ' sorted' : ''}" data-sort-tr="${st}" title="クリックで並べ替え(大きい順 → 小さい順 → 名前順)" aria-sort="${msort?.tr === st ? (msort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}">${h}</th>`,
+    )
+    .join('');
   const body = rows.length
     ? rows
         .map(

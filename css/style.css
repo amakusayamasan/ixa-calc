@@ -889,11 +889,29 @@ tbody tr.editable:hover {
 }
 
 /* マスタ一覧の攻撃・防御の絞り込み */
-.sidefilter {
-  margin: 4px 0 10px;
+.mfilters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
 }
-.sidefilter + .sidefilter {
-  margin-top: -4px;
+.mfrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.mfrow > .label {
+  width: 72px;
+  flex: none;
+}
+#mtable th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+#mtable th.sortable:hover,
+#mtable th.sorted {
+  color: var(--accent);
 }
 .sidefilter button {
   padding: 3px 10px;
