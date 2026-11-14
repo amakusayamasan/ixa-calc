@@ -122,7 +122,8 @@ function hishoCount() {
 }
 /* 部隊移動速度 = 部隊の兵種の速度のいちばん遅い値 × 速度スキル ÷ 100。
    速度スキル = 100(基本) + 部隊の全員のスキル(初期・追加・極限)の速度スキルの合計(それぞれのTRの値)。
-   兵種を選んでいない枠は、遅い値を探すときに数えない */
+   兵種を選んでいない枠は、遅い値を探すときに数えない。速度スキルの値は無尽でも2倍にならない
+   (2倍になるのは、このあとのスキル効果のほう) */
 const speedOf = (d, tr) => (d && effsOf(d).speed ? N(trEntry(d, tr)?.speed) : 0);
 function unitSpeed() {
   if (!form) return 0;
@@ -201,10 +202,8 @@ const limX = sel => (isMimic(M.skills.get(sel.id)) ? 1 : 1.2);
 /* 無尽でスキル効果が何倍になるか(k: s1 / s2 / lim) */
 function muzinMul(sel, k) {
   if (!muzinOn()) return 1;
-  const s = M.skills.get(sel.id);
-  /* 部隊移動速度で決まるスキルは、無尽でも2倍にならない */
-  if (coefByOf(s) === 'speed') return 1;
   if (k === 'lim') return 2;
+  const s = M.skills.get(sel.id);
   return skillMuzin(s, sel.tr) > 0 ? 2 : 1;
 }
 /* 重複上限(スキルの特殊効果のチェック「重複上限」):部隊内で同じスキルが付いていても、効果が出るのは
