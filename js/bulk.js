@@ -22,7 +22,8 @@ function bulkValue(d, tr) {
 function bulkItems() {
   const words = kana(bulk.q).split(/\s+/).filter(Boolean);
   const list = [...M.skills]
-    .filter(([, d]) => toFlag(d.noAdd) !== 1 && !isInitSkill(d) && forMode(d))
+    /* 候補は各武将のスキル欄と同じ:付与できるスキル(付与できる初期スキルも)で、今の部隊タイプで使えるもの */
+    .filter(([, d]) => toFlag(d.noAdd) !== 1 && forMode(d))
     .filter(([, d]) => !bulk.people || (peopleSkill(d) ? 'yes' : 'no') === bulk.people)
     .filter(([, d]) => words.every(w => kana(d.name).includes(w)))
     .sort(byName)
