@@ -202,6 +202,10 @@ input:focus-visible {
   flex-direction: column;
   gap: 16px;
 }
+/* 中身が空の入れ物(編集パネル・Excel取り込みなど、使っていないとき)は、間隔も取らない */
+.view > div:empty {
+  display: none;
+}
 /* 結果帳票 */
 .result {
   background: var(--panel);
@@ -894,7 +898,7 @@ tbody tr.editable:hover {
   flex-direction: column;
   gap: 6px;
   min-width: 0;
-  margin: 4px 0 12px;
+  margin: 0;
   padding: 8px 14px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -934,5 +938,5 @@ tbody tr.editable:hover {
 
 /* スキル一覧の並べ替えの案内 */
 .sortnote {
-  margin: -4px 0 8px;
+  margin: -6px 0 -6px;
 }
