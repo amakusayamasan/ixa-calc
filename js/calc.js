@@ -134,7 +134,7 @@ function skillEffect(i, k) {
     tag =
       (mz > 1 ? ' <span class="mz">無尽×2</span>' : '') +
       (cn != null
-        ? ` <span class="mz cn">${COEF_SHORT[coefByOf(sk)]}${cn}${coefMax(sk) ? `・係数TR${maxTrOf(sel.id)}` : ''}</span>`
+        ? ` <span class="mz cn">${COEF_SHORT[coefByOf(sk)]}${coefByOf(sk) === 'speed' ? fmt(cn, 2) : cn}${coefMax(sk) ? `・係数TR${maxTrOf(sel.id)}` : ''}</span>`
         : '') +
       mtag,
     sp = SPECIAL_EFFECT[sk.name] ? `<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name]())}</span>` : '';

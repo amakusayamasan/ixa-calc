@@ -340,7 +340,9 @@ function readSkillRow(s, row, ix) {
           ? 'x'
           : /飛翔/.test(v) || v === 'hisho'
             ? 'hisho'
-            : 'people';
+            : /速度/.test(v) || v === 'speed'
+              ? 'speed'
+              : 'people';
   }
   if (val(ix('種類')) != null) s.init = /初期/.test(String(row[ix('種類')])) ? 1 : 0;
   for (const [col, key] of [

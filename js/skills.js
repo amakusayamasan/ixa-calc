@@ -7,8 +7,9 @@ const COEF_BY = {
   same: '部隊内の同じスキルの数',
   x: '部隊内のXスキルの数',
   hisho: '部隊内の飛翔の数',
+  speed: '部隊移動速度/係数',
 };
-const COEF_SHORT = { people: '人数', same: '同スキル数', x: 'Xスキル数', hisho: '飛翔数' };
+const COEF_SHORT = { people: '人数', same: '同スキル数', x: 'Xスキル数', hisho: '飛翔数', speed: '移動速度' };
 /* 初期スキルの総攻・防バフの掛け方:固定、または 総攻・防バフ + 無尽を持つ武将数 × 総攻・防バフ係数 ÷ 100 × 無尽2倍 */
 const TB_BY = { fixed: '固定', muzin: '無尽を持つ武将数' };
 const tbByOf = d => (TB_BY[d?.tbBy] ? d.tbBy : 'fixed');
@@ -100,6 +101,7 @@ const maxTrOf = id => {
 function skillValueIn(t, d, id) {
   t = modeTr(d, t);
   const n = coefN(d, id);
+  if (coefByOf(d) === 'speed') return speedValue(t, n);
   if (!coefMax(d) || n == null) return skillValue(t, n);
   const mt = maxTrOf(id),
     e = mt != null && modeTr(d, trEntry(d, mt));
@@ -118,11 +120,36 @@ function hishoCount() {
     return a + Math.max(0, ...vals);
   }, 0);
 }
+/* 部隊移動速度 = 部隊の兵種の速度のいちばん遅い値 × 速度スキル ÷ 100。
+   速度スキル = 100(基本) + 部隊の全員のスキル(初期・追加・極限)の速度スキルの合計(それぞれのTRの値)。
+   兵種を選んでいない枠は、遅い値を探すときに数えない */
+const speedOf = (d, tr) => (d && effsOf(d).speed ? N(trEntry(d, tr)?.speed) : 0);
+function unitSpeed() {
+  if (!form) return 0;
+  const sp = form.slots
+    .map(s => M.soldiers.get(s.soldier))
+    .filter(o => o && hasV(o.speed))
+    .map(o => N(o.speed));
+  if (!sp.length) return 0;
+  const skill = form.slots.reduce((a, s) => {
+    if (!s.card) return a;
+    const init = skillByName(M.cards.get(s.card)?.initName)?.d;
+    return (
+      a +
+      speedOf(init, s.tr) +
+      ['s1', 's2', 'lim'].reduce((b, k) => b + speedOf(M.skills.get(s[k].id), s[k].tr), 0)
+    );
+  }, 100);
+  return (Math.min(...sp) * skill) / 100;
+}
+/* 係数の掛け方が「部隊移動速度/係数」のスキル:素スキル上昇率 + 部隊移動速度 ÷ 係数 × 100 */
+const speedValue = (t, n) => N(t.base) + (N(t.coef) ? ((n ?? 0) / N(t.coef)) * 100 : 0);
 function coefN(d, id) {
   const by = coefByOf(d);
   if (by === 'people' || !form) return null;
   if (by === 'same') return sameUses(id).length;
   if (by === 'hisho') return hishoCount();
+  if (by === 'speed') return unitSpeed();
   return Math.min(
     8,
     form.slots.reduce((a, s) => a + ['s1', 's2'].filter(k => isX(M.skills.get(s[k].id))).length, 0),
@@ -152,6 +179,7 @@ function skillLabel(t, d) {
 }
 function skillLabelBase(t, d) {
   const by = coefByOf(d);
+  if (by === 'speed') return `${N(t.base) ? fmt(N(t.base), 1) + '+' : ''}移動速度÷${fmt(N(t.coef), 2)}×100`;
   return by === 'people'
     ? fmt(skillValue(t), 1)
     : `${fmt(N(t.base), 1)}+${fmt(N(t.coef), 2)}×${COEF_SHORT[by]}`;
@@ -173,8 +201,10 @@ const limX = sel => (isMimic(M.skills.get(sel.id)) ? 1 : 1.2);
 /* 無尽でスキル効果が何倍になるか(k: s1 / s2 / lim) */
 function muzinMul(sel, k) {
   if (!muzinOn()) return 1;
-  if (k === 'lim') return 2;
   const s = M.skills.get(sel.id);
+  /* 部隊移動速度で決まるスキルは、無尽でも2倍にならない */
+  if (coefByOf(s) === 'speed') return 1;
+  if (k === 'lim') return 2;
   return skillMuzin(s, sel.tr) > 0 ? 2 : 1;
 }
 /* 重複上限(スキルの特殊効果のチェック「重複上限」):部隊内で同じスキルが付いていても、効果が出るのは

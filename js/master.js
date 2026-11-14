@@ -41,7 +41,7 @@ const LIST_COLS = {
         d => (trEntry(d, t) ? skillLabel(trEntry(d, t), d) : '—'),
         d => {
           const e = trEntry(d, t);
-          return `title="${e ? `素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}` : ''}"`;
+          return `title="${e ? (coefByOf(d) === 'speed' ? `素${N(e.base)} + 移動速度÷${N(e.coef)}×100` : `素${N(e.base)} + 係数${N(e.coef)}×${COEF_SHORT[coefByOf(d)]}`) : ''}"`;
         },
       ]),
     ];
@@ -326,7 +326,9 @@ function skillNotes(d) {
     ef = effsOf(d),
     b = sw(d);
   const notes = [
-    'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 / 部隊内の飛翔の数)。',
+    'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 / 部隊内の飛翔の数)。「部隊移動速度/係数」は計算のしかたが違います(下の説明)。',
+    coefByOf(d) === 'speed' &&
+      'スキル上昇率 = 素スキル上昇率 + 部隊移動速度 ÷ 係数 × 100。部隊移動速度 = 部隊の兵種の速度のいちばん遅い値 × (100 + 部隊全員のスキルの速度スキルの合計) ÷ 100。無尽でも2倍になりません。',
     coefByOf(d) === 'hisho' &&
       '部隊内の飛翔の数 = 4人それぞれが持つスキル(初期・追加・極限)の飛翔のいちばん大きい値を、4人分足したもの。',
     dupOn(d) &&
@@ -720,7 +722,8 @@ function skillEffectMissing(d) {
   const cols = skillTrCols(d).filter(([f]) => !head.includes(f) && !SPLIT_FIELDS.some(x => f === x + 'D'));
   for (const t of trsOf(d))
     for (const [f, l] of cols)
-      if (!hasV(t[f])) return `TR${N(t.tr)}の「${l}」を入力してください(特殊効果にチェックを入れた項目は必須です)`;
+      if (!hasV(t[f]))
+        return `TR${N(t.tr)}の「${l}」を入力してください(特殊効果にチェックを入れた項目は必須です)`;
   return '';
 }
 function clean(coll, d) {
