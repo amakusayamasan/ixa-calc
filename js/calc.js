@@ -22,9 +22,10 @@ function calc() {
   const rows = sl.map((s, i) => {
     if (!s.c || !s.t) return null;
     /* 黎天列光:1つにつき部隊の全武将の兵数 +2000(部隊で2つまで) */
-    /* 他の武将の初期スキルの兵数加算(無尽部隊で無尽を持たない武将でも効く。スキル上昇率だけが無効) */
+    /* 他の武将の初期スキルの兵数加算(無尽部隊で無尽を持たない武将でも効く。スキル上昇率だけが無効)。
+       「自身の兵数も増やす」の初期スキルなら、持ち主本人の兵数にも足す */
     const tadd = sl.reduce(
-      (a, o, j) => (j !== i && o.c && o.raw && !o.t?.loOff ? a + N(o.raw.troopAdd) : a),
+      (a, o, j) => ((j !== i || o.raw?.troopSelf) && o.c && o.raw && !o.t?.loOff ? a + N(o.raw.troopAdd) : a),
       0,
     );
     const troops = N(s.c.troops) + rei * REI_TROOPS + tadd,

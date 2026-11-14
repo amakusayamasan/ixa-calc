@@ -538,6 +538,12 @@ function skillEditorBody(d) {
         `<p class="note">チェックを入れると、この武将本人だけにかかります。チェックなしなら、部隊のどこにいても部隊全員にかかります。</p><div class="field"><div class="checks">${checkbox('data-eff2="self"', ef.self, `${effLabel(d, 'stat')}は本人のみ`)}</div></div>`,
       ),
     tbCountBox && subbox(`総${sw(d)}バフの設定`, tbCountBox),
+    ini &&
+      ef.troop &&
+      subbox(
+        '兵数加算の設定',
+        `<p class="note">兵数加算は、同じ部隊のほかの武将の兵数に足します。チェックを入れると、この武将本人の兵数にも足します。</p><div class="field"><div class="checks">${checkbox('data-eff2="troopSelf"', ef.troopSelf, '自身の兵数も増やす')}</div></div>`,
+      ),
     dupOn(d) &&
       subbox(
         '重複上限の設定',
@@ -574,7 +580,7 @@ function skillNotes(d) {
   ];
   if (ini)
     notes.push(
-      `素${b}バフ〜総${b}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0)。`,
+      `素${b}バフ〜総${b}バフは、このスキルを初期スキルに持つ武将に効く値です。兵数加算は、同じ部隊の他の武将の兵数に足します(空欄なら0。「自身の兵数も増やす」なら本人にも足す)。`,
       ef.stat &&
         (ef.self
           ? `素${b}バフは本人だけにかかります。`

@@ -106,6 +106,7 @@ const X_SKILL = [
   '対象兵科',
   '対象兵種',
   '自身のもつ兵種',
+  '兵数加算に自身を含む',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 const X_JBUFF = [
@@ -188,6 +189,7 @@ async function downloadXlsx(withData) {
           ini && tbByOf(d) === 'branch' ? tbBranchesOf(d).join('、') : '',
           ini && tbByOf(d) === 'branch' ? tbSoldiersOf(d).join('、') : '',
           ini && tbByOf(d) === 'branch' ? (tbOwnOf(d) ? 1 : 0) : '',
+          ini && effsOf(d).troop ? (effsOf(d).troopSelf ? 1 : 0) : '',
         ]);
     }
   const sold = withData
@@ -371,6 +373,7 @@ function readSkillRow(s, row, ix) {
     ['部隊長限定', 'leader'],
     ['敵火力加算', 'enemy'],
     ['攻防で値を分ける', 'split'],
+    ['兵数加算に自身を含む', 'troopSelf'],
   ])
     if (val(ix(col)) != null) s.effFlags = { ...(s.effFlags || {}), [key]: toFlag(row[ix(col)]) === 1 };
   if (val(ix('重複上限')) != null) s.dupMax = N(row[ix('重複上限')]);
@@ -462,6 +465,7 @@ function finishSkill(s, old) {
             leader: !!old.effs.leader,
             enemy: !!old.effs.enemy,
             split: !!old.effs.split,
+            troopSelf: !!old.effs.troopSelf,
           }
         : {}),
       ...(s.effFlags || {}),

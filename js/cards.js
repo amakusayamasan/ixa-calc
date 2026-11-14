@@ -36,6 +36,7 @@ function cardTrs(c) {
         if (ef.leader) o.leaderOnly = true;
         if (ef.self) o.selfStat = true;
         if (ef.enemy) o.enemyAdd = true;
+        if (ef.troopSelf) o.troopSelf = true;
       }
       /* この部隊で使わない側の初期スキル(攻撃部隊での防御スキルなど)は、素バフ・総バフを使わない(倍枠は共通) */
       if (!forMode(sk.d)) {
