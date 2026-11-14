@@ -60,6 +60,17 @@ const X_CARD = [
   '姫',
   '剣豪',
 ];
+/* 攻撃と防御で値を分ける初期スキルの、防御の列 */
+const SPLIT_COL = {
+  base: '素スキル上昇率(防)',
+  coef: '係数(防)',
+  statBuff: '素攻・防バフ(防)',
+  mulNormal: '倍枠通常(防)',
+  mulLimit: '倍枠極限(防)',
+  totalBuff: '総攻・防バフ(防)',
+  tbCoef: '総攻・防バフ係数(防)',
+  troopAdd: '兵数加算(防)',
+};
 const X_SKILL = [
   'スキル名',
   '種類',
@@ -85,6 +96,9 @@ const X_SKILL = [
   '総攻・防バフ',
   '総攻・防バフ係数',
   '兵数加算',
+  '敵火力加算',
+  '攻防で値を分ける',
+  ...SPLIT_FIELDS.map(f => SPLIT_COL[f]),
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 const X_JBUFF = [
@@ -151,8 +165,11 @@ async function downloadXlsx(withData) {
                 t.totalBuff ?? '',
                 tb ? (t.tbCoef ?? '') : '',
                 t.troopAdd ?? '',
+                effsOf(d).enemy ? 1 : 0,
+                splitOn(d) ? 1 : 0,
+                ...SPLIT_FIELDS.map(f => (splitOn(d) ? (t[f + 'D'] ?? '') : '')),
               ]
-            : ['', '', '', '', '', '', '', '']),
+            : ['', '', '', '', '', '', '', '', '', '', ...SPLIT_FIELDS.map(() => '')]),
         ]);
     }
   const sold = withData
@@ -319,6 +336,8 @@ function readSkillRow(s, row, ix) {
   for (const [col, key] of [
     ['素攻バフ本人のみ', 'self'],
     ['部隊長限定', 'leader'],
+    ['敵火力加算', 'enemy'],
+    ['攻防で値を分ける', 'split'],
   ])
     if (val(ix(col)) != null) s.effFlags = { ...(s.effFlags || {}), [key]: toFlag(row[ix(col)]) === 1 };
   if (val(ix('係数最大TR参照')) != null) s.coefMaxTr = toFlag(row[ix('係数最大TR参照')]);
@@ -344,6 +363,7 @@ function readSkillTr(n, row, ix) {
   };
   const has = c => c >= 0 && hasV(row[c]);
   if (has(ix('模倣倍率'))) tr.mimicRate = N(row[ix('模倣倍率')]);
+  for (const f of SPLIT_FIELDS) if (has(ix(SPLIT_COL[f]))) tr[f + 'D'] = N(row[ix(SPLIT_COL[f])]);
   if (has(ix('重複上限'))) tr.dupMax = N(row[ix('重複上限')]);
   const keepOld = [
     ['tbCoef', '総攻・防バフ係数'],
@@ -372,7 +392,14 @@ function finishSkill(s, old) {
   if (s.init)
     s.effs = {
       ...effsOf({ ...s, effs: undefined }),
-      ...(old?.effs ? { self: !!old.effs.self, leader: !!old.effs.leader } : {}),
+      ...(old?.effs
+        ? {
+            self: !!old.effs.self,
+            leader: !!old.effs.leader,
+            enemy: !!old.effs.enemy,
+            split: !!old.effs.split,
+          }
+        : {}),
       ...(s.effFlags || {}),
     };
   delete s.effFlags;

@@ -3,12 +3,44 @@
 const BASE = 'master/v2';
 const SLOT_NAMES = ['部隊長', '小隊長1', '小隊長2', '小隊長3'];
 const SP = { rei: '黎天列光', hi: '火焔武闘' };
-/* 無尽:部隊長がこのカードNoのとき、無尽の効果がかかる
-   ・初期スキル:武将マスタの無尽が1以上なら2倍、0なら0(無効)
-   ・極限スキル:全員2倍(無尽が付与される)
-   ・追加スキル:スキルマスタの無尽が1以上のスキルは2倍 */
-const MUZIN_LEADER_NO = '1274';
-const muzinOn = () => !!form && String(M.cards.get(form.slots[0].card)?.no ?? '') === MUZIN_LEADER_NO;
+/* ---------- 部隊の種類(攻撃部隊・防御部隊) ----------
+   画面の「部隊タイプ」で切り替える。計算のしかたは同じで、使う値だけが違う。編成はそれぞれ別に保存する。
+   muzinNo:部隊長がこのカードNoのとき無尽部隊
+     ・初期スキル:初期スキルの無尽が1以上なら2倍、0なら0(無効)
+     ・極限スキル:全員2倍(無尽が付与される)
+     ・追加スキル:スキルマスタの無尽が1以上のスキルは2倍 */
+const MODES = {
+  atk: {
+    label: '攻撃部隊',
+    side: '攻撃', // この部隊で使う側(攻撃or防御が「攻撃」「攻撃・防御」の武将・スキル)
+    opp: '防御', // この部隊では使わない側
+    st: '攻', // 表示の一文字(素攻・総攻バフなど)
+    stat: '攻撃',
+    soldierF: 'atk', // 兵種の攻撃力
+    jbIn: 'atkIn', // 傑バフ(所属時)
+    jbOut: 'atkOut', // 傑バフ(外部)
+    muzinNo: '1274',
+    storeKey: 'ixa-form-v2',
+    /* ステ振り:攻撃に振ると 素攻撃力 + 攻撃上昇率×690、兵法に振ると 素攻撃力 */
+    statOf: (c, hei) => N(c.baseStat) + (hei ? 0 : N(c.growth) * STAT_FACTOR),
+  },
+  def: {
+    label: '防御部隊',
+    side: '防御',
+    opp: '攻撃',
+    st: '防',
+    stat: '防御',
+    soldierF: 'def',
+    jbIn: 'defIn',
+    jbOut: 'defOut',
+    muzinNo: '1299',
+    storeKey: 'ixa-form-def-v1',
+    statOf: (c, hei) => N(c.baseDef) + (hei ? 0 : N(c.growthDef) * STAT_FACTOR),
+  },
+};
+let mode = 'atk';
+const MD = () => MODES[mode];
+const muzinOn = () => !!form && String(M.cards.get(form.slots[0].card)?.no ?? '') === MD().muzinNo;
 const REI_TROOPS = 2000;
 const STAT_FACTOR = 690;
 const SAMPLE = {
@@ -102,7 +134,7 @@ function status(text, warn) {
 const allLoaded = () => loaded.cards && loaded.skills && loaded.soldiers;
 const trsOf = d => [...(d?.trs || [])].sort((a, b) => N(a.tr) - N(b.tr));
 const trEntry = (d, tr) => (d?.trs || []).find(t => N(t.tr) === N(tr));
-const cardAtk = c => N(c.baseStat) + N(c.growth) * STAT_FACTOR;
+const cardAtk = c => MODES.atk.statOf(c, false);
 /* ---------- HTML の小さな部品 ---------- */
 /* ボタン1つ。attrs は data-* などの属性(なければ空) */
 const button = (label, attrs = '', cls = 'btn') =>

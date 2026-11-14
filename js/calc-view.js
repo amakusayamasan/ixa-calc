@@ -4,6 +4,8 @@
 function toKeys(f) {
   return {
     jin: f.jin,
+    enemyCount: f.enemyCount,
+    enemyFire: f.enemyFire,
     jb: (f.jb || []).map(String),
     slots: f.slots.map(s => ({
       card: String(M.cards.get(s.card)?.no ?? ''),
@@ -17,14 +19,17 @@ function toKeys(f) {
   };
 }
 function fromKeys(f) {
-  if (!f || typeof f !== 'object') f = SAMPLE;
-  if (!Array.isArray(f.slots) || f.slots.length !== 4) f = { ...f, slots: SAMPLE.slots };
+  const def = mode === 'atk' ? SAMPLE : EMPTY_FORM;
+  if (!f || typeof f !== 'object') f = def;
+  if (!Array.isArray(f.slots) || f.slots.length !== 4) f = { ...f, slots: def.slots };
   const sk = v => {
     const [n, tr] = Array.isArray(v) ? v : ['', 0];
     return { id: n ? findId(M.skills, d => d.name === n) : '', tr: N(tr) };
   };
   return {
     jin: f.jin ?? 1.05,
+    enemyCount: f.enemyCount ?? ENEMY_DEFAULT.count,
+    enemyFire: f.enemyFire ?? ENEMY_DEFAULT.fire,
     jb: Array.isArray(f.jb)
       ? [
           ...new Set(
@@ -56,7 +61,7 @@ function cardItems(i, q) {
   const words = kana(q).split(/\s+/).filter(Boolean),
     sel = form.slots[i].card;
   return [...M.cards]
-    .filter(([, d]) => d.side !== '防御')
+    .filter(([, d]) => d.side !== MD().opp)
     .sort(byName)
     .filter(([, d]) => {
       const hay = kana(`${d.name} ${d.rarity} No.${d.no} ${d.no}`);
@@ -87,7 +92,7 @@ function skillItems(i, k, q) {
   /* 付与できないスキルと、防御スキル(攻撃部隊では効果なし)は候補に出さない */
   return [...M.skills]
     .sort(byName)
-    .filter(([, d]) => toFlag(d.noAdd) !== 1 && forAtk(d))
+    .filter(([, d]) => toFlag(d.noAdd) !== 1 && forMode(d))
     .filter(([, d]) => words.every(w => kana(d.name).includes(w)))
     .map(([id, d]) => {
       const xl = k === 'lim' && isX(d),
@@ -121,7 +126,7 @@ const rarClass = r => {
   return v === '傑' ? 'rar-ketsu' : v === '極' ? 'rar-goku' : 'rar-ten';
 };
 function metaOf(k, x) {
-  if (k === 'soldier') return `兵士攻撃力 ${fmt(N(x.d.atk), 2)}`;
+  if (k === 'soldier') return `兵士${MD().stat}力 ${fmt(N(x.d[MD().soldierF]), 2)}`;
   if (k === 'card')
     return `${esc(x.d.rarity || '')} No.${esc(x.d.no)} ・ ${trRange(cardV(x.d))}${x.off ? ' ・ 他の枠で使用中' : ''}`;
   const t = trsOf(x.d),
@@ -282,7 +287,7 @@ function soldierOpts(sel) {
       .sort(bySoldierOrder)
       .map(
         ([id, d]) =>
-          `<option value="${esc(id)}"${id === sel ? ' selected' : ''}>${esc(d.name)}(攻${fmt(N(d.atk))})</option>`,
+          `<option value="${esc(id)}"${id === sel ? ' selected' : ''}>${esc(d.name)}(${MD().st}${fmt(N(d[MD().soldierF]))})</option>`,
       )
       .join('')
   );
@@ -306,7 +311,8 @@ function renderCalc() {
       '<p class="note">武将マスタがまだ登録されていません。「マスタ管理」から登録すると、ここで部隊を組めます。</p>';
     return;
   }
-  if (!form) form = fromKeys(store.get('ixa-form-v2') || SAMPLE);
+  if (!form) form = fromKeys(store.get(MD().storeKey) || (mode === 'atk' ? SAMPLE : EMPTY_FORM));
+  renderModeUi();
   $('jin').value = form.jin;
   if (!form.jb) form.jb = [];
   renderJb();
@@ -376,7 +382,7 @@ function slotHtml(s, i) {
       ${comboBox(i, 'card', c?.name || '', '武将名・カードNoで検索')}
       ${cardTr}</div>${meta}
       <div class="alloc"><span class="label">ステ振り</span><div class="seg" role="group" aria-label="ステ振り">
-        ${allocBtn('atk', '攻撃', s.alloc !== 'hei')}${allocBtn('hei', '兵法', s.alloc === 'hei')}</div></div></div>
+        ${allocBtn('atk', MD().stat, s.alloc !== 'hei')}${allocBtn('hei', '兵法', s.alloc === 'hei')}</div></div></div>
     <div class="field"><label class="label" for="soldier-${i}">兵種</label>${soldier}</div>
     ${skillRow(i, 's1', '追加スキル', s.s1, jc)}${skillRow(i, 's2', '追加スキル2', s.s2, jc)}${skillRow(i, 'lim', '極限スキル', s.lim, jc)}
     <div class="calc" id="calc-${i}"></div></div>`;
@@ -415,10 +421,6 @@ $('jin').addEventListener('input', e => {
     updateResults();
   }
 });
-$('resetForm').addEventListener('click', () => {
-  form = fromKeys(SAMPLE);
-  renderCalc();
-});
 function renderJb() {
   const btn = $('jbBtn'),
     panel = $('jbpanel');
@@ -442,18 +444,22 @@ function renderJb() {
   )}</div>`;
   const rows = list.length
     ? list.map(([, d]) => jbRowHtml(d, sel.has(String(d.no)), innNos.has(String(d.no)))).join('')
-    : '<p class="note">外部攻撃力が登録された傑バフがありません。マスタ管理の「傑バフ」タブで、外部攻撃力を登録してください。</p>';
+    : `<p class="note">外部${MD().stat}力が登録された傑バフがありません。マスタ管理の「傑バフ」タブで、外部${MD().stat}力を登録してください。</p>`;
   panel.innerHTML = `${head}
-    <p class="note">${JB_NOTE}</p>
+    <p class="note">${jbNote()}</p>
     <div class="jblist">${rows}</div>`;
 }
-const JB_NOTE =
-  'チェックした傑バフの「外部」の攻撃力が、対象兵種の兵士攻撃力に足されます。その傑カードが部隊長・小隊長の枠にいる場合は「所属時」の攻撃力が自動で足され、外部にもチェックがあれば両方を合計します。防御力は防御部隊の計算で使います。';
+const jbNote = () => {
+  const s = MD().stat;
+  return `チェックした傑バフの「外部」の${s}力が、対象兵種の兵士${s}力に足されます。その傑カードが部隊長・小隊長の枠にいる場合は「所属時」の${s}力が自動で足され、外部にもチェックがあれば両方を合計します。${
+    mode === 'atk' ? '防御力は防御部隊の計算で使います。' : '攻撃力は攻撃部隊の計算で使います。'
+  }`;
+};
 /* 傑バフの選択パネルの1行。on=外部にチェックあり、inU=部隊に所属中 */
 function jbRowHtml(d, on, inU) {
   const no = String(d.no);
   const label = `<label><input type="checkbox" data-jb="${esc(no)}"${on ? ' checked' : ''}><span><b>${esc(d.name)}</b><br><span class="meta">No.${esc(no)} ・ 対象:${esc(targetsLabel(d))}</span></span></label>`;
-  const vals = `<div class="jbvals"><span class="${on ? 'jbon' : ''}">外部 攻+${fmt(jv(d, 'atkOut'), 2)}</span><span class="${inU ? 'jbon' : ''}">${inU ? '部隊に所属中:' : ''}所属時 攻+${fmt(jv(d, 'atkIn'), 2)}</span></div>`;
+  const vals = `<div class="jbvals"><span class="${on ? 'jbon' : ''}">外部 ${MD().st}+${fmt(jv(d, MD().jbOut), 2)}</span><span class="${inU ? 'jbon' : ''}">${inU ? '部隊に所属中:' : ''}所属時 ${MD().st}+${fmt(jv(d, MD().jbIn), 2)}</span></div>`;
   return `<div class="jbrow${on || inU ? ' on' : ''}">${label}
       ${vals}</div>`;
 }
@@ -496,3 +502,53 @@ $('jbpanel').addEventListener('change', e => {
   renderJb();
   updateResults();
 });
+
+/* ---------- 部隊タイプ(攻撃部隊・防御部隊)の切り替え ---------- */
+/* 防御部隊の最初の編成(空の4枠)。敵の武将数・推定火力は、敵火力加算の初期スキルで使う */
+const ENEMY_DEFAULT = { count: 140, fire: 150000000000 };
+const EMPTY_FORM = {
+  jin: 1,
+  enemyCount: ENEMY_DEFAULT.count,
+  enemyFire: ENEMY_DEFAULT.fire,
+  jb: [],
+  slots: [0, 1, 2, 3].map(() => ({ card: '', tr: 0, soldier: '', s1: ['', 0], s2: ['', 0], lim: ['', 0] })),
+};
+const forms = { atk: null, def: null };
+function setMode(m) {
+  if (m === mode || !MODES[m]) return;
+  forms[mode] = form;
+  mode = m;
+  form = forms[m];
+  $('jbpanel').hidden = true;
+  renderCalc();
+}
+/* 部隊タイプで変わる見出し・入力欄 */
+function renderModeUi() {
+  const m = MD();
+  for (const b of document.querySelectorAll('[data-mode]'))
+    b.setAttribute('aria-pressed', b.dataset.mode === mode);
+  $('lbl-base').textContent = `素${m.st}合計`;
+  $('lbl-buff').textContent = `総${m.st}バフ(全枠+火焔)`;
+  $('enemyBox').hidden = mode !== 'def';
+  $('r-enemy-box').hidden = mode !== 'def';
+  $('note-atk').hidden = mode !== 'atk';
+  $('note-def').hidden = mode !== 'def';
+  if (form) {
+    $('jin').value = form.jin;
+    $('enemyCount').value = form.enemyCount ?? ENEMY_DEFAULT.count;
+    $('enemyFire').value = form.enemyFire ?? ENEMY_DEFAULT.fire;
+  }
+}
+document.querySelector('.modeseg').addEventListener('click', e => {
+  const b = e.target.closest('[data-mode]');
+  if (b) setMode(b.dataset.mode);
+});
+for (const [id, key] of [
+  ['enemyCount', 'enemyCount'],
+  ['enemyFire', 'enemyFire'],
+])
+  $(id).addEventListener('input', e => {
+    if (!form) return;
+    form[key] = e.target.value === '' ? 0 : Number(e.target.value);
+    updateResults();
+  });

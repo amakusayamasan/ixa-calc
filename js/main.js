@@ -141,7 +141,8 @@ renderCalc();
       if (!snap.metadata.fromCache || snap.docs.length) loaded[coll] = true;
       settle();
       /* 最初の読み込み完了時と、空だったマスタにデータが入ったとき(初期データ投入など)は編成を作り直す */
-      if ((!wasLoaded && allLoaded()) || (wasLoaded && wasEmpty && M[coll].size)) form = null;
+      if ((!wasLoaded && allLoaded()) || (wasLoaded && wasEmpty && M[coll].size))
+        form = forms.atk = forms.def = null;
       renderCalc();
       if (!$('view-master').hidden) renderMaster();
       renderSeed();

@@ -23,10 +23,10 @@ function calc() {
       0,
     );
     const troops = N(s.c.troops) + rei * REI_TROOPS + tadd,
-      atk = s.alloc === 'hei' ? N(s.c.baseStat) : cardAtk(s.c);
+      atk = MD().statOf(s.c, s.alloc === 'hei');
     const sname = M.soldiers.get(s.soldier)?.name,
       jb = jbBonus(sname),
-      satk = N(M.soldiers.get(s.soldier)?.atk) + jb;
+      satk = N(M.soldiers.get(s.soldier)?.[MD().soldierF]) + jb;
     const sb = sbOf(s),
       b = satk * troops * 1.4 + atk * 1.4 * sb;
     const init = initEff(s.c, s.t);
@@ -65,6 +65,11 @@ function calc() {
       r.void = muzinVoid(sl[i].c);
     }
   });
+  /* 防御部隊:敵火力加算の初期スキルを持つ武将1人につき、敵の推定火力 ÷ 敵の武将数 を足す
+     (部隊長限定で小隊長にいるとき、無尽部隊で初期スキルが無効のときは足さない) */
+  const enemyN =
+    mode === 'def' ? sl.filter(s => s.c && s.raw?.enemyAdd && !s.t?.loOff && !muzinVoid(s.c)).length : 0;
+  const enemyAdd = enemyN && N(form.enemyCount) > 0 ? (enemyN * N(form.enemyFire)) / N(form.enemyCount) : 0;
   return {
     rows,
     base,
@@ -73,14 +78,16 @@ function calc() {
     lb,
     rei,
     hi,
+    enemyN,
+    enemyAdd,
     muzin: muzinOn(),
-    total: ((base * skill) / 100 + base) * jin * buff,
+    total: ((base * skill) / 100 + base) * jin * buff + enemyAdd,
   };
 }
 /* スキル欄の下に出す効果。スキル上昇率 × 倍枠(極限は×1.2)= この枠で加算される値 */
 const SPECIAL_EFFECT = {
-  黎天列光: '全武将の兵数 +2,000(重複上限まで)',
-  火焔武闘: '総攻バフ +0.2(重複上限まで)',
+  黎天列光: () => '全武将の兵数 +2,000(重複上限まで)',
+  火焔武闘: () => `総${MD().st}バフ +0.2(重複上限まで)`,
 };
 function skillEffect(i, k) {
   const sel = form.slots[i][k],
@@ -88,7 +95,7 @@ function skillEffect(i, k) {
   if (!sk) return '';
   const t = trEntry(sk, sel.tr);
   if (!t) return 'このTRの値が登録されていません';
-  if (!forAtk(sk)) return '防御スキルのため、攻撃部隊では効果なし';
+  if (!forMode(sk)) return `${MD().opp}スキルのため、${MD().label}では効果なし`;
   if (dupDropped().has(i + ':' + k)) return `効果 <b>0</b> <span class="mz cn">重複上限のため効果なし</span>`;
   const mm = isMimic(sk),
     cn = mm ? null : coefN(sk, sel.id),
@@ -109,13 +116,14 @@ function skillEffect(i, k) {
         ? ` <span class="mz cn">${COEF_SHORT[coefByOf(sk)]}${cn}${coefMax(sk) ? `・係数TR${maxTrOf(sel.id)}` : ''}</span>`
         : '') +
       mtag,
-    sp = SPECIAL_EFFECT[sk.name] ? `<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name])}</span>` : '';
+    sp = SPECIAL_EFFECT[sk.name] ? `<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name]())}</span>` : '';
   if (!ct) return `効果 <b>${fmt(v * mz, 1)}</b>${tag}${sp}`;
   const mul = k === 'lim' ? N(ct.mulLimit) * limX(sel) : N(ct.mulNormal);
   return `効果 <b>${fmt(v * mz * mul, 1)}</b>${tag}${sp}`;
 }
 /* 武将ごとの内訳。各行は [見出し, 値, 補足(なければ空)] */
 function breakdownHtml(x, r) {
+  const m = MD();
   const initNote = x.lo
     ? '部隊長限定のため無効'
     : r.muzin && x.initRaw && x.init !== x.initRaw
@@ -125,12 +133,16 @@ function breakdownHtml(x, r) {
       : '';
   const lines = [
     ['兵数', fmt(x.troops), x.tadd ? `兵数加算+${fmt(x.tadd)}` : ''],
-    ['攻撃', fmt(x.atk), ''],
-    ['兵士攻撃力', fmt(x.satk), x.jb ? `傑+${fmt(x.jb, 2)}` : ''],
-    ['素攻', fmt(x.b, 1), x.sb !== 1 ? `素攻バフ×${fmt(x.sb, 2)}` : ''],
+    [m.stat, fmt(x.atk), ''],
+    [`兵士${m.stat}力`, fmt(x.satk), x.jb ? `傑+${fmt(x.jb, 2)}` : ''],
+    [`素${m.st}`, fmt(x.b, 1), x.sb !== 1 ? `素${m.st}バフ×${fmt(x.sb, 2)}` : ''],
     ['初期スキル', fmt(x.init, 1), initNote],
     ['スキル小計', fmt(x.sk, 1), ''],
-    ['総攻バフ', '×' + fmt(x.tb, 2), x.tbMc != null ? `無尽${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''}` : ''],
+    [
+      `総${m.st}バフ`,
+      '×' + fmt(x.tb, 2),
+      x.tbMc != null ? `無尽${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''}` : '',
+    ],
   ];
   return lines
     .map(
@@ -148,6 +160,7 @@ function updateResults() {
   $('r-skill').textContent = fmt(r.skill, 1);
   $('r-buff').textContent = fmt(r.buff, 2);
   $('r-special').textContent = r.rei + ' / ' + r.hi;
+  $('r-enemy').textContent = r.enemyN ? `${fmt(r.enemyAdd)}(${r.enemyN}人)` : '0';
   r.rows.forEach((x, i) => {
     const el = $('calc-' + i);
     if (!el) return;
@@ -159,5 +172,5 @@ function updateResults() {
       if (el) el.innerHTML = skillEffect(i, k);
     }),
   );
-  if (M.cards.size && M.skills.size && M.soldiers.size) store.set('ixa-form-v2', toKeys(form));
+  if (M.cards.size && M.skills.size && M.soldiers.size) store.set(MD().storeKey, toKeys(form));
 }

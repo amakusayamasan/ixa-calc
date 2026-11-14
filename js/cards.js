@@ -11,7 +11,7 @@ const skillByName = n => {
 };
 function initBase(c, t) {
   const sk = skillByName(c?.initName);
-  if (sk && !forAtk(sk.d)) return 0;
+  if (sk && !forMode(sk.d)) return 0;
   if (sk) {
     const e = trEntry(sk.d, t?.tr);
     if (e) return skillValueIn(e, sk.d, sk.id);
@@ -26,17 +26,19 @@ function cardTrs(c) {
   const sk = skillByName(c.initName),
     st = sk ? trsOf(sk.d) : [];
   if (st.length)
-    return st.map(e => {
-      const o = { tr: N(e.tr) };
+    return st.map(e0 => {
+      const e = modeTr(sk.d, e0),
+        o = { tr: N(e.tr) };
       for (const [f] of SKILL_INIT) o[f] = hasV(e[f]) ? N(e[f]) : 1;
-      /* 防御スキルの素防バフ・総防バフは攻撃部隊では使わない(倍枠は共通) */
       if (hasV(e.troopAdd)) o.troopAdd = N(e.troopAdd);
       {
         const ef = sk.d.effs || {};
         if (ef.leader) o.leaderOnly = true;
         if (ef.self) o.selfStat = true;
+        if (ef.enemy) o.enemyAdd = true;
       }
-      if (!forAtk(sk.d)) {
+      /* この部隊で使わない側の初期スキル(攻撃部隊での防御スキルなど)は、素バフ・総バフを使わない(倍枠は共通) */
+      if (!forMode(sk.d)) {
         o.statBuff = 1;
         o.totalBuff = 1;
       } else if (tbByOf(sk.d) === 'muzin') o.tbCoef = N(e.tbCoef);
@@ -86,8 +88,8 @@ const jbFind = no => {
   const id = findId(M.jbuffs, d => String(d.no) === String(no));
   return id ? M.jbuffs.get(id) : null;
 };
-/* 外部からかけられるのは、外部攻撃力が0より大きい傑バフだけ */
-const jbHasOuter = d => jv(d, 'atkOut') > 0;
+/* 外部からかけられるのは、外部の値(攻撃部隊なら外部攻撃力、防御部隊なら外部防御力)が0より大きい傑バフだけ */
+const jbHasOuter = d => jv(d, MD().jbOut) > 0;
 const jbOuter = () => (form?.jb || []).map(no => jbFind(no)).filter(d => d && jbHasOuter(d));
 const jbInUnit = () => {
   if (!form) return [];
@@ -103,8 +105,8 @@ const jbHits = (d, sname) => !(d.targets && d.targets.length) || (sname && d.tar
 function jbBonus(sname) {
   if (!sname) return 0;
   return (
-    jbInUnit().reduce((a, d) => a + (jbHits(d, sname) ? jv(d, 'atkIn') : 0), 0) +
-    jbOuter().reduce((a, d) => a + (jbHits(d, sname) ? jv(d, 'atkOut') : 0), 0)
+    jbInUnit().reduce((a, d) => a + (jbHits(d, sname) ? jv(d, MD().jbIn) : 0), 0) +
+    jbOuter().reduce((a, d) => a + (jbHits(d, sname) ? jv(d, MD().jbOut) : 0), 0)
   );
 }
 /* 武将:項目の型をそろえる */

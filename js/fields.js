@@ -1,5 +1,5 @@
 // マスタの項目の定義(武将・スキル・兵種・傑バフの入力項目、選択肢、並び順)
-// 使うファイル:core.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、skills.js(調べ方:node tests/deps.js)
 /* flag は 0/1 の選択。姫:0=姫ではない 1=姫。無尽は数値(0=なし、1以上=あり) */
 const FLAG_LABELS = {
   noMimic: ['模倣できる', '模倣できない'],
@@ -80,4 +80,9 @@ const trRange = d => {
   return t.length ? `TR${N(t[0].tr)}〜${N(t[t.length - 1].tr)}` : 'TRなし';
 };
 /* 初期スキルにしかない、TRごとの項目 */
-const INIT_TR_FIELDS = () => [...SKILL_INIT.map(([f]) => f), 'troopAdd', 'tbCoef'];
+const INIT_TR_FIELDS = () => [
+  ...SKILL_INIT.map(([f]) => f),
+  'troopAdd',
+  'tbCoef',
+  ...SPLIT_FIELDS.map(f => f + 'D'),
+];

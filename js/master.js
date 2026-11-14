@@ -295,7 +295,10 @@ function skillEditorBody(d) {
           (k === 'stat' && ef.stat
             ? checkbox('data-eff2="self"', ef.self, `${effLabel(d, 'stat')}は本人のみ`)
             : ''),
-      ).join('') + checkbox('data-eff2="leader"', ef.leader, '部隊長限定')
+      ).join('') +
+      checkbox('data-eff2="leader"', ef.leader, '部隊長限定') +
+      checkbox('data-eff2="enemy"', ef.enemy, '敵火力加算') +
+      (skillSide(d) === '攻撃・防御' ? checkbox('data-eff2="split"', ef.split, '攻撃と防御で値を分ける') : '')
     : checkbox('data-eff="dup"', dupOn(d), '重複上限');
   return (
     `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
@@ -323,6 +326,9 @@ function skillNotes(d) {
           ? `素${b}バフは本人だけにかかります。`
           : `素${b}バフは、部隊のどこにいても部隊全員にかかります。`),
       ef.leader && '部隊長限定:部隊長の枠にいるときだけ、この初期スキルの効果が出ます。',
+      ef.enemy &&
+        '敵火力加算:防御部隊で、この初期スキルを持つ武将1人につき「敵の推定火力 ÷ 敵の武将数」を合計に足します。',
+      splitOn(d) && '攻撃と防御で値を分ける:防御部隊では(防)の列の値を使います(空欄なら攻撃と同じ値)。',
       ef.total &&
         tbByOf(d) === 'muzin' &&
         `総${b}バフ = 総${b}バフ + 無尽を持つ武将数(本人を含む、最大4) × 総${b}バフ係数 ÷ 100 × 無尽2倍(無尽部隊で本人が無尽を持つとき)。係数は %で、4%なら 4 と入力します。`,
@@ -342,10 +348,27 @@ function skillTrCols(d) {
   if (!ini && isMimic(d))
     return [['tr', 'TR'], ['base', '素スキル上昇率'], ['mimicRate', '模倣倍率'], ...dup];
   if (!ini) return [...SKILL_TR, ...dup];
-  return [
+  const cols = [
     ...SKILL_TR,
     ...initCols(d),
     ...(effsOf(d).total && tbByOf(d) === 'muzin' ? [['tbCoef', `総${sw(d)}バフ係数(%)`]] : []),
+  ];
+  return splitOn(d) ? splitCols(cols) : cols;
+}
+/* 攻撃と防御で値を分ける初期スキルのTR表:攻撃の列のあとに、同じ項目の防御の列(項目名+D)を並べる */
+function splitCols(cols) {
+  const lab = (f, l, side) =>
+    f === 'statBuff'
+      ? `素${side}バフ`
+      : f === 'totalBuff'
+        ? `総${side}バフ`
+        : f === 'tbCoef'
+          ? `総${side}バフ係数(%)`
+          : `${l}(${side})`;
+  const sp = cols.filter(([f]) => SPLIT_FIELDS.includes(f));
+  return [
+    ...cols.map(([f, l]) => (SPLIT_FIELDS.includes(f) ? [f, lab(f, l, '攻')] : [f, l])),
+    ...sp.map(([f, l]) => [f + 'D', lab(f, l, '防')]),
   ];
 }
 function cardEditorBody(d) {
@@ -442,6 +465,12 @@ $('editor').addEventListener('change', e => {
     syncDraft();
     renderEditor();
     return;
+  }
+  if (draft && e.target.dataset.eff2 === 'split' && e.target.checked) {
+    /* 分けたときは、防御の空欄に攻撃の値を入れておく */
+    syncDraft();
+    for (const t of draft.data.trs)
+      for (const f of SPLIT_FIELDS) if (!hasV(t[f + 'D']) && hasV(t[f])) t[f + 'D'] = t[f];
   }
   if (draft && e.target.dataset.eff2) {
     syncDraft();

@@ -12,7 +12,16 @@ const isX = d => toFlag(d?.xskill) === 1;
 /* スキルの攻防:攻撃 / 防御 / 攻撃・防御。値は1組だけ持ち、攻撃部隊では「防御」スキルの値を使わない(未設定は攻撃) */
 const SIDES = ['攻撃', '防御', '攻撃・防御'];
 const skillSide = d => (SIDES.includes(d?.side) ? d.side : '攻撃');
-const forAtk = d => skillSide(d) !== '防御';
+/* この部隊(攻撃部隊・防御部隊)で使うスキルか。「攻撃・防御」はどちらでも使う */
+const forMode = d => skillSide(d) !== MD().opp;
+/* 攻撃と防御で値を分けた初期スキル:防御部隊では「(防)」の値を使う(空欄なら攻撃と同じ値) */
+const SPLIT_FIELDS = ['base', 'coef', 'statBuff', 'mulNormal', 'mulLimit', 'totalBuff', 'tbCoef', 'troopAdd'];
+function modeTr(d, t) {
+  if (!t || mode !== 'def' || !splitOn(d)) return t;
+  const o = { ...t };
+  for (const f of SPLIT_FIELDS) if (hasV(t[f + 'D'])) o[f] = t[f + 'D'];
+  return o;
+}
 const sw = d => ({ 攻撃: '攻', 防御: '防', '攻撃・防御': '攻・防' })[skillSide(d)];
 /* 攻防に合わせた初期スキル列の名前(素攻バフ/素防バフ/素攻・防バフ など) */
 /* 初期スキルの効果のチェック:素攻バフ・倍枠(通常・極限)・総攻バフ・兵数加算。チェックした効果の列だけTR表に出す。
@@ -34,8 +43,12 @@ const effsOf = d => {
     troop: tr.some(t => N(t.troopAdd) !== 0),
     self: false,
     leader: false,
+    enemy: false,
+    split: false,
   };
 };
+/* 攻撃と防御で値を分けるのは、攻撃or防御が「攻撃・防御」の初期スキルだけ */
+const splitOn = d => toFlag(d?.init) === 1 && skillSide(d) === '攻撃・防御' && !!effsOf(d).split;
 const effLabel = (d, k) =>
   k === 'stat' ? `素${sw(d)}バフ` : k === 'total' ? `総${sw(d)}バフ` : EFFS.find(x => x[0] === k)[1];
 const initCols = d => {
@@ -69,10 +82,11 @@ const maxTrOf = id => {
 };
 /* 部隊の中でのスキル上昇率:素スキル上昇率(自分のTR) + 係数(最大TRを参照するなら部隊内の最大TRの係数) × 数 */
 function skillValueIn(t, d, id) {
+  t = modeTr(d, t);
   const n = coefN(d, id);
   if (!coefMax(d) || n == null) return skillValue(t, n);
   const mt = maxTrOf(id),
-    e = mt != null && trEntry(d, mt);
+    e = mt != null && modeTr(d, trEntry(d, mt));
   return N(t.base) + N(e ? e.coef : t.coef) * n;
 }
 function coefN(d, id) {
@@ -116,7 +130,7 @@ function skillLabelBase(t, d) {
 /* ---------- 計算 ---------- */
 function skillVal(sel, i) {
   const s = M.skills.get(sel.id);
-  if (!s || !forAtk(s)) return 0;
+  if (!s || !forMode(s)) return 0;
   const t = trEntry(s, sel.tr);
   if (!t) return 0;
   if (!isMimic(s)) return skillValueIn(t, s, sel.id);
@@ -208,12 +222,16 @@ function normalizeSkill(d) {
           const ef = effsOf(d);
           for (const [k, , fs] of EFFS) if (ef[k]) for (const f of fs) if (hasV(t[f])) o[f] = N(t[f]);
           if (ef.total && tbByOf(d) === 'muzin') o.tbCoef = N(t.tbCoef);
+          /* 攻撃と防御で値を分けるときは、使っている項目の(防)の値も保存する */
+          if (splitOn(d))
+            for (const f of SPLIT_FIELDS)
+              if (o[f] !== undefined && hasV(t[f + 'D'])) o[f + 'D'] = N(t[f + 'D']);
         }
         return o;
       }),
     }),
     ...(toFlag(d.init)
-      ? { tbBy: effsOf(d).total ? tbByOf(d) : 'fixed', effs: effsOf(d) }
+      ? { tbBy: effsOf(d).total ? tbByOf(d) : 'fixed', effs: { ...effsOf(d), split: splitOn(d) } }
       : { effs: { dup: dupOn(d) } }),
   };
 }

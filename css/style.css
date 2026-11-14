@@ -820,3 +820,14 @@ tbody tr.editable:hover {
 #f-name-warn:empty {
   display: none;
 }
+
+/* 防御部隊の敵の武将数・推定火力 */
+.enemybox {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.enemybox[hidden] {
+  display: none;
+}

@@ -12,7 +12,7 @@ await p.route(/fonts\.(googleapis|gstatic)\.com/,r=>r.fulfill({body:'',contentTy
 const out={};const W=ms=>p.waitForTimeout(ms);
 await p.goto('http://127.0.0.1:'+(process.env.PORT||8765)+'/index.html?mode=admin&rules=1');await W(200);await p.click('#login');await W(80);
 await p.click('#tab-master');await p.click('#seedRun');await W(200);
-await p.click('#tab-calc');await p.click('#resetForm');await W(50);
+await p.click('#tab-calc');await p.evaluate(()=>{form=fromKeys(SAMPLE);renderCalc()});await W(50);
 const snapCalc=()=>p.evaluate(()=>{const r=calc();const rnd=v=>typeof v==='number'?Math.round(v*1000)/1000:v;
   const eff=[];form.slots.forEach((s,i)=>['s1','s2','lim'].forEach(k=>eff.push(skillEffect(i,k).replace(/<[^>]+>/g,''))));
   return{total:rnd(r.total),base:rnd(r.base),skill:rnd(r.skill),buff:rnd(r.buff),rei:r.rei,hi:r.hi,muzin:r.muzin,
@@ -81,6 +81,24 @@ out.afterImport=[before,await p.evaluate(()=>Math.round(calc().total))];
 await p.click('[data-m=skills]');await p.fill('#peopleIn','300');await p.click('#peopleSave');await W(80);out.people=await p.evaluate(()=>config.people);
 await p.click('[data-m=soldiers]');await p.locator('#mtable tbody tr').first().click();await W(40);await p.click('[data-act=delete]');await W(20);await p.click('[data-act=delete]');await W(100);
 
+// 防御部隊(Excel「柳生部隊」と同じ編成。期待値 2,935,090,108.339...)
+await p.evaluate(async()=>{const b=db.batch();const P=(c,id,d)=>putWithLog(b,'追加',c,id,d,null);
+ const ini=(name,trs,ef)=>P('skills','I'+name,{name,init:1,side:'攻撃・防御',noAdd:1,coefBy:'people',muzin:0,xskill:0,noMimic:0,tbBy:'fixed',effs:{stat:false,mul:false,total:false,troop:false,self:false,leader:false,enemy:false,split:false,...ef},trs});
+ ini('斎藤初',[{tr:5,base:0,coef:0,totalBuff:1.8}],{total:true});ini('尼子初',[{tr:2,base:0,coef:0,mulNormal:2,mulLimit:2.3}],{mul:true});
+ ini('長宗我部初',[{tr:5,base:990,coef:0,mulNormal:1,mulLimit:4.5}],{mul:true});ini('傑秀吉初',[{tr:0,base:550,coef:0}],{enemy:true});
+ ini('攻防初',[{tr:0,base:1000,coef:0,statBuff:2,baseD:3000,statBuffD:1.5}],{stat:true,split:true});
+ const card=(id,no,name,initName,troops,bd,gd,rar='天')=>P('cards',id,{no,name,initName,troops,baseStat:1000,baseDef:bd,growth:0,growthDef:gd,rarity:rar,side:'攻撃・防御',cost:5,hime:0,kengou:0});
+ card('d1',90001,'斎藤覇','斎藤初',8300,1310,10);card('d2',90002,'尼子経久','尼子初',7540,1270,74);card('d3',90003,'長宗我部','長宗我部初',7700,1260,72);card('d4',20003,'傑秀吉B','傑秀吉初',24000,90000,0,'傑');card('d5',90005,'攻防将','攻防初',8000,1000,10);
+ const sk=(name,base)=>P('skills','S'+name,{name,init:0,side:'防御',noAdd:0,coefBy:'people',muzin:0,xskill:0,effs:{dup:false},trs:[{tr:0,base,coef:0}]});
+ sk('泰厳射手',3220);sk('従魔',2632);sk('魔導',2352);sk('権謀',520);sk('梵天',2850);sk('梵天5',24764.4/(4.5*1.2));
+ P('jbuffs','jbH',{no:20003,name:'傑秀吉B',targets:['鉄砲騎馬'],atkIn:0,defIn:7,atkOut:0,defOut:0});await b.commit()});await W(150);
+await p.click('#tab-calc');await W(40);await p.click('[data-mode=def]');await W(60);
+const setDef=async spec=>{await p.evaluate(spec=>{const sid=n=>n?findId(M.skills,d=>d.name===n):'';const cid=n=>findId(M.cards,d=>d.name===n);const sol=findId(M.soldiers,d=>d.name==='鉄砲騎馬');
+  spec.forEach((x,i)=>{const s=form.slots[i];s.card=cid(x[0]);s.tr=x[1];s.soldier=sol;s.s1={id:sid(x[2]),tr:0};s.s2={id:sid(x[3]),tr:0};s.lim={id:sid(x[4]),tr:0}});renderCalc()},spec);await W(40)};
+await setDef([['斎藤覇',5,'泰厳射手','従魔','梵天'],['尼子経久',2,'従魔','魔導','梵天'],['長宗我部',5,'権謀','従魔','梵天5'],['傑秀吉B',0,'','','']]);
+out.def1=await snapCalc();out.def1_slots=await p.$eval('#slots',e=>e.innerHTML);out.def1_head=await p.$eval('#view-calc',e=>e.innerText.slice(0,500));
+await setDef([['攻防将',0,'泰厳射手','','梵天'],['尼子経久',2,'従魔','魔導','梵天'],['長宗我部',5,'権謀','従魔','梵天5'],['斎藤覇',5,'','','']]);out.def2=await snapCalc();
+await p.click('[data-mode=atk]');await W(60);out.backToAtk=await snapCalc();
 // 保存データ(日時・ID を除く)
 out.store=await p.evaluate(()=>{const st=window.__store,strip=o=>JSON.parse(JSON.stringify(o,(k,v)=>['updatedAt','at','logId'].includes(k)?undefined:v));
   const m={};for(const [k,v] of Object.entries(st)){if(k.startsWith('logs/'))continue;const c=k.split('/')[2];(m[c]=m[c]||[]).push(strip(v))}
