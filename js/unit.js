@@ -17,10 +17,21 @@ function slotSkills(s) {
 const effVal = (x, k) => (effsOf(x.d)[k] ? N(trEntry(x.d, x.sel.tr)?.[k]) : 0);
 
 /* ---------- 係数の n(人数のときは null = 設定の人数) ---------- */
-function coefN(d, id) {
+/* i はスキルを持つ武将の枠(「部隊内の同じ兵科・兵種の数」の自身・自身のもつ兵種に使う。わからなければ0人) */
+function coefN(d, id, i) {
   const by = coefByOf(d);
   if (by === 'people') return null;
   if (by === 'cost') return enemyCost();
+  if (by === 'branch')
+    return !form || i == null
+      ? 0
+      : unitCount(i, {
+          by: 'branch',
+          self: coefSelfOf(d),
+          branches: coefBranchesOf(d),
+          soldiers: coefSoldiersOf(d),
+          own: coefOwnOf(d),
+        });
   if (!form) return null;
   if (by === 'same') return sameUses(id).length;
   if (by === 'hisho') return hishoCount();
@@ -91,7 +102,7 @@ function dupDropped() {
     if (L == null || inst.length <= L) continue;
     const val = x => {
       const { c, t, raw } = slotEff(x.i);
-      if (x.k === 'init') return t ? initEff(c, t) : 0;
+      if (x.k === 'init') return t ? initEff(c, t, x.i) : 0;
       const ml = slotMul(x.i, t, raw),
         m = !t ? 1 : x.k === 'lim' ? ml.l * limX(x.sel) : ml.n;
       return skillVal(x.sel, x.i) * muzinMul(x.sel, x.k) * m;

@@ -412,6 +412,8 @@ function syncDraft() {
     ['tbbranch', 'tbBranches', tbBranchesOf],
     ['tbsoldier', 'tbSoldiers', tbSoldiersOf],
     ['mulbranch', 'mulBranches', mulBranchesOf],
+    ['coefbranch', 'coefBranches', coefBranchesOf],
+    ['coefsoldier', 'coefSoldiers', coefSoldiersOf],
     ['mulsoldier', 'mulSoldiers', mulSoldiersOf],
   ])
     if (draft.coll === 'skills' && $('editor').querySelector(`[name=${nm}]`)) {
@@ -475,18 +477,29 @@ function tbCountNote(d) {
       {
         hime: '部隊内の姫の数(武将マスタで姫の武将)',
         kengou: '部隊内の剣豪の数(武将マスタで剣豪の武将)',
-      }[tbByOf(d)] || '部隊内の対象兵科・兵種の数(上で選んだ兵科・兵種の武将)';
+      }[tbByOf(d)] || '部隊内の同じ兵科・兵種の数(上で選んだ兵科・兵種の武将)';
   return `総${b}バフ = 総${b}バフ + 総${b}バフ係数(%) × ${what} ÷ 100。例:係数4、3人なら +0.12。チェックを入れると、このスキルを持つ武将自身も人数に数えます。`;
 }
+const coefCountNote = () =>
+  'スキル上昇率 = 素スキル上昇率 + 係数 × 部隊内の同じ兵科・兵種の数(上で選んだ兵科・兵種の武将)。チェックを入れると、このスキルを持つ武将自身も人数に数えます。';
 function mulCountNote(d) {
   const what =
     { hime: '部隊内の姫の数', kengou: '部隊内の剣豪の数' }[mulByOf(d)] ||
-    '部隊内の対象兵科・兵種の数(上で選んだ兵科・兵種の武将)';
+    '部隊内の同じ兵科・兵種の数(上で選んだ兵科・兵種の武将)';
   return `倍枠通常 = 倍枠通常 + 倍枠係数(通常) × ${what}(倍枠極限も同じく倍枠係数(極限)で計算)。例:係数0.2、3人なら +0.6。チェックを入れると、このスキルを持つ武将自身も人数に数えます。`;
 }
 /* 「部隊内の◯◯の数」で掛ける設定の部品(p='tb' 総バフ、p='mul' 倍枠)。
    掛け方のプルダウン、対象兵科・兵種(自身のもつ兵種)、自身をカウントする */
 const COUNT_CFG = {
+  coef: {
+    by: null,
+    byOf: () => 'branch',
+    counts: () => true,
+    br: coefBranchesOf,
+    so: coefSoldiersOf,
+    own: coefOwnOf,
+    self: coefSelfOf,
+  },
   tb: {
     by: 'tbBy',
     sel: 'tbby',
@@ -517,7 +530,7 @@ function countBox(d, p, byLabel, note) {
     tbs = c.so(d),
     unknown = [...tbr.filter(b => !branches.includes(b)), ...tbs.filter(n => !soldNames.includes(n))];
   return (
-    `<div class="grid">${fieldHtml(d, c.by, byLabel, c.sel)}</div>` +
+    (c.by ? `<div class="grid">${fieldHtml(d, c.by, byLabel, c.sel)}</div>` : '') +
     (c.byOf(d) === 'branch'
       ? checksField(
           '対象兵科(部隊の武将の兵種がこの兵科なら数える)',
@@ -557,6 +570,11 @@ function skillEditorBody(d) {
   /* 総バフの設定・倍枠の設定(掛け方・対象・自分を数えるか)は、特殊効果のチェックのすぐ下に枠でまとめて出す */
   const tbCountBox = ini && ef.total ? countBox(d, 'tb', `総${sw(d)}バフの掛け方`, tbCountNote(d)) : '';
   const mulCountBox = ini && ef.mul ? countBox(d, 'mul', '倍枠の掛け方', mulCountNote(d)) : '';
+  /* 係数の掛け方が「部隊内の同じ兵科・兵種の数」:数える兵科・兵種と、自身をカウントするか(上の段のすぐ下に枠で) */
+  const coefCountBox =
+    coefByOf(d) === 'branch' && !mm
+      ? `<fieldset class="subbox"><legend>係数の設定(部隊内の同じ兵科・兵種の数)</legend>${countBox(d, 'coef', '', coefCountNote())}</fieldset>`
+      : '';
   const coefMaxBox =
     coefByOf(d) === 'same' && !mm
       ? `<div class="field"><div class="checks">${checkbox('id="f-coefMaxTr"', toFlag(d.coefMaxTr), '係数は部隊内武将のTRの最大値を参照')}</div></div>`
@@ -603,7 +621,7 @@ function skillEditorBody(d) {
     .join('');
   return (
     `<div class="grid">${fields.map(([f, l, t]) => fieldHtml(d, f, l, t)).join('')}</div>
-    ${coefMaxBox}
+    ${coefMaxBox}${coefCountBox}
     ${checksField(EFFECT_PROMPT, effects)}
     ${subs}
     <p class="note">${skillNotes(d).join('')}</p>` +
@@ -616,7 +634,7 @@ function skillNotes(d) {
     ef = effsOf(d),
     b = sw(d);
   const notes = [
-    'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 / 部隊内の飛翔の数 / 敵武将の総コスト)。敵武将の総コスト = 平均コスト × 人数。「部隊移動速度/係数」は計算のしかたが違います(下の説明)。',
+    'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 / 部隊内の飛翔の数 / 敵武将の総コスト / 部隊内の同じ兵科・兵種の数)。敵武将の総コスト = 平均コスト × 人数。「部隊移動速度/係数」は計算のしかたが違います(下の説明)。',
     coefByOf(d) === 'speed' &&
       'スキル上昇率 = 素スキル上昇率 + 部隊移動速度 ÷ 係数 × 100。部隊移動速度 = 部隊の兵種の速度のいちばん遅い値 × (100 + 部隊全員のスキルの速度スキルの合計) ÷ 100。無尽のとき、速度スキルの値は2倍になりませんが、このスキルの効果はほかのスキルと同じく2倍になります。',
     coefByOf(d) === 'hisho' &&
@@ -639,7 +657,7 @@ function skillNotes(d) {
         '敵火力加算:防御部隊で、この初期スキルを持つ武将1人につき「敵の推定火力 ÷ 敵の武将数」を合計に足します。',
       ef.total &&
         tbByOf(d) === 'branch' &&
-        `総${b}バフ = 総${b}バフ + 部隊内の対象兵科・兵種の数(部隊の武将のうち、選んだ兵種が対象兵種か、その兵科が対象兵科の武将。「自身のもつ兵種」なら、この武将と同じ兵種の武将も数える。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
+        `総${b}バフ = 総${b}バフ + 部隊内の同じ兵科・兵種の数(部隊の武将のうち、選んだ兵種が対象兵種か、その兵科が対象兵科の武将。「自身のもつ兵種」なら、この武将と同じ兵種の武将も数える。「自身をカウントする」ならこの武将も含む) × 総${b}バフ係数 ÷ 100。係数は %で、4%なら 4 と入力します。`,
       ef.mul &&
         mulCounts(d) &&
         '倍枠 = 倍枠通常・倍枠極限 + 倍枠係数(通常・極限) × 部隊内の数(倍枠の設定で選んだもの。「自身をカウントする」ならこの武将も含む)。係数はそのままの数で、1人あたり +0.2倍なら 0.2 と入力します。',
@@ -1054,6 +1072,15 @@ function validate(coll, d) {
     !mulOwnOf(d)
   )
     return '倍枠の対象兵科か対象兵種を1つ以上選んでください';
+  if (
+    coll === 'skills' &&
+    coefByOf(d) === 'branch' &&
+    !isMimic(d) &&
+    !coefBranchesOf(d).length &&
+    !coefSoldiersOf(d).length &&
+    !coefOwnOf(d)
+  )
+    return '係数の対象兵科か対象兵種を1つ以上選んでください';
   if (
     coll === 'skills' &&
     isInitSkill(d) &&

@@ -9,12 +9,12 @@ const skillByName = n => {
   const id = findId(M.skills, d => String(d.name).trim() === k);
   return id ? { id, d: M.skills.get(id) } : null;
 };
-function initBase(c, t) {
+function initBase(c, t, i) {
   const sk = skillByName(c?.initName);
   if (sk && !forMode(sk.d)) return 0;
   if (sk) {
     const e = trEntry(sk.d, t?.tr);
-    if (e) return skillValueIn(e, sk.d, sk.id);
+    if (e) return skillValueIn(e, sk.d, sk.id, i);
   }
   return 0;
 }
@@ -79,9 +79,9 @@ const cardMuzin = (c, tr) => {
   const sk = skillByName(c.initName);
   return sk ? skillMuzin(sk.d, tr) : 0;
 };
-function initEff(c, t) {
+function initEff(c, t, i) {
   if (t?.loOff) return 0;
-  const v = initBase(c, t);
+  const v = initBase(c, t, i);
   if (!muzinOn() || c?.rarity === '傑') return v;
   return cardMuzin(c, t?.tr) > 0 ? v * 2 : 0;
 }

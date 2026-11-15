@@ -45,7 +45,7 @@ function calc() {
     const sb = sbOf(s),
       b = satk * troops * 1.4 + atk * 1.4 * sb;
     const initDrop = drop.has(i + ':init'),
-      init = initDrop ? 0 : initEff(s.c, s.t);
+      init = initDrop ? 0 : initEff(s.c, s.t, i);
     const ml = slotMul(i, s.t, s.raw);
     const sk =
       init +
@@ -67,7 +67,7 @@ function calc() {
       b,
       sk,
       init,
-      initRaw: initBase(s.c, s.t),
+      initRaw: initBase(s.c, s.t, i),
       ml,
     };
   });
@@ -154,7 +154,7 @@ function skillEffect(i, k) {
   if (!forMode(sk)) return `${MD().opp}スキルのため、${MD().label}では効果なし`;
   if (dupDropped().has(i + ':' + k)) return `効果 <b>0</b> <span class="mz cn">重複上限のため効果なし</span>`;
   const mm = isMimic(sk),
-    cn = mm ? null : coefN(sk, sel.id),
+    cn = mm ? null : coefN(sk, sel.id, i),
     cc = M.cards.get(form.slots[i].card),
     v = skillVal(sel, i),
     ct = slotEff(i).t;

@@ -9,6 +9,7 @@ const COEF_BY = {
   hisho: '部隊内の飛翔の数',
   speed: '部隊移動速度/係数',
   cost: '敵武将の総コスト',
+  branch: '部隊内の同じ兵科・兵種の数',
 };
 const COEF_SHORT = {
   people: '人数',
@@ -17,6 +18,7 @@ const COEF_SHORT = {
   hisho: '飛翔数',
   speed: '移動速度',
   cost: '総コスト',
+  branch: '兵科兵種数',
 };
 /* 初期スキルの総攻・防バフの掛け方:固定、または 総攻・防バフ + 無尽を持つ武将数 × 総攻・防バフ係数 ÷ 100 × 無尽2倍 */
 const TB_BY = {
@@ -24,7 +26,7 @@ const TB_BY = {
   muzin: '無尽を持つ武将数',
   hime: '部隊内の姫の数',
   kengou: '部隊内の剣豪の数',
-  branch: '部隊内の対象兵科・兵種の数',
+  branch: '部隊内の同じ兵科・兵種の数',
 };
 const tbByOf = d => (TB_BY[d?.tbBy] ? d.tbBy : 'fixed');
 /* 総攻・総防バフに「係数 × 数」を足す掛け方か(無尽を持つ武将数・部隊内の姫の数) */
@@ -32,16 +34,21 @@ const tbCoefOn = d => tbByOf(d) !== 'fixed';
 /* 部隊内の姫の数・対象兵科の数に、自分も数えるか(初期値は数える。himeSelf は前の名前) */
 const tbCounts = d => ['hime', 'kengou', 'branch'].includes(tbByOf(d));
 const tbSelfOf = d => toFlag(d?.tbSelf ?? d?.himeSelf ?? 1) === 1;
-/* 部隊内の対象兵科・兵種の数で数える兵科(兵種マスタの兵科名)と兵種(兵種名) */
+/* 部隊内の同じ兵科・兵種の数で数える兵科(兵種マスタの兵科名)と兵種(兵種名) */
 const tbBranchesOf = d => (Array.isArray(d?.tbBranches) ? d.tbBranches : []);
 const tbSoldiersOf = d => (Array.isArray(d?.tbSoldiers) ? d.tbSoldiers : []);
+/* 係数の掛け方「部隊内の同じ兵科・兵種の数」の数え方(総バフ・倍枠とは別に持つ。スキルを持つ武将が「自身」) */
+const coefSelfOf = d => toFlag(d?.coefSelf ?? 1) === 1;
+const coefBranchesOf = d => (Array.isArray(d?.coefBranches) ? d.coefBranches : []);
+const coefSoldiersOf = d => (Array.isArray(d?.coefSoldiers) ? d.coefSoldiers : []);
+const coefOwnOf = d => toFlag(d?.coefOwn) === 1;
 /* 初期スキルの倍枠の掛け方:固定、または 倍枠 + 倍枠係数(通常・極限) × 部隊内の姫・剣豪・対象兵科・兵種の数。
    数える設定(自分を数えるか・対象兵科・兵種・自身のもつ兵種)は総バフとは別に持つ */
 const MUL_BY = {
   fixed: '固定',
   hime: '部隊内の姫の数',
   kengou: '部隊内の剣豪の数',
-  branch: '部隊内の対象兵科・兵種の数',
+  branch: '部隊内の同じ兵科・兵種の数',
 };
 const mulByOf = d => (MUL_BY[d?.mulBy] ? d.mulBy : 'fixed');
 const mulCounts = d => mulByOf(d) !== 'fixed';
@@ -146,9 +153,9 @@ const enemyCost = () => N(config.avgCost) * N(config.people);
 /* 係数を部隊内のTRの最大値から取るか(係数の掛け方が「同じスキルの数」のとき) */
 const coefMax = d => coefByOf(d) === 'same' && toFlag(d?.coefMaxTr) === 1;
 /* 部隊の中でのスキル上昇率(n の数え方は unit.js の coefN):素スキル上昇率(自分のTR) + 係数(最大TRを参照するなら部隊内の最大TRの係数) × 数 */
-function skillValueIn(t, d, id) {
+function skillValueIn(t, d, id, i) {
   t = modeTr(d, t);
-  const n = coefN(d, id);
+  const n = coefN(d, id, i);
   if (coefByOf(d) === 'speed') return speedValue(t, n);
   if (!coefMax(d) || n == null) return skillValue(t, n);
   const mt = maxTrOf(id),
@@ -171,7 +178,7 @@ function slotInit(i) {
   const s = form?.slots[i];
   if (!s || mimicBlocked(i)) return 0;
   const { c, t } = slotEff(i);
-  return c && t ? initEff(c, t) : 0;
+  return c && t ? initEff(c, t, i) : 0;
 }
 const mimicSrc = (d, i) => (mimicOf(d) === 'self' ? i : i === 0 ? null : 0);
 function skillLabel(t, d) {
@@ -193,7 +200,7 @@ function skillVal(sel, i) {
   if (!s || !forMode(s)) return 0;
   const t = trEntry(s, sel.tr);
   if (!t) return 0;
-  if (!isMimic(s)) return skillValueIn(t, s, sel.id);
+  if (!isMimic(s)) return skillValueIn(t, s, sel.id, i);
   const v = N(t.base);
   /* 模倣スキル = 素スキル上昇率 + 模倣倍率 × 模倣元の初期スキル。部隊長に付けた他真似は0 */
   const src = mimicSrc(s, i);
@@ -233,6 +240,14 @@ function normalizeSkill(d) {
     xskill: toFlag(d.init) ? 0 : toFlag(d.xskill),
     noAdd: toFlag(d.noAdd),
     coefBy: coefByOf(d),
+    ...(coefByOf(d) === 'branch'
+      ? {
+          coefSelf: coefSelfOf(d) ? 1 : 0,
+          coefBranches: coefBranchesOf(d),
+          coefSoldiers: coefSoldiersOf(d),
+          coefOwn: coefOwnOf(d) ? 1 : 0,
+        }
+      : {}),
     ...(dupOn(d) ? { dupMax: skillDupMax(d) || 2 } : {}),
     trs: trsOf({
       trs: d.trs.map(t => {
