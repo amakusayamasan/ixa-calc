@@ -9,7 +9,7 @@ const COEF_BY = {
   hisho: '部隊内の飛翔の数',
   speed: '部隊移動速度/係数',
   cost: '敵武将の総コスト',
-  branch: '部隊内の同じ兵科・兵種の数',
+  branch: '部隊内の兵科・兵種の数',
 };
 const COEF_SHORT = {
   people: '人数',
@@ -26,7 +26,7 @@ const TB_BY = {
   muzin: '無尽を持つ武将数',
   hime: '部隊内の姫の数',
   kengou: '部隊内の剣豪の数',
-  branch: '部隊内の同じ兵科・兵種の数',
+  branch: '部隊内の兵科・兵種の数',
 };
 const tbByOf = d => (TB_BY[d?.tbBy] ? d.tbBy : 'fixed');
 /* 総攻・総防バフに「係数 × 数」を足す掛け方か(無尽を持つ武将数・部隊内の姫の数) */
@@ -34,10 +34,10 @@ const tbCoefOn = d => tbByOf(d) !== 'fixed';
 /* 部隊内の姫の数・対象兵科の数に、自分も数えるか(初期値は数える。himeSelf は前の名前) */
 const tbCounts = d => ['hime', 'kengou', 'branch'].includes(tbByOf(d));
 const tbSelfOf = d => toFlag(d?.tbSelf ?? d?.himeSelf ?? 1) === 1;
-/* 部隊内の同じ兵科・兵種の数で数える兵科(兵種マスタの兵科名)と兵種(兵種名) */
+/* 部隊内の兵科・兵種の数で数える兵科(兵種マスタの兵科名)と兵種(兵種名) */
 const tbBranchesOf = d => (Array.isArray(d?.tbBranches) ? d.tbBranches : []);
 const tbSoldiersOf = d => (Array.isArray(d?.tbSoldiers) ? d.tbSoldiers : []);
-/* 係数の掛け方「部隊内の同じ兵科・兵種の数」の数え方(総バフ・倍枠とは別に持つ。スキルを持つ武将が「自身」) */
+/* 係数の掛け方「部隊内の兵科・兵種の数」の数え方(総バフ・倍枠とは別に持つ。スキルを持つ武将が「自身」) */
 const coefSelfOf = d => toFlag(d?.coefSelf ?? 1) === 1;
 const coefBranchesOf = d => (Array.isArray(d?.coefBranches) ? d.coefBranches : []);
 const coefSoldiersOf = d => (Array.isArray(d?.coefSoldiers) ? d.coefSoldiers : []);
@@ -48,7 +48,7 @@ const MUL_BY = {
   fixed: '固定',
   hime: '部隊内の姫の数',
   kengou: '部隊内の剣豪の数',
-  branch: '部隊内の同じ兵科・兵種の数',
+  branch: '部隊内の兵科・兵種の数',
 };
 const mulByOf = d => (MUL_BY[d?.mulBy] ? d.mulBy : 'fixed');
 const mulCounts = d => mulByOf(d) !== 'fixed';

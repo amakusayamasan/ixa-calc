@@ -17,7 +17,7 @@ function slotSkills(s) {
 const effVal = (x, k) => (effsOf(x.d)[k] ? N(trEntry(x.d, x.sel.tr)?.[k]) : 0);
 
 /* ---------- 係数の n(人数のときは null = 設定の人数) ---------- */
-/* i はスキルを持つ武将の枠(「部隊内の同じ兵科・兵種の数」の自身・自身のもつ兵種に使う。わからなければ0人) */
+/* i はスキルを持つ武将の枠(「部隊内の兵科・兵種の数」の自身・自身のもつ兵種に使う。わからなければ0人) */
 function coefN(d, id, i) {
   const by = coefByOf(d);
   if (by === 'people') return null;

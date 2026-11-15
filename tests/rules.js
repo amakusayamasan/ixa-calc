@@ -89,7 +89,7 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  /* 16. 剣豪は +1600 だけ(覇・天・天・極でも)。傑の剣豪は対象外のまま */
  form.slots[1].s1={id:'',tr:0};['h1','h2','h3','h4'].forEach((c,i)=>{M.cards.get(c).rarity=['覇・天','傑','極','天'][i];M.cards.get(c).kengou=1;});
  out.kengouTroops=calc().rows.map(x=>x.troops);
- /* 17. 係数の掛け方「部隊内の同じ兵科・兵種の数」:持ち主(2人目)の追加スキル、係数100、兵器兵科を数える */
+ /* 17. 係数の掛け方「部隊内の兵科・兵種の数」:持ち主(2人目)の追加スキル、係数100、兵器兵科を数える */
  M.skills.set('CB',{name:'兵科係数',init:0,side:'攻撃・防御',coefBy:'branch',coefBranches:['兵器兵科'],coefSelf:1,trs:[{tr:0,base:10,coef:100}]});
  form.slots[1].s1={id:'CB',tr:0};out.coefBranch=skillVal(form.slots[1].s1,1);
  M.skills.get('CB').coefSelf=0;out.coefBranchNoSelf=skillVal(form.slots[1].s1,1);
