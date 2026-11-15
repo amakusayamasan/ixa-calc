@@ -6,7 +6,7 @@
 <title>IXA 部隊計算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho+B1:wght@700;800&display=swap">
-<link rel="stylesheet" href="css/style.css?v=20261116n">
+<link rel="stylesheet" href="css/style.css?v=20261116o">
 </head>
 <body>
 <div class="wrap">
@@ -38,21 +38,30 @@
         </li>
         <li>
           <h3>武将マスタで「新規追加」を押して入力する</h3>
+          <figure class="cardfig">
+            <div class="cardimg">
+              <img src="img/guide-card.webp?v=1" width="604" height="416" alt="武将カードの例(織田信長 No.1286)。番号は下の表の項目に対応">
+              <span class="mk" style="left:13.2%;top:80.5%">1</span><span class="mk" style="left:8.6%;top:7.2%">2</span><span class="mk" style="left:54.0%;top:7.7%">2</span><span class="mk" style="left:10.3%;top:16.8%">3</span><span class="mk" style="left:37.4%;top:13.0%">4</span><span class="mk" style="left:82.8%;top:26.4%">5</span><span class="mk" style="left:96.4%;top:41.8%">6</span><span class="mk" style="left:47.7%;top:69.7%">7</span><span class="mk" style="left:47.7%;top:76.9%">8</span><span class="mk" style="left:33.8%;top:92.8%">9</span>
+            </div>
+            <figcaption>例:織田信長(No.1286)。番号が下の表の項目です。</figcaption>
+          </figure>
           <div class="tblwrap"><table class="guidetbl">
-            <thead><tr><th>項目</th><th>入れるもの</th></tr></thead>
+            <thead><tr><th>項目</th><th>入れるもの</th><th>この例</th></tr></thead>
             <tbody>
-              <tr><td>カードNo</td><td>ゲームの武将No。同じ番号は1つしか登録できません。</td></tr>
-              <tr><td>レアリティ</td><td>覇・天 / 天 / 極 / 傑 から選びます。兵数の加算に使います。</td></tr>
-              <tr><td>武将コスト</td><td>ゲームのコスト</td></tr>
-              <tr><td>攻撃or防御</td><td>攻撃部隊で使う武将は「攻撃」、防御部隊は「防御」、両方なら「攻撃・防御」。部隊計算の武将の候補に出るかが変わります。</td></tr>
-              <tr><td>カード名</td><td>武将の名前</td></tr>
-              <tr><td>初期スキル名</td><td>必須。スキルマスタの初期スキル名と同じ文字で入れます(前後の空白は無視)。</td></tr>
-              <tr><td>兵数</td><td><b>レアリティで増える分を足す前</b>の値。ツールが自動で足します(覇・天 +2,800 / 剣豪 +1,600 / 傑 +0 / それ以外 +2,200)。</td></tr>
-              <tr><td>素攻撃力・素防御力</td><td>ステ振り前の値</td></tr>
-              <tr><td>攻撃上昇率・防御上昇率</td><td>攻撃振りなら 攻撃 = 素攻撃力 + 攻撃上昇率 × 690 で計算します。</td></tr>
-              <tr><td>姫・剣豪</td><td>当てはまればチェック。総バフ・倍枠・兵数加算の「部隊内の姫・剣豪の数」で数えます。剣豪は兵数の加算が +1,600 になります。</td></tr>
+              <tr><td><span class="mk">1</span>カードNo</td><td>カード左下の「No.」の数字。同じ番号は1つしか登録できません。</td><td>1286</td></tr>
+              <tr><td><span class="mk">2</span>レアリティ</td><td>左上のマーク。名前の横に「覇」のマークがあれば「覇・天」。兵数の加算に使います。</td><td>覇・天</td></tr>
+              <tr><td><span class="mk">3</span>武将コスト</td><td>左上の「Cost」</td><td>6</td></tr>
+              <tr><td><span class="mk">4</span>カード名</td><td>武将の名前</td><td>織田信長</td></tr>
+              <tr><td><span class="mk">5</span>初期スキル名</td><td>必須。「SSS」や「LV10」は付けずにスキル名だけ。スキルマスタの初期スキル名と同じ文字にします。</td><td>雄飛新世</td></tr>
+              <tr><td><span class="mk">6</span>攻撃or防御</td><td>スキルの説明で決めます。「部隊総攻撃力が上昇」なら攻撃、「部隊総防御力が上昇」なら防御、両方なら「攻撃・防御」。部隊計算の武将の候補に出るかが変わります。</td><td>攻撃</td></tr>
+              <tr><td><span class="mk">7</span>素攻撃力</td><td>剣のマークの数字</td><td>1320</td></tr>
+              <tr><td><span class="mk">8</span>素防御力</td><td>兜のマークの数字。防御部隊の計算でしか使わないので、攻撃だけの武将は0でもかまいません。</td><td>1200(または0)</td></tr>
+              <tr><td><span class="mk">9</span>兵数</td><td>「指揮兵数」の右側の数字。<b>レアリティで増える分を足す前</b>の値で、ツールが自動で足します(覇・天 +2,800 / 剣豪 +1,600 / 傑 +0 / それ以外 +2,200)。</td><td>5470</td></tr>
+              <tr><td>攻撃上昇率・防御上昇率</td><td>カードには出ていません。攻撃振りなら 攻撃 = 素攻撃力 + 攻撃上昇率 × 690 で計算します。</td><td>—</td></tr>
+              <tr><td>姫・剣豪</td><td>当てはまればチェック。総バフ・倍枠・兵数加算の「部隊内の姫・剣豪の数」で数えます。剣豪は兵数の加算が +1,600 になります。</td><td>なし</td></tr>
             </tbody>
           </table></div>
+          <p class="note">兵法(本のマークの数字)は使いません。</p>
         </li>
         <li>
           <h3>保存する</h3>
@@ -67,6 +76,7 @@
             <li><b>係数の掛け方</b>:人数 / 同じスキルの数 / 部隊内の兵科・兵種の数 など、スキルの説明に合わせて選びます。</li>
             <li><b>模倣</b>:他の武将が模倣(自真似・他真似)できるか</li>
             <li><b>特殊効果</b>:無尽・倍枠・素攻バフ・総攻バフ・兵数加算・部隊長限定・重複上限など、当てはまるものにチェック。チェックすると設定欄とTR表の列が増えます。</li>
+            <li><b>この例(雄飛新世)なら</b>:「部隊総攻撃力が30%上昇」→ 特殊効果の「総攻バフ」にチェックして 1.3。「模倣不可」→ 模倣は「模倣できない」。</li>
             <li><b>TRごとの値</b>:TRの行を追加して、素スキル上昇率・係数と、チェックした効果の値を入れます。チェックした効果の値は必須です。</li>
           </ul>
           <p class="note">無尽部隊(部隊長が無尽の武将)では、初期スキルに無尽がない武将は初期スキルの効果(倍枠・バフを含む)がすべて無効になります。</p>
@@ -165,18 +175,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="js/core.js?v=20261116n"></script>
-<script src="js/fields.js?v=20261116n"></script>
-<script src="js/skills.js?v=20261116n"></script>
-<script src="js/cards.js?v=20261116n"></script>
-<script src="js/unit.js?v=20261116n"></script>
-<script src="js/calc.js?v=20261116n"></script>
-<script src="js/calc-view.js?v=20261116n"></script>
-<script src="js/teams.js?v=20261116n"></script>
-<script src="js/bulk.js?v=20261116n"></script>
-<script src="js/master.js?v=20261116n"></script>
-<script src="js/excel.js?v=20261116n"></script>
-<script src="js/admin.js?v=20261116n"></script>
-<script src="js/main.js?v=20261116n"></script>
+<script src="js/core.js?v=20261116o"></script>
+<script src="js/fields.js?v=20261116o"></script>
+<script src="js/skills.js?v=20261116o"></script>
+<script src="js/cards.js?v=20261116o"></script>
+<script src="js/unit.js?v=20261116o"></script>
+<script src="js/calc.js?v=20261116o"></script>
+<script src="js/calc-view.js?v=20261116o"></script>
+<script src="js/teams.js?v=20261116o"></script>
+<script src="js/bulk.js?v=20261116o"></script>
+<script src="js/master.js?v=20261116o"></script>
+<script src="js/excel.js?v=20261116o"></script>
+<script src="js/admin.js?v=20261116o"></script>
+<script src="js/main.js?v=20261116o"></script>
 </body>
 </html>
