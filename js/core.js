@@ -2,6 +2,9 @@
 // 使うファイル:なし(調べ方:node tests/deps.js)
 const BASE = 'master/v2';
 const SLOT_NAMES = ['部隊長', '小隊長1', '小隊長2', '小隊長3'];
+/* コストアップ(各枠のチェック):武将コスト +0.5、兵数 +200 */
+const COSTUP = { cost: 0.5, troops: 200 };
+const slotCost = s => N(M.cards.get(s?.card)?.cost) + (s?.costUp ? COSTUP.cost : 0);
 /* 特殊効果のあるスキル(名前で探す)。黎天は「列」「烈」のどちらで登録されていても同じスキルとして扱う */
 const SP = { rei: ['黎天列光', '黎天烈光'], hi: ['火焔武闘'] };
 /* ---------- 部隊の種類(攻撃部隊・防御部隊) ----------

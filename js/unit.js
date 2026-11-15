@@ -163,7 +163,7 @@ function costCut(drop = dupDropped()) {
   form.slots.forEach((s, i) => {
     const c = M.cards.get(s.card);
     if (!c) return;
-    const cost = N(c.cost);
+    const cost = slotCost(s);
     total += cost;
     const { t } = slotEff(i);
     /* ①武将のコスト分は1人につき1回だけ(同じ武将に複数付けても重ならない) */

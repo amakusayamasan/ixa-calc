@@ -168,6 +168,14 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
       });
       renderCalc();
     });
+    /* コストアップ:チェックで兵数 +200、編成の保存にも残る */
+    const tr0 = await p.evaluate(() => calc().rows[1].troops);
+    await p.check('[data-k=costUp][data-i="1"]');
+    ok('コストアップで兵数+200', await p.evaluate(() => calc().rows[1].troops), tr0 + 200);
+    ok('コストアップの内訳', (await p.textContent('#calc-1')).includes('コストアップ+200'), true);
+    ok('コストアップは保存される', await p.evaluate(() => toKeys(form).slots[1].costUp), 1);
+    await p.screenshot({ path: process.env.SHOT || '/dev/null', fullPage: false }).catch(() => {});
+    await p.uncheck('[data-k=costUp][data-i="1"]');
     /* 保存した部隊 */
     await p.fill('#teamName', 'UI部隊');
     await p.click('#teamSave');

@@ -1255,3 +1255,18 @@ tbody tr.editable:hover {
   text-decoration: underline;
   cursor: pointer;
 }
+/* 各枠のコストアップのチェック(見出しの右) */
+.slot h3 .costup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.slot h3 .costup:has(input:checked) {
+  color: var(--accent);
+}

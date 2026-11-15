@@ -11,6 +11,7 @@ function toKeys(f) {
       card: String(M.cards.get(s.card)?.no ?? ''),
       tr: s.tr,
       alloc: s.alloc === 'hei' ? 'hei' : 'atk',
+      ...(s.costUp ? { costUp: 1 } : {}),
       soldier: M.soldiers.get(s.soldier)?.name || '',
       s1: [M.skills.get(s.s1.id)?.name || '', s.s1.tr],
       s2: [M.skills.get(s.s2.id)?.name || '', s.s2.tr],
@@ -43,6 +44,7 @@ function fromKeys(f) {
       card: findId(M.cards, d => String(d.no) === String(s.card)),
       tr: N(s.tr),
       alloc: s.alloc === 'hei' ? 'hei' : 'atk',
+      costUp: !!s.costUp,
       soldier: findId(M.soldiers, d => d.name === s.soldier),
       s1: sk(s.s1),
       s2: sk(s.s2),
@@ -377,7 +379,7 @@ function slotHtml(s, i) {
     `<button type="button" data-alloc="${v}" data-i="${i}" aria-pressed="${pressed}">${label}</button>`;
   const soldier = `<select id="soldier-${i}" data-i="${i}" data-k="soldier">${soldierOpts(s.soldier)}</select>`;
   return `<div class="slot${i === 0 ? ' leader' : ''}">
-    <h3><span>${SLOT_NAMES[i]}</span></h3>
+    <h3><span>${SLOT_NAMES[i]}</span><label class="costup"><input type="checkbox" data-i="${i}" data-k="costUp"${s.costUp ? ' checked' : ''}>コストアップ</label></h3>
     <div class="field"><label class="label" for="card-${i}">武将</label><div class="pair">
       ${comboBox(i, 'card', c?.name || '', '武将名・カードNoで検索')}
       ${cardTr}</div>${meta}
@@ -406,7 +408,9 @@ $('slots').addEventListener('change', e => {
     k = t.dataset.k;
   if (!k) return;
   const s = form.slots[+t.dataset.i];
-  if (k === 'tr') {
+  if (k === 'costUp') {
+    s.costUp = t.checked;
+  } else if (k === 'tr') {
     s.tr = N(t.value);
   } else if (k === 'soldier') {
     s.soldier = t.value;
