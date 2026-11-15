@@ -1237,3 +1237,21 @@ tbody tr.editable:hover {
 .guide .tblwrap + .tblwrap {
   margin-top: 10px;
 }
+.guideref {
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-weak);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.linkbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}

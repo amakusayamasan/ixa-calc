@@ -107,6 +107,11 @@ renderCalc();
   $('guideBtn').addEventListener('click', () => $('guide').showModal());
   $('guideClose').addEventListener('click', () => $('guide').close());
   /* 手順のタブ(武将の登録 / スキルの登録) */
+  $('guide').addEventListener('click', e => {
+    /* 本文中の「スキルの登録」へのリンクもタブと同じ切り替え */
+    const go = e.target.closest('[data-guide-go]');
+    if (go) $('guide').querySelector(`[data-guide="${go.dataset.guideGo}"]`).click();
+  });
   $('guide')
     .querySelector('.guidetabs')
     .addEventListener('click', e => {
