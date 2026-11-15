@@ -111,8 +111,8 @@ const jbFind = no => {
   const id = findId(M.jbuffs, d => String(d.no) === String(no));
   return id ? M.jbuffs.get(id) : null;
 };
-/* 外部からかけられるのは、外部の値(攻撃部隊なら外部攻撃力、防御部隊なら外部防御力)が0より大きいバフだけ */
-const jbHasOuter = d => jv(d, MD().jbOut) > 0;
+/* 外部からかけられるのは、外部の値(攻撃部隊なら外部攻撃力、防御部隊なら外部防御力)が0以外のバフだけ */
+const jbHasOuter = d => jv(d, MD().jbOut) !== 0;
 const jbOuter = () => (form?.jb || []).map(no => jbFind(no)).filter(d => d && jbHasOuter(d));
 const jbInUnit = () => {
   if (!form) return [];

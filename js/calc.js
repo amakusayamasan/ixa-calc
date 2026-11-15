@@ -195,12 +195,15 @@ function breakdownHtml(x, r) {
     [
       '兵数',
       fmt(x.troops),
-      [x.rt ? `${x.rtKengou ? '剣豪' : 'ランクアップ'}+${fmt(x.rt)}` : '', x.tadd ? `兵数加算+${fmt(x.tadd)}` : '']
+      [
+        x.rt ? `${x.rtKengou ? '剣豪' : 'ランクアップ'}+${fmt(x.rt)}` : '',
+        x.tadd ? `兵数加算+${fmt(x.tadd)}` : '',
+      ]
         .filter(Boolean)
         .join('・'),
     ],
     [m.stat, fmt(x.atk), ''],
-    [`兵士${m.stat}力`, fmt(x.satk), x.jb ? `傑+${fmt(x.jb, 2)}` : ''],
+    [`兵士${m.stat}力`, fmt(x.satk), x.jb ? `兵科バフ${x.jb < 0 ? '' : '+'}${fmt(x.jb, 2)}` : ''],
     [`素${m.st}`, fmt(x.b, 1), x.sb !== 1 ? `素${m.st}バフ×${fmt(x.sb, 2)}` : ''],
     ['初期スキル', fmt(x.init, 1), initNote],
     [
