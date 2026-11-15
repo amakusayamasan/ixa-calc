@@ -1200,3 +1200,12 @@ tbody tr.editable:hover {
     border-width: 1.5px;
   }
 }
+.cardimg.wide {
+  max-width: 662px;
+}
+.guide .mk.sub {
+  background: var(--accent);
+}
+.guidetbl td:last-child {
+  white-space: nowrap;
+}

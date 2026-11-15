@@ -6,7 +6,7 @@
 <title>IXA 部隊計算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho+B1:wght@700;800&display=swap">
-<link rel="stylesheet" href="css/style.css?v=20261116o">
+<link rel="stylesheet" href="css/style.css?v=20261116p">
 </head>
 <body>
 <div class="wrap">
@@ -32,7 +32,7 @@
           <h3>登録する前に確認すること</h3>
           <ul>
             <li>カードNo(ゲームの武将No)が、まだ武将マスタにないこと。上の「名前で絞り込み」で探せます。</li>
-            <li>武将のステータス(レアリティ・コスト・兵数・素攻撃力・素防御力・攻撃上昇率・防御上昇率)</li>
+            <li>武将のステータス(レアリティ・コスト・兵数・素攻撃力・素防御力はカード、攻撃上昇率・防御上昇率はステータス振り分け画面)</li>
             <li>初期スキルの名前と、TRごとの値(スキル上昇率・係数・倍枠・バフなど)</li>
           </ul>
         </li>
@@ -45,6 +45,13 @@
             </div>
             <figcaption>例:織田信長(No.1286)。番号が下の表の項目です。</figcaption>
           </figure>
+          <figure class="cardfig">
+            <div class="cardimg wide">
+              <img src="img/guide-status.webp?v=1" width="662" height="329" alt="ステータス振り分け画面の例。成長の列が攻撃上昇率・防御上昇率">
+              <span class="mk" style="left:58.6%;top:38.0%">10</span><span class="mk" style="left:58.6%;top:48.6%">11</span><span class="mk sub" style="left:98.5%;top:11.2%">※</span>
+            </div>
+            <figcaption>ステータス振り分け画面。「成長」の列が攻撃上昇率(⑩)・防御上昇率(⑪)です。<br>※ 未使用ステータスポイント(690)を全部攻撃に振ったものとして、攻撃 = 素攻撃力 + 攻撃上昇率 × 690 で計算します。<br>この画面の指揮兵数(9230)は天限突破後の値なので使いません。兵数は⑨(LV0のカードの指揮兵数)を入れます。</figcaption>
+          </figure>
           <div class="tblwrap"><table class="guidetbl">
             <thead><tr><th>項目</th><th>入れるもの</th><th>この例</th></tr></thead>
             <tbody>
@@ -55,9 +62,10 @@
               <tr><td><span class="mk">5</span>初期スキル名</td><td>必須。「SSS」や「LV10」は付けずにスキル名だけ。スキルマスタの初期スキル名と同じ文字にします。</td><td>雄飛新世</td></tr>
               <tr><td><span class="mk">6</span>攻撃or防御</td><td>スキルの説明で決めます。「部隊総攻撃力が上昇」なら攻撃、「部隊総防御力が上昇」なら防御、両方なら「攻撃・防御」。部隊計算の武将の候補に出るかが変わります。</td><td>攻撃</td></tr>
               <tr><td><span class="mk">7</span>素攻撃力</td><td>剣のマークの数字</td><td>1320</td></tr>
-              <tr><td><span class="mk">8</span>素防御力</td><td>兜のマークの数字。防御部隊の計算でしか使わないので、攻撃だけの武将は0でもかまいません。</td><td>1200(または0)</td></tr>
+              <tr><td><span class="mk">8</span>素防御力</td><td>兜のマークの数字をそのまま入れます。</td><td>1200</td></tr>
               <tr><td><span class="mk">9</span>兵数</td><td>「指揮兵数」の右側の数字。<b>レアリティで増える分を足す前</b>の値で、ツールが自動で足します(覇・天 +2,800 / 剣豪 +1,600 / 傑 +0 / それ以外 +2,200)。</td><td>5470</td></tr>
-              <tr><td>攻撃上昇率・防御上昇率</td><td>カードには出ていません。攻撃振りなら 攻撃 = 素攻撃力 + 攻撃上昇率 × 690 で計算します。</td><td>—</td></tr>
+              <tr><td><span class="mk">10</span>攻撃上昇率</td><td>ステータス振り分け画面の「成長」の攻撃力の数字</td><td>83</td></tr>
+              <tr><td><span class="mk">11</span>防御上昇率</td><td>同じく「成長」の防御力の数字</td><td>64</td></tr>
               <tr><td>姫・剣豪</td><td>当てはまればチェック。総バフ・倍枠・兵数加算の「部隊内の姫・剣豪の数」で数えます。剣豪は兵数の加算が +1,600 になります。</td><td>なし</td></tr>
             </tbody>
           </table></div>
@@ -175,18 +183,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="js/core.js?v=20261116o"></script>
-<script src="js/fields.js?v=20261116o"></script>
-<script src="js/skills.js?v=20261116o"></script>
-<script src="js/cards.js?v=20261116o"></script>
-<script src="js/unit.js?v=20261116o"></script>
-<script src="js/calc.js?v=20261116o"></script>
-<script src="js/calc-view.js?v=20261116o"></script>
-<script src="js/teams.js?v=20261116o"></script>
-<script src="js/bulk.js?v=20261116o"></script>
-<script src="js/master.js?v=20261116o"></script>
-<script src="js/excel.js?v=20261116o"></script>
-<script src="js/admin.js?v=20261116o"></script>
-<script src="js/main.js?v=20261116o"></script>
+<script src="js/core.js?v=20261116p"></script>
+<script src="js/fields.js?v=20261116p"></script>
+<script src="js/skills.js?v=20261116p"></script>
+<script src="js/cards.js?v=20261116p"></script>
+<script src="js/unit.js?v=20261116p"></script>
+<script src="js/calc.js?v=20261116p"></script>
+<script src="js/calc-view.js?v=20261116p"></script>
+<script src="js/teams.js?v=20261116p"></script>
+<script src="js/bulk.js?v=20261116p"></script>
+<script src="js/master.js?v=20261116p"></script>
+<script src="js/excel.js?v=20261116p"></script>
+<script src="js/admin.js?v=20261116p"></script>
+<script src="js/main.js?v=20261116p"></script>
 </body>
 </html>
