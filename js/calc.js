@@ -157,7 +157,7 @@ function skillEffect(i, k) {
     cn = mm ? null : coefN(sk, sel.id, i),
     cc = M.cards.get(form.slots[i].card),
     v = skillVal(sel, i),
-    ct = slotEff(i).t;
+    { t: ct, raw: cr } = slotEff(i);
   const mtag = mm
     ? mimicSrc(sk, i) == null
       ? ' <span class="mz cn">部隊長には無効</span>'
@@ -174,7 +174,9 @@ function skillEffect(i, k) {
       mtag,
     sp = SPECIAL_EFFECT[sk.name] ? `<br><span class="sub">${esc(SPECIAL_EFFECT[sk.name]())}</span>` : '';
   if (!ct) return `効果 <b>${fmt(v * mz, 1)}</b>${tag}${sp}`;
-  const mul = k === 'lim' ? N(ct.mulLimit) * limX(sel) : N(ct.mulNormal);
+  /* 倍枠は部隊内の数で増える分も含める(スキル小計と同じ slotMul) */
+  const ml = slotMul(i, ct, cr),
+    mul = k === 'lim' ? ml.l * limX(sel) : ml.n;
   return `効果 <b>${fmt(v * mz * mul, 1)}</b>${tag}${sp}`;
 }
 /* 武将ごとの内訳。各行は [見出し, 値, 補足(なければ空)] */

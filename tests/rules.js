@@ -73,7 +73,7 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  M.skills.set('MB',{name:'倍初',init:1,side:'攻撃・防御',coefBy:'people',mulBy:'hime',mulSelf:1,effs:{mul:true},trs:tr(t=>({base:0,coef:0,mulNormal:1,mulLimit:1,mulNormalCoef:0.5,mulLimitCoef:1}))});
  M.skills.set('P1',{name:'追100',init:0,side:'攻撃・防御',coefBy:'people',trs:tr(t=>({base:100,coef:0}))});
  M.cards.get('h1').initName='倍初';form.slots[0].s1={id:'P1',tr:0};form.slots[0].lim={id:'P1',tr:0};
- out.mulHime=Math.round(calc().rows[0].sk*100)/100;
+ out.mulHime=Math.round(calc().rows[0].sk*100)/100;out.mulHimeFx=skillEffect(0,'s1').match(/<b>([^<]+)/)[1]+'/'+skillEffect(0,'lim').match(/<b>([^<]+)/)[1]+'/'+calc().rows[0].ml.n;
  M.skills.get('MB').mulBy='branch';M.skills.get('MB').mulBranches=['兵器兵科'];out.mulBranch=Math.round(calc().rows[0].sk*100)/100;
  /* 13. 倍枠係数を攻撃と防御で分ける(防御部隊では(防)の係数:通常1、極限2) */
  Object.assign(M.skills.get('MB'),{mulBy:'hime',effs:{mul:true,split:true}});
@@ -95,7 +95,7 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  M.skills.get('CB').coefSelf=0;out.coefBranchNoSelf=skillVal(form.slots[1].s1,1);
  Object.assign(M.skills.get('CB'),{coefBranches:[],coefOwn:1,coefSelf:1});form.slots[1].soldier='sb';out.coefOwn=skillVal(form.slots[1].s1,1);form.slots[1].soldier='sa';
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[2600,3100,3100,3700],troopAll:[3100,3100,3100,3700],toHime:[3200,3100,2600,3700],toKengou:[3200,3100,3100,3200],toBoth:[3200,3100,3100,3700],mulHime:560,mulBranch:730,mulSplitAtk:560,mulSplitDef:900,rarTroops:[3800,1000,2600,3200],reiTroops:3000,kengouTroops:[2600,1000,2600,2600],coefBranch:310,coefBranchNoSelf:210,coefOwn:210};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[2600,3100,3100,3700],troopAll:[3100,3100,3100,3700],toHime:[3200,3100,2600,3700],toKengou:[3200,3100,3100,3200],toBoth:[3200,3100,3100,3700],mulHime:560,mulHimeFx:'200/360/2',mulBranch:730,mulSplitAtk:560,mulSplitDef:900,rarTroops:[3800,1000,2600,3200],reiTroops:3000,kengouTroops:[2600,1000,2600,2600],coefBranch:310,coefBranchNoSelf:210,coefOwn:210};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();
