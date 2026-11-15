@@ -12,6 +12,7 @@ const projectId = pick('projectId'),
 if (!projectId || !apiKey) throw new Error('firebase-config.js から projectId / apiKey を読めません');
 const ROOT = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/master/v2`;
 const COLLS = ['cards', 'skills', 'soldiers', 'jbuffs', 'config'];
+const OMIT = ['updatedBy', 'updatedName', 'updatedAt', 'logId'];
 
 /* Firestore の値の形({stringValue: …} など)をふつうの JSON に */
 export function plain(v) {
@@ -38,7 +39,12 @@ async function readColl(coll) {
     const r = await fetch(url);
     if (!r.ok) throw new Error(`${coll} を読めません(${r.status} ${await r.text()})`);
     const j = await r.json();
-    for (const d of j.documents || []) out[d.name.split('/').pop()] = fields(d.fields);
+    for (const d of j.documents || []) {
+      /* 最終更新者(ユーザーID・表示名)・更新日時・履歴IDは入れない(データだけ残す) */
+      const o = fields(d.fields);
+      for (const k of OMIT) delete o[k];
+      out[d.name.split('/').pop()] = o;
+    }
     token = j.nextPageToken || '';
   } while (token);
   return Object.fromEntries(Object.keys(out).sort().map(k => [k, out[k]]));

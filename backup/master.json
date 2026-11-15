@@ -9,15 +9,11 @@
    "hime": 1,
    "initName": "神母五鈷戟",
    "kengou": 0,
-   "logId": "mwgzo4ck_c5dyp5",
    "name": "帰蝶",
    "no": 10046,
    "rarity": "天",
    "side": "攻撃・防御",
-   "troops": 4100,
-   "updatedAt": "2026-11-14T22:40:14.206Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 4100
   },
   "n10052": {
    "baseDef": 0,
@@ -28,15 +24,11 @@
    "hime": 0,
    "initName": "飛天ノ閃剣",
    "kengou": 0,
-   "logId": "mwgzwjq2_pnby4q",
    "name": "緋村剣心",
    "no": 10052,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 4940,
-   "updatedAt": "2026-11-14T22:46:47.433Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 4940
   },
   "n10053": {
    "baseDef": 0,
@@ -47,15 +39,11 @@
    "hime": 0,
    "initName": "炎統極刃",
    "kengou": 0,
-   "logId": "mwgzr4dz_844nt4",
    "name": "志々雄真実",
    "no": 10053,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 5180,
-   "updatedAt": "2026-11-14T22:42:34.184Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5180
   },
   "n10060_lm35": {
    "baseDef": 2500,
@@ -66,15 +54,11 @@
    "hime": 0,
    "initName": "無刀夢幻",
    "kengou": 1,
-   "logId": "mwh003nt_bz3nu2",
    "name": "柳生石舟斎",
    "no": 10060,
    "rarity": "天",
    "side": "防御",
-   "troops": 6150,
-   "updatedAt": "2026-11-14T22:49:33.408Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 6150
   },
   "n10066": {
    "baseDef": 0,
@@ -85,15 +69,11 @@
    "hime": 0,
    "initName": "壬生ノ狼牙",
    "kengou": 0,
-   "logId": "mwgzprtw_7z7fuy",
    "name": "斎藤一",
    "no": 10066,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 5200,
-   "updatedAt": "2026-11-14T22:41:31.243Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5200
   },
   "n10077_ny7o": {
    "baseDef": 1270,
@@ -104,15 +84,11 @@
    "hime": 1,
    "initName": "冥妃神鈴戟",
    "kengou": 0,
-   "logId": "mwgw8g2p_akvhbe",
    "name": "濃姫",
    "no": 10077,
    "rarity": "天",
    "side": "防御",
-   "troops": 5350,
-   "updatedAt": "2026-11-14T21:04:05.546Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん"
+   "troops": 5350
   },
   "n10078_lrj5": {
    "baseDef": 1260,
@@ -123,15 +99,11 @@
    "hime": 0,
    "initName": "覇界胎動",
    "kengou": 0,
-   "logId": "mwgzqf4d_gsnf3d",
    "name": "三郎信長",
    "no": 10078,
    "rarity": "天",
    "side": "攻撃・防御",
-   "troops": 4550,
-   "updatedAt": "2026-11-14T22:42:01.457Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 4550
   },
   "n10080_z5bp": {
    "baseDef": 1910,
@@ -142,15 +114,11 @@
    "hime": 0,
    "initName": "獅子心覇剣",
    "kengou": 0,
-   "logId": "mwgzndeq_3gw1dd",
    "name": "セイバー",
    "no": 10080,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 5800,
-   "updatedAt": "2026-11-14T22:39:39.591Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5800
   },
   "n10081_z5fd": {
    "baseDef": 1230,
@@ -161,15 +129,11 @@
    "hime": 0,
    "initName": "万雄覇皇",
    "kengou": 0,
-   "logId": "mwhoc500_uhax89",
    "name": "アーチャー",
    "no": 10081,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 6100,
-   "updatedAt": "2026-11-15T10:10:44.932Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 6100
   },
   "n1239_tnvx": {
    "baseDef": 1260,
@@ -180,15 +144,11 @@
    "hime": 0,
    "initName": "獅子ノ炯眼",
    "kengou": 0,
-   "logId": "mwgzzbmw_52by20",
    "name": "北条氏康",
    "no": 1239,
    "rarity": "覇・天",
    "side": "攻撃・防御",
-   "troops": 2000,
-   "updatedAt": "2026-11-14T22:48:57.009Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 2000
   },
   "n1270_8z4n": {
    "baseDef": 1260,
@@ -199,15 +159,11 @@
    "hime": 0,
    "initName": "乱界遊泳",
    "kengou": 0,
-   "logId": "mwgwjyde_je7h29",
    "name": "藤堂高虎",
    "no": 1270,
    "rarity": "天",
    "side": "防御",
-   "troops": 5160,
-   "updatedAt": "2026-11-14T21:13:02.479Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん"
+   "troops": 5160
   },
   "n1274_dm1z": {
    "baseDef": 0,
@@ -218,15 +174,11 @@
    "hime": 0,
    "initName": "幻王ノ采配",
    "kengou": 0,
-   "logId": "mwgzxlov_hule6m",
    "name": "豊臣秀吉",
    "no": 1274,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 5420,
-   "updatedAt": "2026-11-14T22:47:36.581Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5420
   },
   "n1275_aszs": {
    "baseDef": 0,
@@ -237,15 +189,11 @@
    "hime": 0,
    "initName": "智絶千算",
    "kengou": 0,
-   "logId": "mwgzucxm_lz91rf",
    "name": "竹中半兵衛",
    "no": 1275,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 5400,
-   "updatedAt": "2026-11-14T22:45:05.285Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5400
   },
   "n1280_m5n0": {
    "baseDef": 1230,
@@ -256,15 +204,11 @@
    "hime": 0,
    "initName": "西天ノ仁星",
    "kengou": 0,
-   "logId": "mwgw1c7j_zx20oc",
    "name": "小早川隆景",
    "no": 1280,
    "rarity": "天",
    "side": "防御",
-   "troops": 5050,
-   "updatedAt": "2026-11-14T20:58:33.932Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん"
+   "troops": 5050
   },
   "n1286": {
    "baseDef": 0,
@@ -275,15 +219,11 @@
    "hime": 0,
    "initName": "雄飛新世",
    "kengou": 0,
-   "logId": "mwgzt86v_vc28rn",
    "name": "織田信長",
    "no": 1286,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 5470,
-   "updatedAt": "2026-11-14T22:44:12.425Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5470
   },
   "n1289_7rzh": {
    "baseDef": 1260,
@@ -294,15 +234,11 @@
    "hime": 0,
    "initName": "蓋方軍慮",
    "kengou": 0,
-   "logId": "mwgzv6hm_s12fq0",
    "name": "長宗我部元親",
    "no": 1289,
    "rarity": "天",
    "side": "防御",
-   "troops": 5500,
-   "updatedAt": "2026-11-14T22:45:43.504Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5500
   },
   "n1298_evit": {
    "baseDef": 1220,
@@ -313,15 +249,11 @@
    "hime": 0,
    "initName": "天導仁翼",
    "kengou": 0,
-   "logId": "mwgzyfl8_fdzr5k",
    "name": "豊臣秀長",
    "no": 1298,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 5230,
-   "updatedAt": "2026-11-14T22:48:15.497Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5230
   },
   "n1304_0u03": {
    "baseDef": 1270,
@@ -332,15 +264,11 @@
    "hime": 0,
    "initName": "不撓六文銭",
    "kengou": 0,
-   "logId": "mwgztk2o_qwdn3f",
    "name": "真田昌幸",
    "no": 1304,
    "rarity": "天",
    "side": "防御",
-   "troops": 5110,
-   "updatedAt": "2026-11-14T22:44:27.836Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5110
   },
   "n1310_cjlt": {
    "baseDef": 1200,
@@ -351,15 +279,11 @@
    "hime": 0,
    "initName": "覇界ノ天虎",
    "kengou": 0,
-   "logId": "mwgzrzox_sem6e9",
    "name": "織田信秀",
    "no": 1310,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 6100,
-   "updatedAt": "2026-11-14T22:43:14.733Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 6100
   },
   "n1312_np52": {
    "baseDef": 1200,
@@ -370,15 +294,11 @@
    "hime": 0,
    "initName": "怪童冥滅",
    "kengou": 0,
-   "logId": "mwhxgtpp_2hgehv",
    "name": "今川義元",
    "no": 1312,
    "rarity": "覇・天",
    "side": "攻撃",
-   "troops": 5800,
-   "updatedAt": "2026-11-15T14:26:23.254Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5800
   },
   "n1316_vjiv": {
    "baseDef": 1280,
@@ -389,15 +309,11 @@
    "hime": 0,
    "initName": "月読ノ冥略",
    "kengou": 0,
-   "logId": "mwgvy2io_i6opeu",
    "name": "尼子経久",
    "no": 1316,
    "rarity": "天",
    "side": "防御",
-   "troops": 5340,
-   "updatedAt": "2026-11-14T20:56:01.408Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん"
+   "troops": 5340
   },
   "n1321_uuv6": {
    "baseDef": 1080,
@@ -408,15 +324,11 @@
    "hime": 0,
    "initName": "天弦ノ威軍",
    "kengou": 0,
-   "logId": "mwh022o2_d6sq6j",
    "name": "六角定頼",
    "no": 1321,
    "rarity": "天",
    "side": "攻撃",
-   "troops": 5340,
-   "updatedAt": "2026-11-14T22:51:05.664Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5340
   },
   "n20001_n8af": {
    "baseDef": 50000,
@@ -427,15 +339,11 @@
    "hime": 0,
    "initName": "天魔絶界",
    "kengou": 0,
-   "logId": "mwh16c1k_lwv824",
    "name": "織田信長",
    "no": 20001,
    "rarity": "傑",
    "side": "攻撃・防御",
-   "troops": 25000,
-   "updatedAt": "2026-11-14T23:22:23.956Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 25000
   },
   "n20002_z72v": {
    "baseDef": 60000,
@@ -474,15 +382,11 @@
    "hime": 0,
    "initName": "天膂ノ闘士",
    "kengou": 0,
-   "logId": "mwgzvs5i_1czkt7",
    "name": "坪井将監",
    "no": 2491,
    "rarity": "極",
    "side": "防御",
-   "troops": 5040,
-   "updatedAt": "2026-11-14T22:46:11.643Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 5040
   },
   "n2559_sqfo": {
    "baseDef": 1160,
@@ -493,15 +397,11 @@
    "hime": 1,
    "initName": "聖女ノ恩寵",
    "kengou": 0,
-   "logId": "mwgzoejn_hvradh",
    "name": "京極竜子",
    "no": 2559,
    "rarity": "極",
    "side": "防御",
-   "troops": 4210,
-   "updatedAt": "2026-11-14T22:40:27.394Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 4210
   },
   "n2602_0xib": {
    "baseDef": 2000,
@@ -512,15 +412,11 @@
    "hime": 0,
    "initName": "牙突",
    "kengou": 1,
-   "logId": "mwgzp1gq_7zyu47",
    "name": "斎藤一",
    "no": 2602,
    "rarity": "極",
    "side": "防御",
-   "troops": 4990,
-   "updatedAt": "2026-11-14T22:40:57.063Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "troops": 4990
   }
  },
  "skills": {
@@ -1031,7 +927,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwgzkakn_c91weq",
    "mulBy": "fixed",
    "muzin": 0,
    "name": "飛天ノ閃剣",
@@ -1083,9 +978,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T22:37:15.963Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwew8ovo4klj": {
@@ -2161,7 +2053,6 @@
   "smwfix7qhmtrx": {
    "coefBy": "x",
    "init": 0,
-   "logId": "mwfiywbo_guyf7f",
    "muzin": 0,
    "name": "火焔武闘",
    "noAdd": 0,
@@ -2173,15 +2064,11 @@
      "tr": 0
     }
    ],
-   "updatedAt": "2026-11-13T22:05:04.694Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 1
   },
   "smwfizdajs3df": {
    "coefBy": "x",
    "init": 0,
-   "logId": "mwfizh4i_xmbzju",
    "muzin": 0,
    "name": "黎天烈光",
    "noAdd": 0,
@@ -2193,15 +2080,11 @@
      "tr": 0
     }
    ],
-   "updatedAt": "2026-11-13T22:05:31.584Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 1
   },
   "smwfj11i16xa6": {
    "coefBy": "x",
    "init": 0,
-   "logId": "mwfjfdnw_tq0nry",
    "muzin": 0,
    "name": "天穿奏覇",
    "noAdd": 0,
@@ -2213,9 +2096,6 @@
      "tr": 0
     }
    ],
-   "updatedAt": "2026-11-13T22:17:53.681Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 1
   },
   "smwfm5g1ged4z": {
@@ -2236,7 +2116,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwgzi8za_1r33fw",
    "mulBy": "fixed",
    "muzin": 0,
    "name": "獅子心覇剣",
@@ -2288,9 +2167,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T22:35:40.434Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfmfnzyykgt": {
@@ -2302,7 +2178,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwfmgn55_buax5n",
    "muzin": 0,
    "name": "覇界ノ天虎",
    "noAdd": 1,
@@ -2360,9 +2235,6 @@
      "tr": 6
     }
    ],
-   "updatedAt": "2026-11-13T23:42:51.487Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfo1760zyc3": {
@@ -2383,7 +2255,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwg619ka_mlj6vk",
    "muzin": 0,
    "name": "無刀夢幻",
    "noAdd": 1,
@@ -2434,9 +2305,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T08:50:41.055Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfprp8ymffc": {
@@ -2457,7 +2325,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwfprwa7_pw0j6t",
    "muzin": 0,
    "name": "蓋方軍慮",
    "noAdd": 1,
@@ -2515,9 +2382,6 @@
      "tr": 6
     }
    ],
-   "updatedAt": "2026-11-14T01:15:29.517Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfxtddtrqbc": {
@@ -2530,7 +2394,6 @@
     "speed": false
    },
    "init": 0,
-   "logId": "mwfxtizy_wxn5wx",
    "muzin": 0,
    "name": "権謀術数射陣",
    "noAdd": 0,
@@ -2543,9 +2406,6 @@
      "tr": 0
     }
    ],
-   "updatedAt": "2026-11-14T05:00:42.787Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfxvgt0pwho": {
@@ -2558,7 +2418,6 @@
     "speed": false
    },
    "init": 0,
-   "logId": "mwfxvgt0_sdspdq",
    "muzin": 1,
    "name": "岳王ノ加護",
    "noAdd": 0,
@@ -2601,9 +2460,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T05:02:13.333Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfxwyx65569": {
@@ -2616,7 +2472,6 @@
     "speed": false
    },
    "init": 0,
-   "logId": "mwfxxd16_78by3g",
    "muzin": 1,
    "name": "豊恩銘魂",
    "noAdd": 0,
@@ -2659,9 +2514,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T05:03:41.684Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfxyf2h5tys": {
@@ -2674,7 +2526,6 @@
     "speed": false
    },
    "init": 0,
-   "logId": "mwfy0qkm_1ag3fi",
    "muzin": 0,
    "name": "虚松籟",
    "noAdd": 0,
@@ -2686,9 +2537,6 @@
      "tr": 0
     }
    ],
-   "updatedAt": "2026-11-14T05:06:19.266Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfy2az7esa6": {
@@ -2702,7 +2550,6 @@
     "split": false
    },
    "init": 0,
-   "logId": "mwg58jm5_qsyk7d",
    "muzin": 0,
    "name": "月煌侵蝕",
    "noAdd": 0,
@@ -2739,9 +2586,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T08:28:21.029Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfy3rqnm4z3": {
@@ -2754,7 +2598,6 @@
     "speed": false
    },
    "init": 0,
-   "logId": "mwfycqyn_yrt76f",
    "muzin": 0,
    "name": "従魔絶神",
    "noAdd": 0,
@@ -2797,9 +2640,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T05:15:39.646Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfy6f6m7woz": {
@@ -2812,7 +2652,6 @@
     "speed": false
    },
    "init": 0,
-   "logId": "mwfy7pn4_n31q38",
    "muzin": 0,
    "name": "梵天浄界",
    "noAdd": 0,
@@ -2849,9 +2688,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T05:11:44.587Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfy8zws3pof": {
@@ -2864,7 +2700,6 @@
     "speed": false
    },
    "init": 0,
-   "logId": "mwfy9ndk_d5enjj",
    "muzin": 0,
    "name": "聖剣深鏡",
    "noAdd": 0,
@@ -2901,9 +2736,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T05:13:14.964Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwfyb3hc2q1h": {
@@ -2916,7 +2748,6 @@
     "speed": false
    },
    "init": 0,
-   "logId": "mwfyb46q_gluij7",
    "muzin": 0,
    "name": "永世ノ天隻",
    "noAdd": 0,
@@ -2959,9 +2790,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T05:14:23.414Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwg5090nusvw": {
@@ -2982,7 +2810,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwg5090n_fngjoq",
    "muzin": 0,
    "name": "天膂ノ闘士",
    "noAdd": 1,
@@ -3027,9 +2854,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T08:21:54.051Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwg54h2xd1ix": {
@@ -3050,7 +2874,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwg54ic7_mv4n41",
    "muzin": 0,
    "name": "牙突",
    "noAdd": 1,
@@ -3101,9 +2924,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T08:25:12.677Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwg5ayc0usrp": {
@@ -3117,7 +2937,6 @@
     "split": false
    },
    "init": 0,
-   "logId": "mwg5bc11_b700ir",
    "muzin": 0,
    "name": "虚妄ノ神蛇",
    "noAdd": 0,
@@ -3154,9 +2973,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T08:30:31.098Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwgcpenb1j50": {
@@ -3170,7 +2986,6 @@
     "split": false
    },
    "init": 0,
-   "logId": "mwgcpenc_op8v78",
    "muzin": 0,
    "name": "虎伐閃衝",
    "noAdd": 0,
@@ -3207,9 +3022,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T11:57:09.860Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgcy339mxlf": {
@@ -3223,7 +3035,6 @@
     "split": false
    },
    "init": 0,
-   "logId": "mwgcy33a_dhp7yl",
    "muzin": 0,
    "name": "百万石ノ慈雨",
    "noAdd": 0,
@@ -3260,9 +3071,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T12:03:54.795Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgd1nj7vlf7": {
@@ -3276,7 +3084,6 @@
     "split": false
    },
    "init": 0,
-   "logId": "mwgd1nj7_ppl98n",
    "muzin": 0,
    "name": "飛龍衝天",
    "noAdd": 0,
@@ -3313,9 +3120,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T12:06:41.314Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgdhfmezh25": {
@@ -3336,7 +3140,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwh0vl1b_8w68ls",
    "mulBy": "fixed",
    "muzin": 0,
    "name": "泰厳射手",
@@ -3376,9 +3179,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T23:14:02.285Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwgejvx8qszp": {
@@ -3392,7 +3192,6 @@
     "split": false
    },
    "init": 0,
-   "logId": "mwgejvx8_pyg1gi",
    "muzin": 0,
    "name": "魔導禁鎖",
    "noAdd": 0,
@@ -3429,9 +3228,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T12:48:51.537Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgelbzkaa01": {
@@ -3445,7 +3241,6 @@
     "split": false
    },
    "init": 0,
-   "logId": "mwgelbzk_50no6g",
    "muzin": 0,
    "name": "不制于天地人",
    "noAdd": 0,
@@ -3482,9 +3277,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T12:49:59.102Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgem89a8nk6": {
@@ -3498,7 +3290,6 @@
     "split": false
    },
    "init": 0,
-   "logId": "mwgem89a_cqc5sc",
    "muzin": 0,
    "name": "乾亨ノ深謀",
    "noAdd": 0,
@@ -3535,9 +3326,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T12:50:40.834Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgvzsse1bc2": {
@@ -3558,7 +3346,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwgvzsse_w25u9k",
    "mulBy": "fixed",
    "muzin": 0,
    "name": "月読ノ冥略",
@@ -3617,9 +3404,6 @@
      "tr": 6
     }
    ],
-   "updatedAt": "2026-11-14T20:57:22.116Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgw2gnyn5ad": {
@@ -3640,7 +3424,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwgw2gny_1s49mk",
    "mulBy": "fixed",
    "muzin": 0,
    "name": "西天ノ仁星",
@@ -3692,9 +3475,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T20:59:26.330Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgwbbmyqgdz": {
@@ -3715,7 +3495,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwgwbbmy_9apmsc",
    "mulBy": "fixed",
    "muzin": 0,
    "name": "冥妃神鈴戟",
@@ -3767,9 +3546,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T21:06:19.766Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgwicmfrydz": {
@@ -3790,7 +3566,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwgwicmf_hcy8xb",
    "mulBy": "fixed",
    "muzin": 0,
    "name": "聖女ノ恩寵",
@@ -3807,9 +3582,6 @@
      "tr": 0
     }
    ],
-   "updatedAt": "2026-11-14T21:11:47.590Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgwooruuklf": {
@@ -3830,7 +3602,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwgwooru_7cup16",
    "mulBy": "fixed",
    "muzin": 0,
    "name": "乱界遊泳",
@@ -3882,9 +3653,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-14T21:16:43.323Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwgwyturzksd": {
@@ -3905,7 +3673,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwgwytur_wg8evk",
    "mulBy": "fixed",
    "muzin": 1,
    "name": "不撓六文銭",
@@ -3971,9 +3738,6 @@
      "tr": 6
     }
    ],
-   "updatedAt": "2026-11-14T21:24:36.473Z",
-   "updatedBy": "5KIFQDFa1BZdSkhgPksQgLqWVBA3",
-   "updatedName": "りん",
    "xskill": 0
   },
   "smwhoco3lwrk6": {
@@ -4000,7 +3764,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwhpuika_2sgfi8",
    "mulBranches": [],
    "mulBy": "branch",
    "mulOwn": 0,
@@ -4076,9 +3839,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-15T10:53:04.797Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwhxja1w7tue": {
@@ -4101,7 +3861,6 @@
     "troop": false
    },
    "init": 1,
-   "logId": "mwhxja1w_cqx047",
    "mulBy": "fixed",
    "muzin": 0,
    "name": "怪童冥滅",
@@ -4158,9 +3917,6 @@
      "tr": 6
     }
    ],
-   "updatedAt": "2026-11-15T14:28:17.708Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   },
   "smwhxmg7v50s7": {
@@ -4176,7 +3932,6 @@
     "split": false
    },
    "init": 0,
-   "logId": "mwhxmg7v_50t97j",
    "muzin": 0,
    "name": "魁星ノ神弓",
    "noAdd": 0,
@@ -4225,9 +3980,6 @@
      "tr": 5
     }
    ],
-   "updatedAt": "2026-11-15T14:30:45.684Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ",
    "xskill": 0
   }
  },
@@ -4309,13 +4061,9 @@
    "branch": "兵器兵科",
    "def": 33,
    "destroy": 17,
-   "logId": "mwg5vpwr_zp8nvx",
    "name": "鉄砲足軽",
    "order": 9,
-   "speed": 10,
-   "updatedAt": "2026-11-14T08:46:22.223Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "speed": 10
   },
   "omweh4av421s5": {
    "atk": 32,
@@ -4439,86 +4187,62 @@
    "atkOut": 1,
    "defIn": 0,
    "defOut": 1,
-   "logId": "mwhr1t69_0wxihf",
    "name": "貴田孫兵衛",
    "no": 2484,
    "targets": [
     "母衣衆"
-   ],
-   "updatedAt": "2026-11-15T11:26:44.712Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   ]
   },
   "j2777": {
    "atkIn": 0,
    "atkOut": 1,
    "defIn": 0,
    "defOut": 1,
-   "logId": "mwhr08gc_hjy6gl",
    "name": "芝辻清右衛門",
    "no": 2777,
    "targets": [
     "鉄砲足軽"
-   ],
-   "updatedAt": "2026-11-15T11:25:31.267Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   ]
   },
   "j2783": {
    "atkIn": 0,
    "atkOut": 1,
    "defIn": 0,
    "defOut": 1,
-   "logId": "mwhqymz6_zc0lxu",
    "name": "藤林長門守",
    "no": 2783,
    "targets": [
     "焙烙火矢"
-   ],
-   "updatedAt": "2026-11-15T11:24:16.717Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   ]
   },
   "j2785": {
    "atkIn": 0,
    "atkOut": 1,
    "defIn": 0,
    "defOut": 1,
-   "logId": "mwhr17de_97vb02",
    "name": "三浦按針",
    "no": 2785,
    "targets": [
     "穴太衆",
     "大筒兵"
-   ],
-   "updatedAt": "2026-11-15T11:26:16.461Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   ]
   },
   "j2819": {
    "atkIn": 0,
    "atkOut": 1,
    "defIn": 0,
    "defOut": 1,
-   "logId": "mwhqxtoh_rd6lai",
    "name": "国友善兵衛",
    "no": 2819,
    "targets": [
     "鉄砲騎馬"
-   ],
-   "updatedAt": "2026-11-15T11:23:38.812Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   ]
   }
  },
  "config": {
   "main": {
    "avgCost": 5,
-   "logId": "mwgec32j_kgisu0",
-   "people": 280,
-   "updatedAt": "2026-11-14T12:43:03.105Z",
-   "updatedBy": "P5Ey5wVJf3emQ1DF75DhDhToJ6T2",
-   "updatedName": "あまなつ"
+   "people": 280
   }
  }
 }
