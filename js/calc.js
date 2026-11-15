@@ -195,7 +195,7 @@ function breakdownHtml(x, r) {
     [
       '兵数',
       fmt(x.troops),
-      [x.rt ? `${x.rtKengou ? '剣豪' : 'レア'}+${fmt(x.rt)}` : '', x.tadd ? `兵数加算+${fmt(x.tadd)}` : '']
+      [x.rt ? `${x.rtKengou ? '剣豪' : 'ランクアップ'}+${fmt(x.rt)}` : '', x.tadd ? `兵数加算+${fmt(x.tadd)}` : '']
         .filter(Boolean)
         .join('・'),
     ],
