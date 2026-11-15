@@ -1,0 +1,31 @@
+# マスタの自動バックアップ:毎日 4:17(日本時間)に Firestore のマスタを読み出し、変わっていれば backup/master.json をコミットする
+# Actions タブの「マスタのバックアップ」→「Run workflow」で手動でも実行できる
+name: マスタのバックアップ
+on:
+  schedule:
+    - cron: '17 19 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: backup
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: マスタを読み出す
+        run: node tools/backup.mjs backup/master.json
+      - name: 変わっていればコミット
+        run: |
+          git add backup/master.json
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "マスタのバックアップ $(TZ=Asia/Tokyo date +%Y-%m-%d)"
+            git push
+          fi
