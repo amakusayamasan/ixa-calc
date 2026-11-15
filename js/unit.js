@@ -154,7 +154,8 @@ function slotMul(i, t, raw) {
 
 /* ---------- コスト減(自合流使用コスト) ----------
    部隊のコスト合計(武将マスタの武将コスト)から、部隊内のスキル(初期・追加・極限)の「コスト減」を引いたものが自合流使用コスト。
-   ①スキルを付けた武将のコスト分 ②決めた数値。①→②の順に引き、0より下がらない(引ける合計は部隊のコスト合計まで) */
+   ①スキルを付けた武将のコスト分 ②決めた数値。無尽を持つスキルも無尽1につき0.5減らす(MUZIN_CUT)。①→②の順に引き、0より下がらない(引ける合計は部隊のコスト合計まで) */
+const MUZIN_CUT = 0.5;
 function costCut(drop = dupDropped()) {
   let total = 0,
     cut = 0;
@@ -165,12 +166,18 @@ function costCut(drop = dupDropped()) {
     const cost = N(c.cost);
     total += cost;
     const { t } = slotEff(i);
-    if (t?.cut && !drop.has(i + ':init')) cut += t.cut.self ? cost : N(t.cut.v);
+    if (t && !t.loOff && !drop.has(i + ':init')) {
+      if (t.cut) cut += t.cut.self ? cost : N(t.cut.v);
+      /* 無尽:無尽1につきコスト0.5減 */
+      cut += MUZIN_CUT * cardMuzin(c, s.tr);
+    }
     for (const k of ['s1', 's2', 'lim']) {
       const sel = s[k],
         d = sel?.id && M.skills.get(sel.id);
-      if (!d || !effsOf(d).cut || drop.has(i + ':' + k)) continue;
-      cut += cutByOf(d) === 'self' ? cost : N(trsOf(d).find(x => N(x.tr) === N(sel.tr))?.costCut);
+      if (!d || drop.has(i + ':' + k)) continue;
+      cut += MUZIN_CUT * skillMuzin(d, sel.tr);
+      if (effsOf(d).cut)
+        cut += cutByOf(d) === 'self' ? cost : N(trsOf(d).find(x => N(x.tr) === N(sel.tr))?.costCut);
     }
   });
   cut = Math.min(Math.max(cut, 0), total);
