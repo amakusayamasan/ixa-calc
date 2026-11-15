@@ -1270,17 +1270,3 @@ tbody tr.editable:hover {
 .slot h3 .costup:has(input:checked) {
   color: var(--accent);
 }
-.guidebox {
-  margin-top: 12px;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--accent-weak);
-}
-.guidebox h4 {
-  margin: 0 0 6px;
-  font-size: 0.95rem;
-}
-.guidebox p {
-  margin: 6px 0 0;
-}

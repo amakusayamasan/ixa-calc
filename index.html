@@ -6,7 +6,7 @@
 <title>IXA 部隊計算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho+B1:wght@700;800&display=swap">
-<link rel="stylesheet" href="css/style.css?v=20261116z">
+<link rel="stylesheet" href="css/style.css?v=20261117a">
 </head>
 <body>
 <div class="wrap">
@@ -158,23 +158,10 @@
               <tr><td>素攻バフ・総攻バフ</td><td>(初期スキルのみ)「部隊総攻撃力が30%上昇」なら総攻バフに1.3。素攻バフは「本人のみ」も選べます。</td></tr>
               <tr><td>兵数加算</td><td>(初期スキルのみ)ほかの武将の兵数に足す値。対象(すべて・姫・剣豪)と「自身の兵数も増やす」を選びます。</td></tr>
               <tr><td>兵士攻撃力加算</td><td>(初期スキルのみ)部隊内のコスト減の合計1につき、対象の武将の兵士攻撃力に足す値。「兵士攻撃力加算の設定」で対象兵科・対象兵種(「自身のもつ兵種」も可)を選び、TR表に「コスト減1につき」の値を入れます。</td></tr>
-              <tr><td>コスト減</td><td>自合流使用コストを減らすスキル。「コスト減の設定」で減らし方を選びます(下の説明)。</td></tr>
+              <tr><td>コスト減</td><td>自合流時のコストを減らすスキルを登録できます。</td></tr>
               <tr><td>敵火力加算</td><td>(初期スキルのみ)防御部隊で、敵の推定火力 ÷ 敵の武将数 を足します。</td></tr>
             </tbody>
           </table></div>
-          <div class="guidebox">
-            <h4>コスト減と兵士攻撃力加算のしくみ</h4>
-            <ul>
-              <li><b>自合流使用コスト</b> = 部隊4人の武将コストの合計 − 部隊内のコスト減の合計(0より下がりません)</li>
-              <li><b>減らし方①「スキルを付けた武将のコスト分」</b>:その武将のコストだけ減らします。同じ武将に何個付けても1回だけです。</li>
-              <li><b>減らし方②「決めた数値」</b>:TR表の「コスト減」の値だけ、部隊全体から減らします。付けた数だけ減ります。</li>
-              <li><b>無尽</b>:無尽を持つスキル(初期・追加・極限)は、チェックしなくても無尽1につき0.5減ります。</li>
-              <li><b>コストアップ</b>:部隊計算の各枠の「コストアップ」にチェックすると、その武将はコスト+0.5・兵数+200になります(①で減る量も+0.5)。</li>
-              <li><b>兵士攻撃力加算</b> = TR表の値 × コスト減の合計(部隊のコスト合計 − 自合流使用コスト)</li>
-            </ul>
-            <p><b>例(怪童冥滅)</b>:初期スキルで「兵士攻撃力加算」と「部隊長限定」にチェックし、対象兵科は弓兵科、TR表は0.9など。<br>
-            コスト5の武将4人(合計20)で、部隊長に①と②(5)が付いていると、20 → 15 → 10 でコスト減は10。弓兵科の兵士攻撃力に 0.9 × 10 = +9 が足されます。</p>
-          </div>
         </li>
         <li>
           <h3>TRごとの値を入れる</h3>
@@ -281,18 +268,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="js/core.js?v=20261116z"></script>
-<script src="js/fields.js?v=20261116z"></script>
-<script src="js/skills.js?v=20261116z"></script>
-<script src="js/cards.js?v=20261116z"></script>
-<script src="js/unit.js?v=20261116z"></script>
-<script src="js/calc.js?v=20261116z"></script>
-<script src="js/calc-view.js?v=20261116z"></script>
-<script src="js/teams.js?v=20261116z"></script>
-<script src="js/bulk.js?v=20261116z"></script>
-<script src="js/master.js?v=20261116z"></script>
-<script src="js/excel.js?v=20261116z"></script>
-<script src="js/admin.js?v=20261116z"></script>
-<script src="js/main.js?v=20261116z"></script>
+<script src="js/core.js?v=20261117a"></script>
+<script src="js/fields.js?v=20261117a"></script>
+<script src="js/skills.js?v=20261117a"></script>
+<script src="js/cards.js?v=20261117a"></script>
+<script src="js/unit.js?v=20261117a"></script>
+<script src="js/calc.js?v=20261117a"></script>
+<script src="js/calc-view.js?v=20261117a"></script>
+<script src="js/teams.js?v=20261117a"></script>
+<script src="js/bulk.js?v=20261117a"></script>
+<script src="js/master.js?v=20261117a"></script>
+<script src="js/excel.js?v=20261117a"></script>
+<script src="js/admin.js?v=20261117a"></script>
+<script src="js/main.js?v=20261117a"></script>
 </body>
 </html>
