@@ -68,6 +68,13 @@ const troopToOf = d => {
 };
 /* 「自身のもつ兵種」:このスキルを持つ武将が選んでいる兵種と同じ兵種の武将も数える */
 const tbOwnOf = d => toFlag(d?.tbOwn) === 1;
+/* コスト減(自合流使用コストを減らす):①スキルを付けた武将のコスト分 ②決めた数値(TR表) */
+const CUT_BY = { self: 'スキルを付けた武将のコスト分', value: '決めた数値(TR表で入力)' };
+const cutByOf = d => (CUT_BY[d?.cutBy] ? d.cutBy : 'self');
+/* 兵士攻撃力(防御力)加算:コスト減の合計1につき、対象兵科・兵種の武将の兵士攻撃力に足す(初期スキル) */
+const saddBranchesOf = d => (Array.isArray(d?.saddBranches) ? d.saddBranches : []);
+const saddSoldiersOf = d => (Array.isArray(d?.saddSoldiers) ? d.saddSoldiers : []);
+const saddOwnOf = d => toFlag(d?.saddOwn) === 1;
 const coefByOf = d => (COEF_BY[d?.coefBy] ? d.coefBy : 'people');
 const isX = d => toFlag(d?.xskill) === 1;
 /* スキルの攻防:攻撃 / 防御 / 攻撃・防御。値は1組だけ持ち、攻撃部隊では「防御」スキルの値を使わない(未設定は攻撃) */
@@ -127,6 +134,8 @@ const derivedEffs = d => {
     mul: ne1('mulNormal') || ne1('mulLimit') || mulCounts(d),
     total: ne1('totalBuff') || tbCoefOn(d),
     troop: tr.some(t => N(t.troopAdd) !== 0),
+    cut: has('costCut'),
+    sadd: has('soldierAdd'),
     self: false,
     leader: false,
     enemy: false,
@@ -249,6 +258,10 @@ function normalizeSkill(d) {
         }
       : {}),
     ...(dupOn(d) ? { dupMax: skillDupMax(d) || 2 } : {}),
+    ...(effsOf(d).cut ? { cutBy: cutByOf(d) } : {}),
+    ...(toFlag(d.init) && effsOf(d).sadd
+      ? { saddBranches: saddBranchesOf(d), saddSoldiers: saddSoldiersOf(d), saddOwn: saddOwnOf(d) ? 1 : 0 }
+      : {}),
     trs: trsOf({
       trs: d.trs.map(t => {
         const o = Object.fromEntries(SKILL_TR.map(([f]) => [f, N(t[f])]));
@@ -257,6 +270,8 @@ function normalizeSkill(d) {
           o.coef = 0;
         }
         for (const [k] of EXTRA_EFFS) if (effsOf(d)[k] && hasV(t[k])) o[k] = N(t[k]);
+        if (effsOf(d).cut && cutByOf(d) === 'value') o.costCut = N(t.costCut);
+        if (toFlag(d.init) && effsOf(d).sadd) o.soldierAdd = N(t.soldierAdd);
         /* 追加スキルを攻撃と防御で分けるときは、素スキル上昇率・係数の(防)の値も保存する */
         if (!toFlag(d.init) && splitOn(d))
           for (const f of ['base', 'coef']) if (hasV(t[f + 'D'])) o[f + 'D'] = N(t[f + 'D']);
@@ -291,7 +306,7 @@ function normalizeSkill(d) {
             : {}),
           effs: { ...effsOf(d), split: splitOn(d), dup: dupOn(d) },
         }
-      : { effs: { dup: dupOn(d), split: splitOn(d), ...extraEffs(d) } }),
+      : { effs: { dup: dupOn(d), split: splitOn(d), cut: !!effsOf(d).cut, ...extraEffs(d) } }),
   };
 }
 const extraEffs = d => Object.fromEntries(EXTRA_EFFS.map(([k]) => [k, !!effsOf(d)[k]]));

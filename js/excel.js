@@ -1,5 +1,5 @@
 // Excelの取り込み・ダウンロード
-// 使うファイル:core.js、fields.js、skills.js、master.js、admin.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、fields.js、skills.js、unit.js、master.js、admin.js(調べ方:node tests/deps.js)
 /* ---------- Excel取り込み ---------- */
 let xlsxPromise = null;
 function loadXLSX() {
@@ -121,6 +121,12 @@ const X_SKILL = [
   '係数の対象兵科',
   '係数の対象兵種',
   '係数の自身のもつ兵種',
+  'コスト減の減らし方',
+  'コスト減',
+  '兵士攻撃・防御力加算',
+  '兵士加算の対象兵科',
+  '兵士加算の対象兵種',
+  '兵士加算の自身のもつ兵種',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 /* A, B, …, Z, AA, … */
@@ -145,6 +151,16 @@ const COL_HELP = [
     HELP_SK,
     '模倣・模倣倍率',
     '模倣スキル:なし / 自模倣 / 他真似(部隊長)。値 = 素スキル上昇率 + 模倣倍率 × 真似る初期スキル',
+  ],
+  [
+    HELP_SK,
+    'コスト減の減らし方 / コスト減',
+    '自合流使用コストを減らすスキル。減らし方は「スキルを付けた武将のコスト分」か「決めた数値」(数値はコスト減の列)。空欄ならコスト減なし',
+  ],
+  [
+    HELP_SK,
+    '兵士攻撃・防御力加算 / 兵士加算の対象兵科・兵種 / 兵士加算の自身のもつ兵種',
+    '初期スキル。部隊内のコスト減の合計1につき、対象の兵科・兵種の武将の兵士攻撃力(防御力)に足す値',
   ],
   [
     HELP_SK,
@@ -302,6 +318,16 @@ async function downloadXlsx(withData) {
                 coefBranchesOf(d).join('、'),
                 coefSoldiersOf(d).join('、'),
                 coefOwnOf(d) ? 1 : 0,
+              ]
+            : ['', '', '', '']),
+          effsOf(d).cut ? CUT_BY[cutByOf(d)] : '',
+          effsOf(d).cut && cutByOf(d) === 'value' ? (t.costCut ?? '') : '',
+          ...(ini && effsOf(d).sadd
+            ? [
+                t.soldierAdd ?? '',
+                saddBranchesOf(d).join('、'),
+                saddSoldiersOf(d).join('、'),
+                saddOwnOf(d) ? 1 : 0,
               ]
             : ['', '', '', '']),
         ]);
@@ -498,6 +524,23 @@ function readSkillRow(s, row, ix) {
     ['兵数加算に自身を含む', 'troopSelf'],
   ])
     if (val(ix(col)) != null) s.effFlags = { ...(s.effFlags || {}), [key]: toFlag(row[ix(col)]) === 1 };
+  /* コスト減:減らし方の列が空でなければコスト減あり(「数値」なら決めた数値、それ以外は武将のコスト分) */
+  if (ix('コスト減の減らし方') >= 0) {
+    const v = val(ix('コスト減の減らし方'));
+    s.effFlags = { ...(s.effFlags || {}), cut: v != null };
+    if (v != null) s.cutBy = /数値/.test(String(v)) || String(v) === 'value' ? 'value' : 'self';
+  }
+  /* 兵士攻撃・防御力加算の対象 */
+  if (val(ix('兵士加算の自身のもつ兵種')) != null) s.saddOwn = toFlag(row[ix('兵士加算の自身のもつ兵種')]);
+  for (const [h, f] of [
+    ['兵士加算の対象兵科', 'saddBranches'],
+    ['兵士加算の対象兵種', 'saddSoldiers'],
+  ])
+    if (val(ix(h)) != null)
+      s[f] = String(row[ix(h)])
+        .split(/[、,，]/)
+        .map(x => x.trim())
+        .filter(Boolean);
   if (val(ix('重複上限')) != null) s.dupMax = N(row[ix('重複上限')]);
   /* 兵数加算の対象(すべて・姫・剣豪を「、」区切り) */
   if (val(ix('兵数加算の対象')) != null)
@@ -589,6 +632,8 @@ function readSkillTr(n, row, ix) {
     ['mulNormalCoef', '倍枠係数(通常)'],
     ['mulLimitCoef', '倍枠係数(極限)'],
     ['troopAdd', '兵数加算'],
+    ['costCut', 'コスト減'],
+    ['soldierAdd', '兵士攻撃・防御力加算'],
     ...SKILL_INIT.map(([f, l]) => [f, l]),
   ];
   for (const [f, col] of keepOld) {
@@ -627,12 +672,14 @@ function finishSkill(s, old) {
             enemy: !!old.effs.enemy,
             split: !!old.effs.split,
             troopSelf: !!old.effs.troopSelf,
+            cut: !!old.effs.cut,
           }
         : {}),
       ...(s.effFlags || {}),
     };
   /* 追加スキルの「攻防で値を分ける」:列があればその値、なければ登録済みの値(種類が決まってから使う) */
-  const spFlag = s.effFlags?.split;
+  const spFlag = s.effFlags?.split,
+    cutFlag = s.effFlags?.cut ?? !!old?.effs?.cut;
   delete s.effFlags;
   if (s.dupMax == null && old && dupOn(old)) s.dupMax = skillDupMax(old);
   if (!(N(s.dupMax) > 0)) delete s.dupMax;
@@ -645,6 +692,8 @@ function finishSkill(s, old) {
   if (s.tbSoldiers == null && old && old.tbSoldiers) s.tbSoldiers = old.tbSoldiers;
   if (s.tbOwn == null && old && old.tbOwn != null) s.tbOwn = old.tbOwn;
   if (s.troopTo == null && old && old.troopTo) s.troopTo = old.troopTo;
+  for (const f of ['cutBy', 'saddBranches', 'saddSoldiers', 'saddOwn'])
+    if (s[f] == null && old && old[f] != null) s[f] = old[f];
   for (const f of ['coefSelf', 'coefBranches', 'coefSoldiers', 'coefOwn'])
     if (s[f] == null && old && old[f] != null) s[f] = old[f];
   for (const f of ['mulBy', 'mulSelf', 'mulBranches', 'mulSoldiers', 'mulOwn'])
@@ -660,6 +709,7 @@ function finishSkill(s, old) {
   /* 新しく登録する初期スキルは、模倣可否の列がなければ「模倣できない」 */
   if (s.init && s.noMimic == null && !old) s.noMimic = 1;
   if (!s.init && (spFlag ?? !!old?.effs?.split)) s.effs = { ...(s.effs || {}), split: true };
+  if (!s.init && cutFlag) s.effs = { ...(s.effs || {}), cut: true };
   if (!s.init)
     s.trs = s.trs.map(t => {
       const o = { ...t };

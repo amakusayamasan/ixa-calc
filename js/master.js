@@ -415,6 +415,8 @@ function syncDraft() {
     ['coefbranch', 'coefBranches', coefBranchesOf],
     ['coefsoldier', 'coefSoldiers', coefSoldiersOf],
     ['mulsoldier', 'mulSoldiers', mulSoldiersOf],
+    ['saddbranch', 'saddBranches', saddBranchesOf],
+    ['saddsoldier', 'saddSoldiers', saddSoldiersOf],
   ])
     if (draft.coll === 'skills' && $('editor').querySelector(`[name=${nm}]`)) {
       const known = [...$('editor').querySelectorAll(`[name=${nm}]`)];
@@ -437,6 +439,7 @@ const SELECTS = {
   mimic: d => Object.entries(MIMIC).map(([v, l]) => [v, l, mimicOf(d) === v]),
   tbby: d => Object.entries(TB_BY).map(([v, l]) => [v, l, tbByOf(d) === v]),
   mulby: d => Object.entries(MUL_BY).map(([v, l]) => [v, l, mulByOf(d) === v]),
+  cutby: d => Object.entries(CUT_BY).map(([v, l]) => [v, l, cutByOf(d) === v]),
   coef: d => Object.entries(COEF_BY).map(([v, l]) => [v, l, coefByOf(d) === v]),
   side: (d, f) => SIDES.map(v => [null, v, d[f] === v]),
   rarity: (d, f) =>
@@ -468,6 +471,9 @@ const checkbox = (attrs, checked, label) =>
   `<label><input type="checkbox" ${attrs}${checked ? ' checked' : ''}>${label}</label>`;
 const checksField = (label, inner) =>
   `<div class="field">${label ? `<span class="label">${label}</span>` : ''}<div class="checks">${inner}</div></div>`;
+/* 兵士攻撃力加算(防御スキルなら兵士防御力加算) */
+const saddStat = d => ({ 攻撃: '攻撃', 防御: '防御', '攻撃・防御': '攻撃・防御' })[skillSide(d)];
+const saddLabel = d => `兵士${saddStat(d)}力加算`;
 const EFFECT_PROMPT = '特殊効果にチェックを入れてください(チェックした効果の値をTR表で入力)';
 
 /* 総バフの設定の「自身をカウントする」の上に出す、数え方の説明 */
@@ -491,6 +497,16 @@ function mulCountNote(d) {
 /* 「部隊内の◯◯の数」で掛ける設定の部品(p='tb' 総バフ、p='mul' 倍枠)。
    掛け方のプルダウン、対象兵科・兵種(自身のもつ兵種)、自身をカウントする */
 const COUNT_CFG = {
+  sadd: {
+    by: null,
+    byOf: () => 'branch',
+    counts: () => false,
+    verb: '足す',
+    br: saddBranchesOf,
+    so: saddSoldiersOf,
+    own: saddOwnOf,
+    self: () => false,
+  },
   coef: {
     by: null,
     byOf: () => 'branch',
@@ -533,13 +549,13 @@ function countBox(d, p, byLabel, note) {
     (c.by ? `<div class="grid">${fieldHtml(d, c.by, byLabel, c.sel)}</div>` : '') +
     (c.byOf(d) === 'branch'
       ? checksField(
-          '対象兵科(部隊の武将の兵種がこの兵科なら数える)',
+          `対象兵科(部隊の武将の兵種がこの兵科なら${c.verb || '数える'})`,
           branches
             .map(b => checkbox(`name="${p}branch" value="${esc(b)}"`, tbr.includes(b), esc(b)))
             .join('') || '<span class="note">兵種マスタに兵科がありません</span>',
         ) +
         checksField(
-          '対象兵種(部隊の武将の兵種がこの兵種なら数える)',
+          `対象兵種(部隊の武将の兵種がこの兵種なら${c.verb || '数える'})`,
           checkbox(`id="f-${p}Own" data-f="${p}Own"`, c.own(d), '自身のもつ兵種') +
             (soldNames
               .map(n => checkbox(`name="${p}soldier" value="${esc(n)}"`, tbs.includes(n), esc(n)))
@@ -588,6 +604,8 @@ function skillEditorBody(d) {
       if (k === 'leader') return checkbox('data-eff2="leader"', ef.leader, '部隊長限定');
       if (k === 'enemy') return checkbox('data-eff2="enemy"', ef.enemy, '敵火力加算');
       if (k === 'split') return checkbox('data-eff2="split"', ef.split, '攻撃と防御で値を分ける');
+      if (k === 'cut') return checkbox('data-eff2="cut"', ef.cut, 'コスト減');
+      if (k === 'sadd') return checkbox('data-eff2="sadd"', ef.sadd, saddLabel(d));
       return checkbox(`data-eff="${k}"`, ef[k], effLabel(d, k));
     })
     .join('');
@@ -610,6 +628,19 @@ function skillEditorBody(d) {
           `<div class="field"><div class="checks">${TROOP_TO.map(([v, l]) => checkbox(`name="troopto" value="${v}"`, troopToOf(d).includes(v), l)).join('')}</div></div>` +
           '<p class="note">チェックを入れると、この武将本人の兵数にも足します。</p>' +
           `<div class="field"><div class="checks">${checkbox('data-eff2="troopSelf"', ef.troopSelf, '自身の兵数も増やす')}</div></div>`,
+      ),
+    ini &&
+      ef.sadd &&
+      subbox(
+        `${saddLabel(d)}の設定`,
+        countBox(d, 'sadd', '', '') +
+          `<p class="note">${saddLabel(d)} = TR表の値 × 部隊内のコスト減の合計(部隊のコスト合計 − 自合流使用コスト)。上で選んだ兵科・兵種の武将の兵士${saddStat(d)}力に足します。部隊長だけで効くスキルは「部隊長限定」にもチェックします。</p>`,
+      ),
+    ef.cut &&
+      subbox(
+        'コスト減の設定',
+        `<div class="grid">${fieldHtml(d, 'cutBy', 'コストの減らし方', 'cutby')}</div>` +
+          '<p class="note">自合流使用コストを減らします。「スキルを付けた武将のコスト分」は、このスキルを付けた武将の武将コストだけ減らします。「決めた数値」は、TR表の「コスト減」の値だけ減らします。部隊内のコスト減は全部合計し、自合流使用コストは0より下がりません。</p>',
       ),
     dupOn(d) &&
       subbox(
@@ -691,10 +722,12 @@ const EFFECT_ORDER_INIT = [
   'stat',
   'total',
   'troop',
+  'sadd',
   'enemy',
+  'cut',
   'dup',
 ];
-const EFFECT_ORDER_SKILL = ['split', 'speed', 'hisho', 'fukutsu', 'muzin', 'dup'];
+const EFFECT_ORDER_SKILL = ['split', 'speed', 'hisho', 'fukutsu', 'muzin', 'cut', 'dup'];
 /* 「攻撃と防御で値を分ける」は、攻撃or防御が「攻撃・防御」のときだけ(模倣スキルは出さない) */
 const effectOrder = d =>
   (toFlag(d.init) === 1 ? EFFECT_ORDER_INIT : EFFECT_ORDER_SKILL).filter(
@@ -727,6 +760,8 @@ function skillTrCols(d) {
     stat: [['statBuff', `素${b}バフ`]],
     total: [['totalBuff', `総${b}バフ`], ...(tbCoefOn(d) ? [['tbCoef', `総${b}バフ係数(%)`]] : [])],
     troop: [['troopAdd', '兵数加算']],
+    sadd: [['soldierAdd', `${saddLabel(d)}(コスト減1につき)`]],
+    cut: cutByOf(d) === 'value' ? [['costCut', 'コスト減']] : [],
   };
   for (const [k, l] of EXTRA_EFFS) colsOf[k] = [[k, l]];
   const on = k => (k === 'dup' ? dupOn(d) : ef[k]);
@@ -907,6 +942,7 @@ $('editor').addEventListener('change', e => {
   if (
     draft &&
     (e.target.id === 'f-tbBy' ||
+      e.target.id === 'f-cutBy' ||
       e.target.id === 'f-mulBy' ||
       (draft.coll === 'skills' && e.target.id === 'f-side'))
   ) {
@@ -1090,6 +1126,15 @@ function validate(coll, d) {
     !effsOf(d).troopSelf
   )
     return '兵数加算の対象を1つ以上選んでください(または「自身の兵数も増やす」にチェック)';
+  if (
+    coll === 'skills' &&
+    isInitSkill(d) &&
+    effsOf(d).sadd &&
+    !saddBranchesOf(d).length &&
+    !saddSoldiersOf(d).length &&
+    !saddOwnOf(d)
+  )
+    return `${saddLabel(d)}の対象兵科か対象兵種を1つ以上選んでください`;
   if (coll === 'skills') return skillEffectMissing(d);
   return '';
 }

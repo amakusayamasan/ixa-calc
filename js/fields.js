@@ -83,6 +83,7 @@ const trRange = d => {
 const INIT_TR_FIELDS = () => [
   ...SKILL_INIT.map(([f]) => f),
   'troopAdd',
+  'soldierAdd',
   'tbCoef',
   'mulNormalCoef',
   'mulLimitCoef',

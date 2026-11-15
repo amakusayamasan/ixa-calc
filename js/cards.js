@@ -1,5 +1,5 @@
 // 武将と初期スキルのルール(武将のTR、初期スキルの効果、無尽部隊、部隊長限定、バフ、保存するときの形)
-// 使うファイル:core.js、fields.js、skills.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、fields.js、skills.js、unit.js(調べ方:node tests/deps.js)
 /* 初期スキルの効果(無尽を反映) */
 /* 傑カードは無尽のルールの対象外:初期スキルはそのまま発動し、バフや倍枠も無効にならない */
 /* 初期スキルの元の値:初期スキル名がスキルマスタにあれば、武将のTRと同じTRのスキル上昇率。なければ武将マスタのTRごとの値 */
@@ -38,6 +38,16 @@ function cardTrs(c) {
         if (ef.enemy) o.enemyAdd = true;
         if (ef.troopSelf) o.troopSelf = true;
         if (ef.troop) o.troopTo = troopToOf(sk.d);
+        /* コスト減(初期スキル):①武将のコスト分 ②決めた数値 */
+        if (ef.cut) o.cut = cutByOf(sk.d) === 'self' ? { self: true } : { v: N(e.costCut) };
+        /* 兵士攻撃力(防御力)加算:この部隊で使う側のスキルだけ */
+        if (ef.sadd && forMode(sk.d))
+          o.sadd = {
+            v: N(e.soldierAdd),
+            branches: saddBranchesOf(sk.d),
+            soldiers: saddSoldiersOf(sk.d),
+            own: saddOwnOf(sk.d),
+          };
       }
       /* 倍枠を部隊内の数で掛けるとき:係数と数える設定 */
       if ((sk.d.effs || {}).mul && mulCounts(sk.d)) {
@@ -95,13 +105,13 @@ function slotEff(i) {
     raw = c && cardT(c, s.tr);
   let t = c && effT(c, raw);
   if (t && raw?.leaderOnly && i !== 0)
-    t = { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1, loOff: true };
+    t = { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1, cut: null, sadd: null, loOff: true };
   return { c, raw, t };
 }
 function effT(c, t) {
   if (!t) return t;
   if (!muzinVoid(c, t.tr)) return t;
-  return { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1 };
+  return { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1, cut: null, sadd: null };
 }
 /* バフ
    ・所属時:そのカード(カードNoが同じ武将。傑以外も登録できる)が部隊長・小隊長のどこかの枠にいれば自動でかかる

@@ -151,3 +151,49 @@ function slotMul(i, t, raw) {
     cnt = unitCount(i, m);
   return { n: N(t.mulNormal) + m.n * cnt, l: N(t.mulLimit) + m.l * cnt, cnt, by: m.by };
 }
+
+/* ---------- コスト減(自合流使用コスト) ----------
+   部隊のコスト合計(武将マスタの武将コスト)から、部隊内のスキル(初期・追加・極限)の「コスト減」を引いたものが自合流使用コスト。
+   ①スキルを付けた武将のコスト分 ②決めた数値。①→②の順に引き、0より下がらない(引ける合計は部隊のコスト合計まで) */
+function costCut(drop = dupDropped()) {
+  let total = 0,
+    cut = 0;
+  if (!form) return { total, cut, left: 0 };
+  form.slots.forEach((s, i) => {
+    const c = M.cards.get(s.card);
+    if (!c) return;
+    const cost = N(c.cost);
+    total += cost;
+    const { t } = slotEff(i);
+    if (t?.cut && !drop.has(i + ':init')) cut += t.cut.self ? cost : N(t.cut.v);
+    for (const k of ['s1', 's2', 'lim']) {
+      const sel = s[k],
+        d = sel?.id && M.skills.get(sel.id);
+      if (!d || !effsOf(d).cut || drop.has(i + ':' + k)) continue;
+      cut += cutByOf(d) === 'self' ? cost : N(trsOf(d).find(x => N(x.tr) === N(sel.tr))?.costCut);
+    }
+  });
+  cut = Math.min(Math.max(cut, 0), total);
+  return { total, cut, left: total - cut };
+}
+/* 枠 j の兵士攻撃力(防御力)に足す値:初期スキルの「兵士攻撃力加算」× コスト減の合計。
+   対象は兵科・兵種(「自身のもつ兵種」はスキルを持つ武将と同じ兵種) */
+function soldierAdd(j, drop = dupDropped()) {
+  const s = form?.slots[j],
+    o = s && M.soldiers.get(s.soldier);
+  if (!o) return 0;
+  let v = 0,
+    cc = null;
+  form.slots.forEach((h, i) => {
+    const a = slotEff(i).t?.sadd;
+    if (!a || drop.has(i + ':init')) return;
+    const hit =
+      a.soldiers.includes(o.name) ||
+      a.branches.includes(o.branch) ||
+      (a.own && !!h.soldier && s.soldier === h.soldier);
+    if (!hit) return;
+    cc ??= costCut(drop).cut;
+    v += a.v * cc;
+  });
+  return v;
+}

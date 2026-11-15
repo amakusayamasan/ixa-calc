@@ -94,8 +94,18 @@ const got=await p.evaluate(()=>{const tr=o=>[0,1,2,3,4,5].map(t=>({tr:t,...o(t)}
  form.slots[1].s1={id:'CB',tr:0};out.coefBranch=skillVal(form.slots[1].s1,1);
  M.skills.get('CB').coefSelf=0;out.coefBranchNoSelf=skillVal(form.slots[1].s1,1);
  Object.assign(M.skills.get('CB'),{coefBranches:[],coefOwn:1,coefSelf:1});form.slots[1].soldier='sb';out.coefOwn=skillVal(form.slots[1].s1,1);form.slots[1].soldier='sa';
+ /* 18. コスト減と兵士攻撃力加算:部隊コスト20(5×4)、部隊長に①武将のコスト分と②5 → コスト減10 → 弓兵科の兵士攻撃力 +0.9×10 */
+ for(const k of [...M.skills.keys()])M.skills.delete(k);for(const k of [...M.cards.keys()])M.cards.delete(k);
+ M.soldiers.set('yk',{name:'弓騎馬',branch:'弓兵科',atk:27});M.soldiers.set('tk',{name:'鉄砲騎馬',branch:'鉄砲兵科',atk:32});
+ M.skills.set('KAI',{name:'怪童',init:1,side:'攻撃',coefBy:'people',effs:{sadd:true,leader:true},saddBranches:['弓兵科'],trs:[{tr:0,base:0,coef:0,soldierAdd:0.9}]});
+ M.skills.set('CS',{name:'減自',init:0,side:'攻撃',coefBy:'people',cutBy:'self',effs:{cut:true},trs:[{tr:0,base:0,coef:0}]});
+ M.skills.set('CV',{name:'減数',init:0,side:'攻撃',coefBy:'people',cutBy:'value',effs:{cut:true},trs:[{tr:0,base:0,coef:0,costCut:5}]});
+ for(let i=0;i<4;i++)M.cards.set('k'+i,{no:5000+i,rarity:'天',side:'攻撃',name:'K'+i,cost:5,initName:i?'なし':'怪童',troops:1000,baseStat:1000,growth:0});
+ form={jin:1,slots:[0,1,2,3].map(i=>({card:'k'+i,tr:0,soldier:i==1?'tk':'yk',alloc:'atk',s1:i?e:{id:'CS',tr:0},s2:i?e:{id:'CV',tr:0},lim:e}))};
+ out.cut=costCut();out.satk=calc().rows.map(x=>Math.round(x.satk*100)/100);
+ form.slots[0].card='k1';form.slots[1].card='k0';out.satkNotLeader=calc().rows.map(x=>Math.round(x.satk*100)/100);
  return out});
-const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[2600,3100,3100,3700],troopAll:[3100,3100,3100,3700],toHime:[3200,3100,2600,3700],toKengou:[3200,3100,3100,3200],toBoth:[3200,3100,3100,3700],mulHime:560,mulHimeFx:'200/360/2',mulBranch:730,mulSplitAtk:560,mulSplitDef:900,rarTroops:[3800,1000,2600,3200],reiTroops:3000,kengouTroops:[2600,1000,2600,2600],coefBranch:310,coefBranchNoSelf:210,coefOwn:210};
+const want={hisho:8,hcVal:80,drop:[false,false,false,true],sb:[2,2,2,2],buff:1.5,speed:699.2,speedVal:2255.48,speedMuzin:2,costVal:630,costLabel:'630',splitAtk:390,splitDef:440,himeSelf:1.12,himeNoSelf:1.08,himeDef:1.08,brSelf:1.15,brNoSelf:1.1,soldOnly:1.05,soldOr:1.2,own:1.15,ownNoSelf:1.1,ownBushi:1.1,kengou:1.1,kengouSelf:1.15,kengouNoSelf:1.1,troopOthers:[2600,3100,3100,3700],troopAll:[3100,3100,3100,3700],toHime:[3200,3100,2600,3700],toKengou:[3200,3100,3100,3200],toBoth:[3200,3100,3100,3700],mulHime:560,mulHimeFx:'200/360/2',mulBranch:730,mulSplitAtk:560,mulSplitDef:900,rarTroops:[3800,1000,2600,3200],reiTroops:3000,kengouTroops:[2600,1000,2600,2600],coefBranch:310,coefBranchNoSelf:210,coefOwn:210,cut:{total:20,cut:10,left:10},satk:[36,32,36,36],satkNotLeader:[27,32,27,27]};
 let ng=0;for(const k in want)if(JSON.stringify(got[k])!==JSON.stringify(want[k])){ng++;console.log('NG',k,'期待',JSON.stringify(want[k]),'結果',JSON.stringify(got[k]))}
 if(errs.length){ng++;console.log('ページのエラー',errs)}
 console.log(ng?`失敗 ${ng}件`:'すべてOK');await b.close();process.exit(ng?1:0)})();

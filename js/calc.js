@@ -41,7 +41,8 @@ function calc() {
       atk = MD().statOf(s.c, s.alloc === 'hei');
     const sname = M.soldiers.get(s.soldier)?.name,
       jb = jbBonus(sname),
-      satk = N(M.soldiers.get(s.soldier)?.[MD().soldierF]) + jb;
+      sadd = soldierAdd(i, drop),
+      satk = N(M.soldiers.get(s.soldier)?.[MD().soldierF]) + jb + sadd;
     const sb = sbOf(s),
       b = satk * troops * 1.4 + atk * 1.4 * sb;
     const initDrop = drop.has(i + ':init'),
@@ -64,6 +65,7 @@ function calc() {
       atk,
       satk,
       jb,
+      sadd,
       b,
       sk,
       init,
@@ -203,7 +205,16 @@ function breakdownHtml(x, r) {
         .join('・'),
     ],
     [m.stat, fmt(x.atk), ''],
-    [`兵士${m.stat}力`, fmt(x.satk), x.jb ? `兵科バフ${x.jb < 0 ? '' : '+'}${fmt(x.jb, 2)}` : ''],
+    [
+      `兵士${m.stat}力`,
+      fmt(x.satk, 2),
+      [
+        x.jb ? `兵科バフ${x.jb < 0 ? '' : '+'}${fmt(x.jb, 2)}` : '',
+        x.sadd ? `初期スキル+${fmt(x.sadd, 2)}(コスト減${fmt(costCut().cut, 2)})` : '',
+      ]
+        .filter(Boolean)
+        .join('・'),
+    ],
     [`素${m.st}`, fmt(x.b, 1), x.sb !== 1 ? `素${m.st}バフ×${fmt(x.sb, 2)}` : ''],
     ['初期スキル', fmt(x.init, 1), initNote],
     [
