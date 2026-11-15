@@ -1063,10 +1063,13 @@ tbody tr.editable:hover {
 .guide::backdrop {
   background: rgba(20, 23, 31, 0.45);
 }
-.guidehead {
+.guidetop {
   position: sticky;
   top: 0;
   z-index: 2;
+  background: var(--panel);
+}
+.guidehead {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1206,6 +1209,31 @@ tbody tr.editable:hover {
 .guide .mk.sub {
   background: var(--accent);
 }
-.guidetbl td:last-child {
+.guidetbl.ex td:last-child {
   white-space: nowrap;
+}
+.guidetabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 20px 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.guidetabs button {
+  padding: 8px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.guidetabs button[aria-selected='true'] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.guide .guidetbl + .guidetbl,
+.guide .tblwrap + .tblwrap {
+  margin-top: 10px;
 }

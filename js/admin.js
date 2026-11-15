@@ -120,7 +120,7 @@ function setRole(user) {
   me = user || null;
   $('login').hidden = !!user;
   $('logout').hidden = !user;
-  /* 武将登録の手順は管理者だけに出す */
+  /* 登録の手順は管理者だけに出す */
   $('guideBtn').hidden = !isOwner;
   if (!isOwner && $('guide').open) $('guide').close();
   /* 名前には「さん」を付ける(名前がなくメールアドレスを出すときは付けない) */

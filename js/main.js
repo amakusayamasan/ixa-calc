@@ -103,9 +103,23 @@ renderCalc();
     }
   });
   $('logout').addEventListener('click', () => auth.signOut());
-  /* 武将登録の手順(管理者だけ):ダイアログで開く。背景のクリックでも閉じる */
+  /* 登録の手順(管理者だけ):ダイアログで開く。背景のクリックでも閉じる */
   $('guideBtn').addEventListener('click', () => $('guide').showModal());
   $('guideClose').addEventListener('click', () => $('guide').close());
+  /* 手順のタブ(武将の登録 / スキルの登録) */
+  $('guide')
+    .querySelector('.guidetabs')
+    .addEventListener('click', e => {
+      const t = e.target.closest('[data-guide]');
+      if (!t) return;
+      $('guide')
+        .querySelectorAll('[data-guide]')
+        .forEach(x => x.setAttribute('aria-selected', x === t));
+      $('guide')
+        .querySelectorAll('[data-guide-pane]')
+        .forEach(x => (x.hidden = x.dataset.guidePane !== t.dataset.guide));
+      $('guide').scrollTop = 0;
+    });
   $('guide').addEventListener('click', e => {
     if (e.target === $('guide')) $('guide').close();
   });

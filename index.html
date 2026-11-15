@@ -6,14 +6,14 @@
 <title>IXA 部隊計算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho+B1:wght@700;800&display=swap">
-<link rel="stylesheet" href="css/style.css?v=20261116p">
+<link rel="stylesheet" href="css/style.css?v=20261116q">
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>IXA 部隊計算</h1>
     <div class="auth">
-      <button id="guideBtn" class="btn small ghost" type="button" hidden aria-haspopup="dialog">武将登録の手順</button>
+      <button id="guideBtn" class="btn small ghost" type="button" hidden aria-haspopup="dialog">登録の手順</button>
       <span id="role" class="role">閲覧のみ</span>
       <span id="userName" class="note"></span>
       <button id="login" class="btn small ghost" type="button" hidden>管理者ログイン</button>
@@ -21,11 +21,17 @@
     </div>
   </header>
   <dialog id="guide" class="guide" aria-labelledby="guideTitle">
+    <div class="guidetop">
     <div class="guidehead">
-      <h2 id="guideTitle">武将登録の手順</h2>
+      <h2 id="guideTitle">登録の手順</h2>
       <button id="guideClose" class="btn small ghost" type="button">閉じる</button>
     </div>
-    <div class="guidebody">
+    <div class="guidetabs" role="tablist">
+      <button type="button" role="tab" data-guide="card" aria-selected="true">武将の登録</button>
+      <button type="button" role="tab" data-guide="skill" aria-selected="false">スキルの登録</button>
+    </div>
+    </div>
+    <div class="guidebody" data-guide-pane="card">
       <p class="note">マスタ管理の「武将マスタ」に新しい武将を登録するときの手順です。保存した内容はすぐに全員の画面へ反映されます。</p>
       <ol class="steps">
         <li>
@@ -52,7 +58,7 @@
             </div>
             <figcaption>ステータス振り分け画面。「成長」の列が攻撃上昇率(⑩)・防御上昇率(⑪)です。<br>※ 未使用ステータスポイント(690)を全部攻撃に振ったものとして、攻撃 = 素攻撃力 + 攻撃上昇率 × 690 で計算します。<br>この画面の指揮兵数(9230)は天限突破後の値なので使いません。兵数は⑨(LV0のカードの指揮兵数)を入れます。</figcaption>
           </figure>
-          <div class="tblwrap"><table class="guidetbl">
+          <div class="tblwrap"><table class="guidetbl ex">
             <thead><tr><th>項目</th><th>入れるもの</th><th>この例</th></tr></thead>
             <tbody>
               <tr><td><span class="mk">1</span>カードNo</td><td>カード左下の「No.」の数字。同じ番号は1つしか登録できません。</td><td>1286</td></tr>
@@ -95,6 +101,81 @@
         </li>
       </ol>
       <p class="note">たくさん登録するときは「Excelから取り込み」でもまとめて登録できます。列の意味は、出力したExcelの「列の説明」シートにあります。</p>
+    </div>
+    <div class="guidebody" data-guide-pane="skill" hidden>
+      <p class="note">マスタ管理の「スキルマスタ」に新しいスキルを登録するときの手順です。編集画面の説明文とTR表の右端の「スキル上昇率」も、入れ方の確認に使えます。</p>
+      <ol class="steps">
+        <li>
+          <h3>どのボタンで追加するか選ぶ</h3>
+          <div class="tblwrap"><table class="guidetbl">
+            <thead><tr><th>ボタン</th><th>使うとき</th></tr></thead>
+            <tbody>
+              <tr><td>スキル追加</td><td>追加スキル・極限スキルの枠に付けるスキル。Xスキルや模倣スキル(自模倣・他真似)もこちら。</td></tr>
+              <tr><td>初期スキル追加</td><td>武将の初期スキル。武将の登録で、初期スキルがスキルマスタにないときは自動でこの画面に進みます。</td></tr>
+            </tbody>
+          </table></div>
+          <p class="note">同じ名前のスキルは1つしか登録できません。先に上の「名前で絞り込み」で、登録済みでないか確かめます。</p>
+        </li>
+        <li>
+          <h3>上の段を入力する</h3>
+          <div class="tblwrap"><table class="guidetbl">
+            <thead><tr><th>項目</th><th>入れるもの</th></tr></thead>
+            <tbody>
+              <tr><td>スキル名</td><td>ゲームの表記どおり。「SSS」や「LV10」は付けません。</td></tr>
+              <tr><td>攻撃or防御</td><td>スキルの説明で決めます。「攻撃・防御」にすると、特殊効果の「攻撃と防御で値を分ける」で防御部隊用の値を別に入れられます。</td></tr>
+              <tr><td>スキル付与</td><td>部隊計算で追加スキル・極限スキルの枠に付けられるか。初期スキルは「付与できない」が初期値です。</td></tr>
+              <tr><td>係数の掛け方</td><td>係数に何を掛けるか(下の表)。</td></tr>
+              <tr><td>Xスキル</td><td>(スキル追加のみ)Xスキルなら選びます。Xスキルは通常枠にしか付けられません。</td></tr>
+              <tr><td>模倣</td><td>スキル追加:模倣スキルなら「自模倣」か「他真似(部隊長)」、普通のスキルは「なし」。<br>初期スキル:ほかの武将がこの初期スキルを模倣できるか(説明に「模倣不可」なら「模倣できない」)。</td></tr>
+            </tbody>
+          </table></div>
+          <div class="tblwrap"><table class="guidetbl">
+            <thead><tr><th>係数の掛け方</th><th>スキル上昇率の計算</th></tr></thead>
+            <tbody>
+              <tr><td>人数</td><td>素スキル上昇率 + 係数 × 人数。人数はスキルマスタの上で設定した全員共通の値です。</td></tr>
+              <tr><td>部隊内の同じスキルの数</td><td>係数 × 部隊でこのスキルを使っている数。「係数は部隊内武将のTRの最大値を参照」もここで選べます。</td></tr>
+              <tr><td>部隊内のXスキルの数</td><td>係数 × 部隊のXスキルの数(通常枠だけ。最大8)</td></tr>
+              <tr><td>部隊内の飛翔の数</td><td>係数 × 4人それぞれの飛翔のいちばん大きい値の合計</td></tr>
+              <tr><td>部隊移動速度/係数</td><td>素スキル上昇率 + 部隊移動速度 ÷ 係数 × 100</td></tr>
+              <tr><td>敵武将の総コスト</td><td>係数 × 敵武将の平均コスト × 人数(どちらもスキルマスタの上で設定)</td></tr>
+              <tr><td>部隊内の兵科・兵種の数</td><td>係数 × 選んだ兵科・兵種の武将の数。選ぶと「係数の設定」の枠が出るので、対象と「自身をカウントする」を選びます。</td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>
+          <h3>特殊効果にチェックする</h3>
+          <p>当てはまるものにチェックすると、すぐ下に設定の枠が出て、TR表にその値の列が増えます。</p>
+          <div class="tblwrap"><table class="guidetbl">
+            <thead><tr><th>特殊効果</th><th>意味</th></tr></thead>
+            <tbody>
+              <tr><td>攻撃と防御で値を分ける</td><td>「攻撃・防御」のスキルで、防御部隊では(防)の列の値を使います(空欄なら攻撃と同じ値)。</td></tr>
+              <tr><td>速度スキル・飛翔・不屈</td><td>部隊移動速度・飛翔の数などの計算に使う値</td></tr>
+              <tr><td>無尽</td><td>無尽スキル。無尽部隊でスキルの効果が2倍になります。</td></tr>
+              <tr><td>重複上限</td><td>部隊内で効果が出る数の上限。上限を超えたら値の大きいものから上限の数だけ効きます。</td></tr>
+              <tr><td>倍枠</td><td>(初期スキルのみ)この武将の通常枠・極限枠のスキルを何倍にするか。人数で増えるときは「倍枠の設定」で選びます。</td></tr>
+              <tr><td>部隊長限定</td><td>(初期スキルのみ)部隊長の枠にいるときだけ効果が出ます。</td></tr>
+              <tr><td>素攻バフ・総攻バフ</td><td>(初期スキルのみ)「部隊総攻撃力が30%上昇」なら総攻バフに1.3。素攻バフは「本人のみ」も選べます。</td></tr>
+              <tr><td>兵数加算</td><td>(初期スキルのみ)ほかの武将の兵数に足す値。対象(すべて・姫・剣豪)と「自身の兵数も増やす」を選びます。</td></tr>
+              <tr><td>敵火力加算</td><td>(初期スキルのみ)防御部隊で、敵の推定火力 ÷ 敵の武将数 を足します。</td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>
+          <h3>TRごとの値を入れる</h3>
+          <ul>
+            <li>「TRを追加(前の行をコピー)」で行を増やし、TR0から順に入れます。</li>
+            <li>素スキル上昇率と係数は、スキルの説明の数字をそのまま入れます(%は付けない)。</li>
+            <li>模倣スキルは「模倣倍率」も入れます(例:1.15)。</li>
+            <li>チェックした特殊効果の列は必須です。</li>
+            <li>右端の「スキル上昇率」に「0+700×兵科兵種数」のような式が出るので、説明どおりか確かめます。</li>
+          </ul>
+        </li>
+        <li>
+          <h3>保存して、部隊計算で確かめる</h3>
+          <p>部隊計算でそのスキルを付けて(「スキル一括追加」でも選べます)、スキル欄の下の「効果」と、内訳のスキル小計が想定どおりか確認します。</p>
+        </li>
+      </ol>
+      <p class="note">たくさん登録するときは「Excelから取り込み」でもまとめて登録できます。</p>
     </div>
   </dialog>
   <nav class="tabs" role="tablist">
@@ -183,18 +264,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="js/core.js?v=20261116p"></script>
-<script src="js/fields.js?v=20261116p"></script>
-<script src="js/skills.js?v=20261116p"></script>
-<script src="js/cards.js?v=20261116p"></script>
-<script src="js/unit.js?v=20261116p"></script>
-<script src="js/calc.js?v=20261116p"></script>
-<script src="js/calc-view.js?v=20261116p"></script>
-<script src="js/teams.js?v=20261116p"></script>
-<script src="js/bulk.js?v=20261116p"></script>
-<script src="js/master.js?v=20261116p"></script>
-<script src="js/excel.js?v=20261116p"></script>
-<script src="js/admin.js?v=20261116p"></script>
-<script src="js/main.js?v=20261116p"></script>
+<script src="js/core.js?v=20261116q"></script>
+<script src="js/fields.js?v=20261116q"></script>
+<script src="js/skills.js?v=20261116q"></script>
+<script src="js/cards.js?v=20261116q"></script>
+<script src="js/unit.js?v=20261116q"></script>
+<script src="js/calc.js?v=20261116q"></script>
+<script src="js/calc-view.js?v=20261116q"></script>
+<script src="js/teams.js?v=20261116q"></script>
+<script src="js/bulk.js?v=20261116q"></script>
+<script src="js/master.js?v=20261116q"></script>
+<script src="js/excel.js?v=20261116q"></script>
+<script src="js/admin.js?v=20261116q"></script>
+<script src="js/main.js?v=20261116q"></script>
 </body>
 </html>

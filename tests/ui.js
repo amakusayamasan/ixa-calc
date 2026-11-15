@@ -68,10 +68,13 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
   /* ---------- 1. 初期スキルの編集画面:特殊効果のチェックで設定の枠が出る ---------- */
   {
     const p = await open(b, '?mode=admin', '#master');
-    /* 武将登録の手順:管理者だけにボタン、押すとダイアログ */
+    /* 登録の手順:管理者だけにボタン、押すとダイアログ */
     ok('手順ボタンは管理者に出る', await p.$eval('#guideBtn', e => !e.hidden), true);
     await p.click('#guideBtn');
     ok('手順が開く', await p.$eval('#guide', e => e.open), true);
+    await p.click('[data-guide=skill]');
+    ok('スキルの登録タブ', await p.$eval('[data-guide-pane=skill]', e => !e.hidden), true);
+    ok('武将の登録は隠れる', await p.$eval('[data-guide-pane=card]', e => e.hidden), true);
     await p.click('#guideClose');
     ok('手順が閉じる', await p.$eval('#guide', e => e.open), false);
     await p.click('[data-m=skills]');
