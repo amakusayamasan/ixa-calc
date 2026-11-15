@@ -6,19 +6,79 @@
 <title>IXA 部隊計算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho+B1:wght@700;800&display=swap">
-<link rel="stylesheet" href="css/style.css?v=20261116m">
+<link rel="stylesheet" href="css/style.css?v=20261116n">
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>IXA 部隊計算</h1>
     <div class="auth">
+      <button id="guideBtn" class="btn small ghost" type="button" hidden aria-haspopup="dialog">武将登録の手順</button>
       <span id="role" class="role">閲覧のみ</span>
       <span id="userName" class="note"></span>
       <button id="login" class="btn small ghost" type="button" hidden>管理者ログイン</button>
       <button id="logout" class="btn small ghost" type="button" hidden>ログアウト</button>
     </div>
   </header>
+  <dialog id="guide" class="guide" aria-labelledby="guideTitle">
+    <div class="guidehead">
+      <h2 id="guideTitle">武将登録の手順</h2>
+      <button id="guideClose" class="btn small ghost" type="button">閉じる</button>
+    </div>
+    <div class="guidebody">
+      <p class="note">マスタ管理の「武将マスタ」に新しい武将を登録するときの手順です。保存した内容はすぐに全員の画面へ反映されます。</p>
+      <ol class="steps">
+        <li>
+          <h3>登録する前に確認すること</h3>
+          <ul>
+            <li>カードNo(ゲームの武将No)が、まだ武将マスタにないこと。上の「名前で絞り込み」で探せます。</li>
+            <li>武将のステータス(レアリティ・コスト・兵数・素攻撃力・素防御力・攻撃上昇率・防御上昇率)</li>
+            <li>初期スキルの名前と、TRごとの値(スキル上昇率・係数・倍枠・バフなど)</li>
+          </ul>
+        </li>
+        <li>
+          <h3>武将マスタで「新規追加」を押して入力する</h3>
+          <div class="tblwrap"><table class="guidetbl">
+            <thead><tr><th>項目</th><th>入れるもの</th></tr></thead>
+            <tbody>
+              <tr><td>カードNo</td><td>ゲームの武将No。同じ番号は1つしか登録できません。</td></tr>
+              <tr><td>レアリティ</td><td>覇・天 / 天 / 極 / 傑 から選びます。兵数の加算に使います。</td></tr>
+              <tr><td>武将コスト</td><td>ゲームのコスト</td></tr>
+              <tr><td>攻撃or防御</td><td>攻撃部隊で使う武将は「攻撃」、防御部隊は「防御」、両方なら「攻撃・防御」。部隊計算の武将の候補に出るかが変わります。</td></tr>
+              <tr><td>カード名</td><td>武将の名前</td></tr>
+              <tr><td>初期スキル名</td><td>必須。スキルマスタの初期スキル名と同じ文字で入れます(前後の空白は無視)。</td></tr>
+              <tr><td>兵数</td><td><b>レアリティで増える分を足す前</b>の値。ツールが自動で足します(覇・天 +2,800 / 剣豪 +1,600 / 傑 +0 / それ以外 +2,200)。</td></tr>
+              <tr><td>素攻撃力・素防御力</td><td>ステ振り前の値</td></tr>
+              <tr><td>攻撃上昇率・防御上昇率</td><td>攻撃振りなら 攻撃 = 素攻撃力 + 攻撃上昇率 × 690 で計算します。</td></tr>
+              <tr><td>姫・剣豪</td><td>当てはまればチェック。総バフ・倍枠・兵数加算の「部隊内の姫・剣豪の数」で数えます。剣豪は兵数の加算が +1,600 になります。</td></tr>
+            </tbody>
+          </table></div>
+        </li>
+        <li>
+          <h3>保存する</h3>
+          <p>初期スキルがスキルマスタにあれば、TRと初期スキルの値はそのスキルから自動で使われます。<br>
+          スキルマスタにないときは、武将を保存したあと<b>その名前で「初期スキルを追加」画面に自動で進みます</b>。続けて手順4へ。</p>
+        </li>
+        <li>
+          <h3>初期スキルを登録する(スキルマスタにないとき)</h3>
+          <ul>
+            <li><b>スキル名</b>:武将の初期スキル名がそのまま入っています。</li>
+            <li><b>攻撃or防御</b>:武将の値が入っています。スキルの効果に合わせて直します。</li>
+            <li><b>係数の掛け方</b>:人数 / 同じスキルの数 / 部隊内の兵科・兵種の数 など、スキルの説明に合わせて選びます。</li>
+            <li><b>模倣</b>:他の武将が模倣(自真似・他真似)できるか</li>
+            <li><b>特殊効果</b>:無尽・倍枠・素攻バフ・総攻バフ・兵数加算・部隊長限定・重複上限など、当てはまるものにチェック。チェックすると設定欄とTR表の列が増えます。</li>
+            <li><b>TRごとの値</b>:TRの行を追加して、素スキル上昇率・係数と、チェックした効果の値を入れます。チェックした効果の値は必須です。</li>
+          </ul>
+          <p class="note">無尽部隊(部隊長が無尽の武将)では、初期スキルに無尽がない武将は初期スキルの効果(倍枠・バフを含む)がすべて無効になります。</p>
+        </li>
+        <li>
+          <h3>部隊計算で確かめる</h3>
+          <p>部隊計算でその武将を選び、各枠の下の内訳(兵数・攻撃・初期スキル・スキル小計)が想定どおりか確認します。違っていたら、武将マスタやスキルマスタの行をクリックして直せます。</p>
+        </li>
+      </ol>
+      <p class="note">たくさん登録するときは「Excelから取り込み」でもまとめて登録できます。列の意味は、出力したExcelの「列の説明」シートにあります。</p>
+    </div>
+  </dialog>
   <nav class="tabs" role="tablist">
     <button id="tab-calc" role="tab" aria-selected="true" data-view="calc">部隊計算</button>
     <button id="tab-master" role="tab" aria-selected="false" data-view="master">マスタ管理</button>
@@ -105,18 +165,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="js/core.js?v=20261116m"></script>
-<script src="js/fields.js?v=20261116m"></script>
-<script src="js/skills.js?v=20261116m"></script>
-<script src="js/cards.js?v=20261116m"></script>
-<script src="js/unit.js?v=20261116m"></script>
-<script src="js/calc.js?v=20261116m"></script>
-<script src="js/calc-view.js?v=20261116m"></script>
-<script src="js/teams.js?v=20261116m"></script>
-<script src="js/bulk.js?v=20261116m"></script>
-<script src="js/master.js?v=20261116m"></script>
-<script src="js/excel.js?v=20261116m"></script>
-<script src="js/admin.js?v=20261116m"></script>
-<script src="js/main.js?v=20261116m"></script>
+<script src="js/core.js?v=20261116n"></script>
+<script src="js/fields.js?v=20261116n"></script>
+<script src="js/skills.js?v=20261116n"></script>
+<script src="js/cards.js?v=20261116n"></script>
+<script src="js/unit.js?v=20261116n"></script>
+<script src="js/calc.js?v=20261116n"></script>
+<script src="js/calc-view.js?v=20261116n"></script>
+<script src="js/teams.js?v=20261116n"></script>
+<script src="js/bulk.js?v=20261116n"></script>
+<script src="js/master.js?v=20261116n"></script>
+<script src="js/excel.js?v=20261116n"></script>
+<script src="js/admin.js?v=20261116n"></script>
+<script src="js/main.js?v=20261116n"></script>
 </body>
 </html>

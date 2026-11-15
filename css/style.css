@@ -1048,3 +1048,104 @@ tbody tr.editable:hover {
     display: none;
   }
 }
+
+/* 武将登録の手順(管理者だけのダイアログ) */
+.guide {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--fg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+.guide::backdrop {
+  background: rgba(20, 23, 31, 0.45);
+}
+.guidehead {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.guidehead h2 {
+  margin: 0;
+  font-family: var(--f-disp);
+  font-size: 1.15rem;
+}
+.guidebody {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px 20px;
+  line-height: 1.7;
+}
+.guidebody p {
+  margin: 0;
+}
+.guidebody > *,
+.guide .steps > li {
+  min-width: 0;
+}
+.guidebody {
+  grid-template-columns: minmax(0, 1fr);
+}
+.guide .steps {
+  grid-template-columns: minmax(0, 1fr);
+}
+.guide .steps {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding-left: 1.4em;
+}
+.guide .steps > li::marker {
+  color: var(--accent);
+  font-weight: 700;
+}
+.guide h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  color: var(--accent);
+}
+.guide ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+.guide .tblwrap {
+  overflow-x: auto;
+}
+.guidetbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.guidetbl th,
+.guidetbl td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.guidetbl th {
+  color: var(--muted);
+  font-weight: 600;
+}
+.guidetbl td {
+  white-space: normal;
+}
+.guidetbl td:first-child {
+  white-space: nowrap;
+  font-weight: 600;
+}
+@media (max-width: 560px) {
+  .guidetbl td:first-child {
+    white-space: normal;
+    min-width: 6em;
+  }
+}

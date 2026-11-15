@@ -68,6 +68,12 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
   /* ---------- 1. 初期スキルの編集画面:特殊効果のチェックで設定の枠が出る ---------- */
   {
     const p = await open(b, '?mode=admin', '#master');
+    /* 武将登録の手順:管理者だけにボタン、押すとダイアログ */
+    ok('手順ボタンは管理者に出る', await p.$eval('#guideBtn', e => !e.hidden), true);
+    await p.click('#guideBtn');
+    ok('手順が開く', await p.$eval('#guide', e => e.open), true);
+    await p.click('#guideClose');
+    ok('手順が閉じる', await p.$eval('#guide', e => e.open), false);
     await p.click('[data-m=skills]');
     ok('古い形式の知らせ', await p.$eval('#mlegacy', e => !e.hidden && e.textContent.includes('古い重複')), true);
     await p.click('#maddInit');
@@ -150,6 +156,7 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
   {
     const ctx = await b.newContext();
     const p = await open(ctx);
+    ok('手順ボタンは閲覧のみには出ない', await p.$eval('#guideBtn', e => e.hidden), true);
     await p.evaluate(() => {
       form = fromKeys({
         jin: 1,

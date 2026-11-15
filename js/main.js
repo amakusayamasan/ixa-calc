@@ -103,6 +103,12 @@ renderCalc();
     }
   });
   $('logout').addEventListener('click', () => auth.signOut());
+  /* 武将登録の手順(管理者だけ):ダイアログで開く。背景のクリックでも閉じる */
+  $('guideBtn').addEventListener('click', () => $('guide').showModal());
+  $('guideClose').addEventListener('click', () => $('guide').close());
+  $('guide').addEventListener('click', e => {
+    if (e.target === $('guide')) $('guide').close();
+  });
   auth.onAuthStateChanged(async user => {
     isOwner = false;
     adminName = '';
