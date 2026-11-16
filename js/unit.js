@@ -147,11 +147,12 @@ function unitCount(i, cfg) {
 function slotMul(i, t, raw) {
   if (!t) return { n: 1, l: 1, cnt: null };
   if (t === raw && raw?.mulLv) {
-    /* 倍枠極限 = 部隊内武将の初期スキルLV(10 + TR)の合計 ÷ 10(この部隊で使わない側なら1倍) */
-    const lv = (form?.slots || []).reduce(
-      (a, s) => a + (M.cards.get(s.card) ? INIT_LV_BASE + N(s.tr) : 0),
-      0,
-    );
+    /* 倍枠極限 = 部隊内武将の初期スキルLV(10 + TR)の合計 ÷ 10(この部隊で使わない側なら1倍)。
+       傑(初期スキルなし)は合計に入れない */
+    const lv = (form?.slots || []).reduce((a, s) => {
+      const c = M.cards.get(s.card);
+      return a + (c && c.rarity !== '傑' && String(c.initName || '').trim() ? INIT_LV_BASE + N(s.tr) : 0);
+    }, 0);
     return raw.mulLv.on ? { n: 1, l: lv / 10, cnt: null, lv } : { n: 1, l: 1, cnt: null };
   }
   if (t !== raw || !raw?.mul) return { n: N(t.mulNormal), l: N(t.mulLimit), cnt: null };
