@@ -7,7 +7,7 @@ function toKeys(f) {
     enemyCount: f.enemyCount,
     enemyFire: f.enemyFire,
     jb: (f.jb || []).map(String),
-    ...(f.yasuke ? { yasuke: 1 } : {}),
+    ...((f.tb || []).length ? { tb: [...f.tb] } : {}),
     slots: f.slots.map(s => ({
       card: String(M.cards.get(s.card)?.no ?? ''),
       tr: s.tr,
@@ -30,7 +30,10 @@ function fromKeys(f) {
   };
   return {
     jin: f.jin ?? 1.05,
-    yasuke: !!f.yasuke,
+    /* 兵数バフ(前の形の yasuke: 1 も読む) */
+    tb: (Array.isArray(f.tb) ? f.tb : f.yasuke ? ['yasuke'] : []).filter(id =>
+      TROOP_BUFFS.some(b => b.id === id),
+    ),
     enemyCount: f.enemyCount ?? ENEMY_DEFAULT.count,
     enemyFire: f.enemyFire ?? ENEMY_DEFAULT.fire,
     jb: Array.isArray(f.jb)
@@ -320,6 +323,7 @@ function renderCalc() {
   $('jin').value = form.jin;
   if (!form.jb) form.jb = [];
   renderJb();
+  renderTb();
   fixForm(form);
   box.innerHTML = form.slots.map((s, i) => slotHtml(s, i)).join('');
   updateResults();
@@ -421,12 +425,6 @@ $('slots').addEventListener('change', e => {
   }
   updateResults();
 });
-$('yasuke').addEventListener('change', e => {
-  if (form) {
-    form.yasuke = e.target.checked;
-    updateResults();
-  }
-});
 $('jin').addEventListener('input', e => {
   if (form) {
     form.jin = parseFloat(e.target.value);
@@ -477,6 +475,65 @@ function jbRowHtml(d, on, inU) {
   return `<div class="jbrow${on || inU ? ' on' : ''}">${label}
       ${vals}</div>`;
 }
+/* ---------- 兵数バフ(兵科バフと同じボタンとパネル) ---------- */
+function renderTb() {
+  const btn = $('tbBtn'),
+    panel = $('tbpanel'),
+    sel = new Set(form?.tb || []),
+    on = TROOP_BUFFS.filter(b => sel.has(b.id));
+  btn.textContent = on.length ? `兵数バフ:${on.map(b => b.name).join('・')}` : '兵数バフ:なし';
+  btn.classList.toggle('on', on.length > 0);
+  btn.setAttribute('aria-expanded', String(!panel.hidden));
+  if (panel.hidden || !form) return;
+  const inUnit = b =>
+    form.slots.filter(s => b.names.includes(String(M.cards.get(s.card)?.name || '').trim())).length;
+  const head = `<div class="jbhead"><strong>兵数バフを選ぶ</strong>${buttonRow(
+    button(
+      '兵数バフすべてOn',
+      `data-tb-act="all"${on.length < TROOP_BUFFS.length ? '' : ' disabled'}`,
+      'btn small ghost',
+    ),
+    button('兵数バフすべてOff', `data-tb-act="clear"${on.length ? '' : ' disabled'}`, 'btn small ghost'),
+    button('閉じる', 'data-tb-act="close"', 'btn small'),
+  )}</div>`;
+  const rows = TROOP_BUFFS.map(b => {
+    const c = sel.has(b.id),
+      n = inUnit(b);
+    return `<div class="jbrow${c ? ' on' : ''}"><label><input type="checkbox" data-tb="${esc(b.id)}"${c ? ' checked' : ''}><span><b>${esc(b.name)}</b><br><span class="meta">対象:${esc(b.names.join('、'))}</span></span></label>
+      <div class="jbvals"><span class="${c ? 'jbon' : ''}">兵数+${fmt(b.troops)}</span>${n ? `<span class="${c ? 'jbon' : ''}">部隊に対象${n}人</span>` : ''}</div></div>`;
+  }).join('');
+  panel.innerHTML = `${head}
+    <p class="note">チェックした兵数バフの兵数が、部隊にいる対象の武将(傑も含む)の兵数に足されます。</p>
+    <div class="jblist">${rows}</div>`;
+}
+$('tbBtn').addEventListener('click', () => {
+  const p = $('tbpanel');
+  p.hidden = !p.hidden;
+  renderTb();
+});
+$('tbpanel').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || !form) return;
+  const act = b.dataset.tbAct;
+  if (act === 'close') {
+    $('tbpanel').hidden = true;
+    renderTb();
+    $('tbBtn').focus();
+    return;
+  }
+  if (act === 'clear') form.tb = [];
+  if (act === 'all') form.tb = TROOP_BUFFS.map(x => x.id);
+  renderTb();
+  updateResults();
+});
+$('tbpanel').addEventListener('change', e => {
+  const c = e.target.closest('[data-tb]');
+  if (!c || !form) return;
+  form.tb = (form.tb || []).filter(x => x !== c.dataset.tb);
+  if (c.checked) form.tb.push(c.dataset.tb);
+  renderTb();
+  updateResults();
+});
 $('jbBtn').addEventListener('click', () => {
   const p = $('jbpanel');
   p.hidden = !p.hidden;
@@ -534,6 +591,7 @@ function setMode(m) {
   mode = m;
   form = forms[m];
   $('jbpanel').hidden = true;
+  $('tbpanel').hidden = true;
   $('teampanel').hidden = true;
   $('teamName').value = '';
   teamMsg('');
@@ -553,7 +611,6 @@ function renderModeUi() {
   if (bulkSoldier.open) renderSoldierBulk(); // 兵種の攻撃力・防御力の表示も切り替える
   if (form) {
     $('jin').value = form.jin;
-    $('yasuke').checked = !!form.yasuke;
     $('enemyCount').value = form.enemyCount ?? ENEMY_DEFAULT.count;
     $('enemyFire').value = form.enemyFire ?? ENEMY_DEFAULT.fire;
   }

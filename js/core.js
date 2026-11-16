@@ -2,10 +2,11 @@
 // 使うファイル:なし(調べ方:node tests/deps.js)
 const BASE = 'master/v2';
 const SLOT_NAMES = ['部隊長', '小隊長1', '小隊長2', '小隊長3'];
-/* 兵数バフ:弥助にチェックすると、織田信長・三郎信長(傑も含む)の兵数 +960 */
-const YASUKE = { names: ['織田信長', '三郎信長'], troops: 960 };
-const yasukeTroops = (f, c) =>
-  f?.yasuke && c && YASUKE.names.includes(String(c.name).trim()) ? YASUKE.troops : 0;
+/* 兵数バフ:選んだバフの対象武将(名前で判定。傑も含む)の兵数に足す。弥助なら織田信長・三郎信長 +960 */
+const TROOP_BUFFS = [{ id: 'yasuke', name: '弥助', names: ['織田信長', '三郎信長'], troops: 960 }];
+/* 武将 c にかかる兵数バフ(選んだもののうち対象の武将名に当てはまるもの) */
+const troopBuffsFor = (f, c) =>
+  c ? TROOP_BUFFS.filter(b => (f?.tb || []).includes(b.id) && b.names.includes(String(c.name).trim())) : [];
 /* コストアップ(各枠のチェック):武将コスト +0.5、兵数 +200 */
 const COSTUP = { cost: 0.5, troops: 200 };
 const slotCost = s => N(M.cards.get(s?.card)?.cost) + (s?.costUp ? COSTUP.cost : 0);
