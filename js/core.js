@@ -2,10 +2,10 @@
 // 使うファイル:なし(調べ方:node tests/deps.js)
 const BASE = 'master/v2';
 const SLOT_NAMES = ['部隊長', '小隊長1', '小隊長2', '小隊長3'];
-/* 兵数バフ:弥助にチェックすると、織田信長・三郎信長(傑は除く)の兵数 +960 */
+/* 兵数バフ:弥助にチェックすると、織田信長・三郎信長(傑も含む)の兵数 +960 */
 const YASUKE = { names: ['織田信長', '三郎信長'], troops: 960 };
 const yasukeTroops = (f, c) =>
-  f?.yasuke && c && c.rarity !== '傑' && YASUKE.names.includes(String(c.name).trim()) ? YASUKE.troops : 0;
+  f?.yasuke && c && YASUKE.names.includes(String(c.name).trim()) ? YASUKE.troops : 0;
 /* コストアップ(各枠のチェック):武将コスト +0.5、兵数 +200 */
 const COSTUP = { cost: 0.5, troops: 200 };
 const slotCost = s => N(M.cards.get(s?.card)?.cost) + (s?.costUp ? COSTUP.cost : 0);
