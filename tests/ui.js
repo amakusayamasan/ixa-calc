@@ -168,6 +168,10 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
       });
       renderCalc();
     });
+    /* 兵数バフ(弥助):チェックが編成に入って保存される */
+    await p.check('#yasuke');
+    ok('弥助のチェックは保存される', await p.evaluate(() => toKeys(form).yasuke), 1);
+    await p.uncheck('#yasuke');
     /* コストアップ:チェックで兵数 +200、編成の保存にも残る */
     const tr0 = await p.evaluate(() => calc().rows[1].troops);
     await p.check('[data-k=costUp][data-i="1"]');

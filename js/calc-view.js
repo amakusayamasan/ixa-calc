@@ -7,6 +7,7 @@ function toKeys(f) {
     enemyCount: f.enemyCount,
     enemyFire: f.enemyFire,
     jb: (f.jb || []).map(String),
+    ...(f.yasuke ? { yasuke: 1 } : {}),
     slots: f.slots.map(s => ({
       card: String(M.cards.get(s.card)?.no ?? ''),
       tr: s.tr,
@@ -29,6 +30,7 @@ function fromKeys(f) {
   };
   return {
     jin: f.jin ?? 1.05,
+    yasuke: !!f.yasuke,
     enemyCount: f.enemyCount ?? ENEMY_DEFAULT.count,
     enemyFire: f.enemyFire ?? ENEMY_DEFAULT.fire,
     jb: Array.isArray(f.jb)
@@ -419,6 +421,12 @@ $('slots').addEventListener('change', e => {
   }
   updateResults();
 });
+$('yasuke').addEventListener('change', e => {
+  if (form) {
+    form.yasuke = e.target.checked;
+    updateResults();
+  }
+});
 $('jin').addEventListener('input', e => {
   if (form) {
     form.jin = parseFloat(e.target.value);
@@ -545,6 +553,7 @@ function renderModeUi() {
   if (bulkSoldier.open) renderSoldierBulk(); // 兵種の攻撃力・防御力の表示も切り替える
   if (form) {
     $('jin').value = form.jin;
+    $('yasuke').checked = !!form.yasuke;
     $('enemyCount').value = form.enemyCount ?? ENEMY_DEFAULT.count;
     $('enemyFire').value = form.enemyFire ?? ENEMY_DEFAULT.fire;
   }

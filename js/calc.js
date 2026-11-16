@@ -38,7 +38,8 @@ function calc() {
     );
     const rt = rarityTroops(s.c),
       cu = s.costUp ? COSTUP.troops : 0,
-      troops = N(s.c.troops) + rt + rei * REI_TROOPS + tadd + cu,
+      yk = yasukeTroops(form, s.c),
+      troops = N(s.c.troops) + rt + rei * REI_TROOPS + tadd + cu + yk,
       atk = MD().statOf(s.c, s.alloc === 'hei');
     const sname = M.soldiers.get(s.soldier)?.name,
       jb = jbBonus(sname),
@@ -61,6 +62,7 @@ function calc() {
       lo: !!s.t?.loOff && !initDrop,
       tadd,
       cu,
+      yk,
       troops,
       rt,
       rtKengou: !!toFlag(s.c.kengou) && s.c.rarity !== '傑',
@@ -203,6 +205,7 @@ function breakdownHtml(x, r) {
         x.rt ? `${x.rtKengou ? '剣豪' : 'ランクアップ'}+${fmt(x.rt)}` : '',
         x.tadd ? `兵数加算+${fmt(x.tadd)}` : '',
         x.cu ? `コストアップ+${fmt(x.cu)}` : '',
+        x.yk ? `弥助+${fmt(x.yk)}` : '',
       ]
         .filter(Boolean)
         .join('・'),

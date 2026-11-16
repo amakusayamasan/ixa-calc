@@ -1270,3 +1270,27 @@ tbody tr.editable:hover {
 .slot h3 .costup:has(input:checked) {
   color: var(--accent);
 }
+/* 兵数バフ(弥助)のチェック:ボタンと同じ高さのピル */
+.tbuff {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tbuff small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+}
+.tbuff:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-weak);
+  color: var(--accent);
+}
