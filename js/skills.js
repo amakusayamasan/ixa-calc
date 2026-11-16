@@ -49,9 +49,14 @@ const MUL_BY = {
   hime: '部隊内の姫の数',
   kengou: '部隊内の剣豪の数',
   branch: '部隊内の兵科・兵種の数',
+  initlv: '部隊内武将の初期スキルLVの合計÷10(極限)',
 };
 const mulByOf = d => (MUL_BY[d?.mulBy] ? d.mulBy : 'fixed');
-const mulCounts = d => mulByOf(d) !== 'fixed';
+/* 部隊内の数(姫・剣豪・兵科兵種)で倍枠を増やすか。初期スキルLVの合計で決めるもの(initlv)は別 */
+const mulCounts = d => !['fixed', 'initlv'].includes(mulByOf(d));
+/* 倍枠極限 = 部隊内武将の初期スキルLV(10 + TR)の合計 ÷ 10。通常枠は1倍 */
+const mulInitLv = d => mulByOf(d) === 'initlv';
+const INIT_LV_BASE = 10;
 const mulSelfOf = d => toFlag(d?.mulSelf ?? 1) === 1;
 const mulBranchesOf = d => (Array.isArray(d?.mulBranches) ? d.mulBranches : []);
 const mulSoldiersOf = d => (Array.isArray(d?.mulSoldiers) ? d.mulSoldiers : []);
@@ -131,7 +136,7 @@ const derivedEffs = d => {
     fukutsu: has('fukutsu'),
     speed: has('speed'),
     stat: ne1('statBuff'),
-    mul: ne1('mulNormal') || ne1('mulLimit') || mulCounts(d),
+    mul: ne1('mulNormal') || ne1('mulLimit') || mulCounts(d) || mulInitLv(d),
     total: ne1('totalBuff') || tbCoefOn(d),
     troop: tr.some(t => N(t.troopAdd) !== 0),
     cut: has('costCut'),

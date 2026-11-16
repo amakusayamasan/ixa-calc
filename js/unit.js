@@ -146,6 +146,14 @@ function unitCount(i, cfg) {
    t は効果の出るTR(部隊長限定・重複上限で外れたときは raw と別物になり、数で掛けない) */
 function slotMul(i, t, raw) {
   if (!t) return { n: 1, l: 1, cnt: null };
+  if (t === raw && raw?.mulLv) {
+    /* 倍枠極限 = 部隊内武将の初期スキルLV(10 + TR)の合計 ÷ 10(この部隊で使わない側なら1倍) */
+    const lv = (form?.slots || []).reduce(
+      (a, s) => a + (M.cards.get(s.card) ? INIT_LV_BASE + N(s.tr) : 0),
+      0,
+    );
+    return raw.mulLv.on ? { n: 1, l: lv / 10, cnt: null, lv } : { n: 1, l: 1, cnt: null };
+  }
   if (t !== raw || !raw?.mul) return { n: N(t.mulNormal), l: N(t.mulLimit), cnt: null };
   const m = raw.mul,
     cnt = unitCount(i, m);

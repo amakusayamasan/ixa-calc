@@ -303,10 +303,10 @@ async function downloadXlsx(withData) {
                 .map(v => TROOP_TO.find(([k]) => k === v)[1])
                 .join('、')
             : '',
-          ...(ini && effsOf(d).mul && mulCounts(d)
+          ...(ini && effsOf(d).mul && mulByOf(d) !== 'fixed'
             ? [
                 MUL_BY[mulByOf(d)],
-                mulSelfOf(d) ? 1 : 0,
+                mulCounts(d) ? (mulSelfOf(d) ? 1 : 0) : '',
                 mulByOf(d) === 'branch' ? mulBranchesOf(d).join('、') : '',
                 mulByOf(d) === 'branch' ? mulSoldiersOf(d).join('、') : '',
                 mulByOf(d) === 'branch' ? (mulOwnOf(d) ? 1 : 0) : '',
@@ -582,7 +582,15 @@ function readSkillRow(s, row, ix) {
   /* 倍枠の掛け方と、その数え方(総バフとは別) */
   if (val(ix('倍枠の掛け方')) != null) {
     const v = String(row[ix('倍枠の掛け方')]);
-    s.mulBy = /姫/.test(v) ? 'hime' : /剣豪/.test(v) ? 'kengou' : /兵科|兵種/.test(v) ? 'branch' : 'fixed';
+    s.mulBy = /LV|ＬＶ/i.test(v)
+      ? 'initlv'
+      : /姫/.test(v)
+        ? 'hime'
+        : /剣豪/.test(v)
+          ? 'kengou'
+          : /兵科|兵種/.test(v)
+            ? 'branch'
+            : 'fixed';
   }
   /* 係数の掛け方「部隊内の兵科・兵種の数」の数え方 */
   if (val(ix('係数の数に自身を含む')) != null) s.coefSelf = toFlag(row[ix('係数の数に自身を含む')]);

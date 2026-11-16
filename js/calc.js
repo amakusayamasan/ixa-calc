@@ -233,9 +233,11 @@ function breakdownHtml(x, r) {
     [
       'スキル小計',
       fmt(x.sk, 1),
-      x.ml?.cnt != null
-        ? `倍枠 通常×${fmt(x.ml.n, 2)}・極限×${fmt(x.ml.l, 2)}(${{ hime: '姫', kengou: '剣豪', branch: '対象' }[x.ml.by]}${x.ml.cnt}人)`
-        : '',
+      x.ml?.lv != null
+        ? `倍枠 極限×${fmt(x.ml.l, 2)}(初期スキルLV合計${x.ml.lv})`
+        : x.ml?.cnt != null
+          ? `倍枠 通常×${fmt(x.ml.n, 2)}・極限×${fmt(x.ml.l, 2)}(${{ hime: '姫', kengou: '剣豪', branch: '対象' }[x.ml.by]}${x.ml.cnt}人)`
+          : '',
     ],
     [
       `総${m.st}バフ`,

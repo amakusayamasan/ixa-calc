@@ -489,6 +489,8 @@ function tbCountNote(d) {
 const coefCountNote = () =>
   'スキル上昇率 = 素スキル上昇率 + 係数 × 部隊内の兵科・兵種の数(上で選んだ兵科・兵種の武将)。チェックを入れると、このスキルを持つ武将自身も人数に数えます。';
 function mulCountNote(d) {
+  if (mulInitLv(d))
+    return '倍枠極限 = 部隊内4人の初期スキルLV(TR0ならLV10、TR1ならLV11…)の合計 ÷ 10。通常枠は1倍。この初期スキルの攻撃or防御の部隊(防御なら防御部隊)でだけ効きます。TR表の倍枠の値は入力しません。';
   const what =
     { hime: '部隊内の姫の数', kengou: '部隊内の剣豪の数' }[mulByOf(d)] ||
     '部隊内の兵科・兵種の数(上で選んだ兵科・兵種の武将)';
@@ -565,6 +567,7 @@ function countBox(d, p, byLabel, note) {
           ? `<p class="msg err">兵種マスタにない兵科・兵種が指定されています:${unknown.map(esc).join('、')}(このまま残ります)</p>`
           : '')
       : '') +
+    (p === 'mul' && mulInitLv(d) ? `<p class="note">${note}</p>` : '') +
     (c.counts(d)
       ? `<p class="note">${note}</p><div class="field"><div class="checks">${checkbox(`id="f-${p}Self" data-f="${p}Self"`, c.self(d), '自身をカウントする')}</div></div>`
       : '')
@@ -754,16 +757,18 @@ function skillTrCols(d) {
         ]
       : SKILL_TR;
   const colsOf = {
-    mul: [
-      ['mulNormal', '倍枠通常'],
-      ['mulLimit', '倍枠極限'],
-      ...(mulCounts(d)
-        ? [
-            ['mulNormalCoef', '倍枠係数(通常)'],
-            ['mulLimitCoef', '倍枠係数(極限)'],
-          ]
-        : []),
-    ],
+    mul: mulInitLv(d)
+      ? []
+      : [
+          ['mulNormal', '倍枠通常'],
+          ['mulLimit', '倍枠極限'],
+          ...(mulCounts(d)
+            ? [
+                ['mulNormalCoef', '倍枠係数(通常)'],
+                ['mulLimitCoef', '倍枠係数(極限)'],
+              ]
+            : []),
+        ],
     stat: [['statBuff', `素${b}バフ`]],
     total: [['totalBuff', `総${b}バフ`], ...(tbCoefOn(d) ? [['tbCoef', `総${b}バフ係数(%)`]] : [])],
     troop: [['troopAdd', '兵数加算']],

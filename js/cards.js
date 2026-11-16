@@ -51,6 +51,8 @@ function cardTrs(c) {
             own: saddOwnOf(sk.d),
           };
       }
+      /* 倍枠極限を初期スキルLVの合計で決めるとき(この部隊で使う側のスキルだけ) */
+      if ((sk.d.effs || {}).mul && mulInitLv(sk.d)) o.mulLv = { on: forMode(sk.d) };
       /* 倍枠を部隊内の数で掛けるとき:係数と数える設定 */
       if ((sk.d.effs || {}).mul && mulCounts(sk.d)) {
         o.mul = {
