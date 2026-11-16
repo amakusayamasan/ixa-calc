@@ -7,7 +7,7 @@ function toKeys(f) {
     enemyCount: f.enemyCount,
     enemyFire: f.enemyFire,
     jb: (f.jb || []).map(String),
-    ...((f.tb || []).length ? { tb: [...f.tb] } : {}),
+    tb: [...(f.tb || [])],
     slots: f.slots.map(s => ({
       card: String(M.cards.get(s.card)?.no ?? ''),
       tr: s.tr,
@@ -30,8 +30,8 @@ function fromKeys(f) {
   };
   return {
     jin: f.jin ?? 1.05,
-    /* 兵数バフ(前の形の yasuke: 1 も読む) */
-    tb: (Array.isArray(f.tb) ? f.tb : f.yasuke ? ['yasuke'] : []).filter(id =>
+    /* 兵数バフ:記録がなければすべてOn(前の形の yasuke: 1 も読む) */
+    tb: (Array.isArray(f.tb) ? f.tb : f.yasuke ? ['yasuke'] : TROOP_BUFFS.map(b => b.id)).filter(id =>
       TROOP_BUFFS.some(b => b.id === id),
     ),
     enemyCount: f.enemyCount ?? ENEMY_DEFAULT.count,

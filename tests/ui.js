@@ -169,12 +169,14 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
       renderCalc();
     });
     /* 兵数バフ(弥助):チェックが編成に入って保存される */
+    ok('兵数バフは最初すべてOn', await p.evaluate(() => fromKeys(EMPTY_FORM).tb), ['yasuke']);
     await p.click('#tbBtn');
     await p.check('[data-tb=yasuke]');
     ok('兵数バフのボタン表示', await p.textContent('#tbBtn'), '兵数バフ:弥助');
     ok('弥助は保存される', await p.evaluate(() => toKeys(form).tb), ['yasuke']);
     ok('前の形(yasuke:1)も読める', await p.evaluate(() => fromKeys({ ...toKeys(form), tb: undefined, yasuke: 1 }).tb), ['yasuke']);
     await p.uncheck('[data-tb=yasuke]');
+    ok('Offも保存される', await p.evaluate(() => fromKeys(toKeys(form)).tb), []);
     await p.click('[data-tb-act=close]');
     /* コストアップ:チェックで兵数 +200、編成の保存にも残る */
     const tr0 = await p.evaluate(() => calc().rows[1].troops);
