@@ -135,6 +135,7 @@ const derivedEffs = d => {
     total: ne1('totalBuff') || tbCoefOn(d),
     troop: tr.some(t => N(t.troopAdd) !== 0),
     cut: has('costCut'),
+    tmax: false,
     sadd: has('soldierAdd'),
     self: false,
     leader: false,
@@ -306,7 +307,15 @@ function normalizeSkill(d) {
             : {}),
           effs: { ...effsOf(d), split: splitOn(d), dup: dupOn(d) },
         }
-      : { effs: { dup: dupOn(d), split: splitOn(d), cut: !!effsOf(d).cut, ...extraEffs(d) } }),
+      : {
+          effs: {
+            dup: dupOn(d),
+            split: splitOn(d),
+            cut: !!effsOf(d).cut,
+            tmax: !!effsOf(d).tmax,
+            ...extraEffs(d),
+          },
+        }),
   };
 }
 const extraEffs = d => Object.fromEntries(EXTRA_EFFS.map(([k]) => [k, !!effsOf(d)[k]]));

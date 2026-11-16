@@ -605,6 +605,7 @@ function skillEditorBody(d) {
       if (k === 'enemy') return checkbox('data-eff2="enemy"', ef.enemy, '敵火力加算');
       if (k === 'split') return checkbox('data-eff2="split"', ef.split, '攻撃と防御で値を分ける');
       if (k === 'cut') return checkbox('data-eff2="cut"', ef.cut, 'コスト減');
+      if (k === 'tmax') return checkbox('data-eff2="tmax"', ef.tmax, '兵数を最大に揃える');
       if (k === 'sadd') return checkbox('data-eff2="sadd"', ef.sadd, saddLabel(d));
       return checkbox(`data-eff="${k}"`, ef[k], effLabel(d, k));
     })
@@ -641,6 +642,11 @@ function skillEditorBody(d) {
         'コスト減の設定',
         `<div class="grid">${fieldHtml(d, 'cutBy', 'コストの減らし方', 'cutby')}</div>` +
           '<p class="note">自合流使用コストを減らします。「スキルを付けた武将のコスト分」は、このスキルを付けた武将の武将コストだけ減らします(同じ武将に複数付けても1回だけ)。「決めた数値」は、TR表の「コスト減」の値だけ減らします。部隊内のコスト減は全部合計し、自合流使用コストは0より下がりません。</p>',
+      ),
+    ef.tmax &&
+      subbox(
+        '兵数を最大に揃えるの設定',
+        '<p class="note">本丸防御陣形に配置したときだけ、この武将の兵数を陣形内でいちばん多い兵数と同じにします。防御部隊の計算だけで効きます。揃える兵数は、部隊計算(防御部隊)の「兵数バフ」の「陣形内の最大兵数」で決めます。</p>',
       ),
     dupOn(d) &&
       subbox(
@@ -725,9 +731,10 @@ const EFFECT_ORDER_INIT = [
   'sadd',
   'enemy',
   'cut',
+  'tmax',
   'dup',
 ];
-const EFFECT_ORDER_SKILL = ['split', 'speed', 'hisho', 'fukutsu', 'muzin', 'cut', 'dup'];
+const EFFECT_ORDER_SKILL = ['split', 'speed', 'hisho', 'fukutsu', 'muzin', 'cut', 'tmax', 'dup'];
 /* 「攻撃と防御で値を分ける」は、攻撃or防御が「攻撃・防御」のときだけ(模倣スキルは出さない) */
 const effectOrder = d =>
   (toFlag(d.init) === 1 ? EFFECT_ORDER_INIT : EFFECT_ORDER_SKILL).filter(

@@ -209,3 +209,54 @@ function soldierAdd(j, drop = dupDropped()) {
   });
   return v;
 }
+
+/* ---------- 兵数を陣形内の最大に揃える(本丸防御陣形。防御部隊だけ) ---------- */
+/* 枠 i にこの効果のスキル(初期・追加・極限)があるか */
+function slotTroopMax(i, drop = dupDropped()) {
+  const s = form?.slots[i];
+  if (!s || !M.cards.get(s.card)) return false;
+  const t = slotEff(i).t;
+  if (t?.tmax && !drop.has(i + ':init')) return true;
+  return ['s1', 's2', 'lim'].some(k => {
+    const d = s[k]?.id && M.skills.get(s[k].id);
+    return !!d && !!effsOf(d).tmax && !drop.has(i + ':' + k) && forMode(d);
+  });
+}
+/* 陣形内の最大兵数の初期値:マスタの武将でいちばん兵数が多くなる部隊を考える。
+   武将の兵数(ランクアップ・兵数バフ込み)+ ほかの3人の初期スキルの兵数加算(TR0)の大きいもの3つ */
+function defaultFormationMax() {
+  let best = { v: 0, parts: [] };
+  const adders = [...M.cards.values()]
+    .map(k => ({ k, t: cardT(k, 0) }))
+    .filter(x => x.t && N(x.t.troopAdd) > 0);
+  for (const c of M.cards.values()) {
+    const hit = to =>
+      !to ||
+      to.includes('all') ||
+      (to.includes('hime') && !!toFlag(c.hime)) ||
+      (to.includes('kengou') && !!toFlag(c.kengou));
+    const tbs = troopBuffsFor(form, c);
+    const add = adders
+      .filter(x => x.k !== c && hit(x.t.troopTo))
+      .sort((a, b) => N(b.t.troopAdd) - N(a.t.troopAdd))
+      .filter((x, j, a) => a.findIndex(y => y.k.name === x.k.name) === j)
+      .slice(0, 3);
+    const v =
+      N(c.troops) +
+      rarityTroops(c) +
+      tbs.reduce((a, b) => a + b.troops, 0) +
+      add.reduce((a, x) => a + N(x.t.troopAdd), 0);
+    if (v > best.v)
+      best = {
+        v,
+        parts: [
+          `${c.name}(${c.rarity}) ${fmt(N(c.troops) + rarityTroops(c))}`,
+          ...tbs.map(b => `${b.name} ${fmt(b.troops)}`),
+          ...add.map(x => `${x.k.name} ${fmt(N(x.t.troopAdd))}`),
+        ],
+      };
+  }
+  return best;
+}
+/* 揃える先の兵数:防御部隊の兵数バフに入力した値、空なら初期値 */
+const formationMax = () => (N(form?.maxTroops) > 0 ? N(form.maxTroops) : defaultFormationMax().v);

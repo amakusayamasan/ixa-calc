@@ -178,6 +178,17 @@ const legends = p => p.$$eval('.subbox legend', e => e.map(x => x.textContent));
     await p.uncheck('[data-tb=yasuke]');
     ok('Offも保存される', await p.evaluate(() => fromKeys(toKeys(form)).tb), []);
     await p.click('[data-tb-act=close]');
+    /* 防御部隊:兵数バフに「陣形内の最大兵数」の入力欄 */
+    await p.click('[data-mode=def]');
+    await p.click('#tbBtn');
+    ok('陣形内の最大兵数の初期値', await p.$eval('#maxTroops', e => Number(e.placeholder) > 0), true);
+    await p.fill('#maxTroops', '40000');
+    ok('陣形内の最大兵数は保存される', await p.evaluate(() => toKeys(form).maxTroops), 40000);
+    if (process.env.SHOT2) await p.screenshot({ path: process.env.SHOT2 });
+    await p.click('[data-tb-act=maxreset]');
+    ok('初期値に戻す', await p.evaluate(() => form.maxTroops), null);
+    await p.click('[data-tb-act=close]');
+    await p.click('[data-mode=atk]');
     /* コストアップ:チェックで兵数 +200、編成の保存にも残る */
     const tr0 = await p.evaluate(() => calc().rows[1].troops);
     await p.check('[data-k=costUp][data-i="1"]');

@@ -39,6 +39,8 @@ function cardTrs(c) {
         if (ef.troopSelf) o.troopSelf = true;
         if (ef.troop) o.troopTo = troopToOf(sk.d);
         /* コスト減(初期スキル):①武将のコスト分 ②決めた数値 */
+        /* 兵数を陣形内の最大に揃える(防御部隊だけ) */
+        if (ef.tmax) o.tmax = true;
         if (ef.cut) o.cut = cutByOf(sk.d) === 'self' ? { self: true } : { v: N(e.costCut) };
         /* 兵士攻撃力(防御力)加算:この部隊で使う側のスキルだけ */
         if (ef.sadd && forMode(sk.d))
@@ -105,13 +107,23 @@ function slotEff(i) {
     raw = c && cardT(c, s.tr);
   let t = c && effT(c, raw);
   if (t && raw?.leaderOnly && i !== 0)
-    t = { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1, cut: null, sadd: null, loOff: true };
+    t = {
+      ...t,
+      statBuff: 1,
+      totalBuff: 1,
+      mulNormal: 1,
+      mulLimit: 1,
+      cut: null,
+      sadd: null,
+      tmax: null,
+      loOff: true,
+    };
   return { c, raw, t };
 }
 function effT(c, t) {
   if (!t) return t;
   if (!muzinVoid(c, t.tr)) return t;
-  return { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1, cut: null, sadd: null };
+  return { ...t, statBuff: 1, totalBuff: 1, mulNormal: 1, mulLimit: 1, cut: null, sadd: null, tmax: null };
 }
 /* バフ
    ・所属時:そのカード(カードNoが同じ武将。傑以外も登録できる)が部隊長・小隊長のどこかの枠にいれば自動でかかる

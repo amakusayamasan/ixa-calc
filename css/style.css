@@ -1270,3 +1270,20 @@ tbody tr.editable:hover {
 .slot h3 .costup:has(input:checked) {
   color: var(--accent);
 }
+/* 兵数バフのパネル:陣形内の最大兵数(防御部隊) */
+.tmaxbox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.tmaxbox .field {
+  width: min(320px, 100%);
+}
+.tmaxbox .note {
+  flex-basis: 100%;
+  margin: 0;
+}

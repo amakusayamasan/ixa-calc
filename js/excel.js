@@ -127,6 +127,7 @@ const X_SKILL = [
   '兵士加算の対象兵科',
   '兵士加算の対象兵種',
   '兵士加算の自身のもつ兵種',
+  '兵数を最大に揃える',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 /* A, B, …, Z, AA, … */
@@ -152,6 +153,7 @@ const COL_HELP = [
     '模倣・模倣倍率',
     '模倣スキル:なし / 自模倣 / 他真似(部隊長)。値 = 素スキル上昇率 + 模倣倍率 × 真似る初期スキル',
   ],
+  [HELP_SK, '兵数を最大に揃える', '1なら、本丸防御陣形(防御部隊)でこの武将の兵数を陣形内の最大兵数に揃える'],
   [
     HELP_SK,
     'コスト減の減らし方 / コスト減',
@@ -330,6 +332,7 @@ async function downloadXlsx(withData) {
                 saddOwnOf(d) ? 1 : 0,
               ]
             : ['', '', '', '']),
+          effsOf(d).tmax ? 1 : 0,
         ]);
     }
   const sold = withData
@@ -522,6 +525,7 @@ function readSkillRow(s, row, ix) {
     ['敵火力加算', 'enemy'],
     ['攻防で値を分ける', 'split'],
     ['兵数加算に自身を含む', 'troopSelf'],
+    ['兵数を最大に揃える', 'tmax'],
   ])
     if (val(ix(col)) != null) s.effFlags = { ...(s.effFlags || {}), [key]: toFlag(row[ix(col)]) === 1 };
   /* コスト減:減らし方の列が空でなければコスト減あり(「数値」なら決めた数値、それ以外は武将のコスト分) */
@@ -673,13 +677,15 @@ function finishSkill(s, old) {
             split: !!old.effs.split,
             troopSelf: !!old.effs.troopSelf,
             cut: !!old.effs.cut,
+            tmax: !!old.effs.tmax,
           }
         : {}),
       ...(s.effFlags || {}),
     };
   /* 追加スキルの「攻防で値を分ける」:列があればその値、なければ登録済みの値(種類が決まってから使う) */
   const spFlag = s.effFlags?.split,
-    cutFlag = s.effFlags?.cut ?? !!old?.effs?.cut;
+    cutFlag = s.effFlags?.cut ?? !!old?.effs?.cut,
+    tmaxFlag = s.effFlags?.tmax ?? !!old?.effs?.tmax;
   delete s.effFlags;
   if (s.dupMax == null && old && dupOn(old)) s.dupMax = skillDupMax(old);
   if (!(N(s.dupMax) > 0)) delete s.dupMax;
@@ -710,6 +716,7 @@ function finishSkill(s, old) {
   if (s.init && s.noMimic == null && !old) s.noMimic = 1;
   if (!s.init && (spFlag ?? !!old?.effs?.split)) s.effs = { ...(s.effs || {}), split: true };
   if (!s.init && cutFlag) s.effs = { ...(s.effs || {}), cut: true };
+  if (!s.init && tmaxFlag) s.effs = { ...(s.effs || {}), tmax: true };
   if (!s.init)
     s.trs = s.trs.map(t => {
       const o = { ...t };

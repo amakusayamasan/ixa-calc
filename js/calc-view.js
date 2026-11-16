@@ -1,5 +1,5 @@
 // 部隊計算画面(編成の保存、武将・スキルの候補、画面の描画、兵科バフの選択)
-// 使うファイル:core.js、fields.js、skills.js、cards.js、calc.js、teams.js、bulk.js(調べ方:node tests/deps.js)
+// 使うファイル:core.js、fields.js、skills.js、cards.js、unit.js、calc.js、teams.js、bulk.js(調べ方:node tests/deps.js)
 /* 端末への記憶はIDではなく「カードNo・スキル名・兵種名」で持つ */
 function toKeys(f) {
   return {
@@ -8,6 +8,7 @@ function toKeys(f) {
     enemyFire: f.enemyFire,
     jb: (f.jb || []).map(String),
     tb: [...(f.tb || [])],
+    ...(N(f.maxTroops) > 0 ? { maxTroops: N(f.maxTroops) } : {}),
     slots: f.slots.map(s => ({
       card: String(M.cards.get(s.card)?.no ?? ''),
       tr: s.tr,
@@ -30,6 +31,7 @@ function fromKeys(f) {
   };
   return {
     jin: f.jin ?? 1.05,
+    maxTroops: N(f.maxTroops) > 0 ? N(f.maxTroops) : null,
     /* 兵数バフ:記録がなければすべてOn(前の形の yasuke: 1 も読む) */
     tb: (Array.isArray(f.tb) ? f.tb : f.yasuke ? ['yasuke'] : TROOP_BUFFS.map(b => b.id)).filter(id =>
       TROOP_BUFFS.some(b => b.id === id),
@@ -502,9 +504,17 @@ function renderTb() {
     return `<div class="jbrow${c ? ' on' : ''}"><label><input type="checkbox" data-tb="${esc(b.id)}"${c ? ' checked' : ''}><span><b>${esc(b.name)}</b><br><span class="meta">対象:${esc(b.names.join('、'))}</span></span></label>
       <div class="jbvals"><span class="${c ? 'jbon' : ''}">兵数+${fmt(b.troops)}</span>${n ? `<span class="${c ? 'jbon' : ''}">部隊に対象${n}人</span>` : ''}</div></div>`;
   }).join('');
+  /* 防御部隊:兵数を最大に揃えるスキル用の「陣形内の最大兵数」 */
+  const dm = mode === 'def' ? defaultFormationMax() : null;
+  const maxBox = dm
+    ? `<div class="tmaxbox"><div class="field"><label class="label" for="maxTroops">陣形内の最大兵数(兵数を最大に揃えるスキル用)</label>
+        <input id="maxTroops" type="number" step="1" min="0" value="${N(form.maxTroops) > 0 ? N(form.maxTroops) : ''}" placeholder="${dm.v}"></div>
+        ${button('初期値に戻す', `data-tb-act="maxreset"${N(form.maxTroops) > 0 ? '' : ' disabled'}`, 'btn small ghost')}
+        <p class="note">空欄なら初期値 ${fmt(dm.v)}(${esc(dm.parts.join(' + '))}、兵数加算はTR0)。ほかの部隊の武将の兵数でもかまいません。</p></div>`
+    : '';
   panel.innerHTML = `${head}
     <p class="note">チェックした兵数バフの兵数が、部隊にいる対象の武将(傑も含む)の兵数に足されます。</p>
-    <div class="jblist">${rows}</div>`;
+    <div class="jblist">${rows}</div>${maxBox}`;
 }
 $('tbBtn').addEventListener('click', () => {
   const p = $('tbpanel');
@@ -521,9 +531,18 @@ $('tbpanel').addEventListener('click', e => {
     $('tbBtn').focus();
     return;
   }
+  if (act === 'maxreset') form.maxTroops = null;
   if (act === 'clear') form.tb = [];
   if (act === 'all') form.tb = TROOP_BUFFS.map(x => x.id);
   renderTb();
+  updateResults();
+});
+$('tbpanel').addEventListener('input', e => {
+  if (e.target.id !== 'maxTroops' || !form) return;
+  const v = parseInt(e.target.value, 10);
+  form.maxTroops = v > 0 ? v : null;
+  const r = $('tbpanel').querySelector('[data-tb-act=maxreset]');
+  if (r) r.disabled = !(v > 0);
   updateResults();
 });
 $('tbpanel').addEventListener('change', e => {

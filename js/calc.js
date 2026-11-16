@@ -40,7 +40,10 @@ function calc() {
       cu = s.costUp ? COSTUP.troops : 0,
       tbs = troopBuffsFor(form, s.c),
       yk = tbs.reduce((a, b) => a + b.troops, 0),
-      troops = N(s.c.troops) + rt + rei * REI_TROOPS + tadd + cu + yk,
+      troops0 = N(s.c.troops) + rt + rei * REI_TROOPS + tadd + cu + yk,
+      /* 本丸防御陣形:兵数を陣形内の最大兵数に揃える(防御部隊だけ。少ないときだけ上げる) */
+      tmaxTo = mode === 'def' && slotTroopMax(i, drop) ? formationMax() : 0,
+      troops = Math.max(troops0, tmaxTo),
       atk = MD().statOf(s.c, s.alloc === 'hei');
     const sname = M.soldiers.get(s.soldier)?.name,
       jb = jbBonus(sname),
@@ -65,6 +68,7 @@ function calc() {
       cu,
       yk,
       tbs,
+      tmaxTo,
       troops,
       rt,
       rtKengou: !!toFlag(s.c.kengou) && s.c.rarity !== '傑',
@@ -208,6 +212,7 @@ function breakdownHtml(x, r) {
         x.tadd ? `兵数加算+${fmt(x.tadd)}` : '',
         x.cu ? `コストアップ+${fmt(x.cu)}` : '',
         ...x.tbs.map(b => `${b.name}+${fmt(b.troops)}`),
+        x.tmaxTo && x.troops === x.tmaxTo ? '陣形内の最大に揃える' : '',
       ]
         .filter(Boolean)
         .join('・'),
