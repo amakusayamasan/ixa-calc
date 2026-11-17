@@ -58,7 +58,20 @@ const mulCounts = d => !['fixed', 'initlv', 'hime4'].includes(mulByOf(d));
 /* 部隊内の姫が4人のときだけ倍枠極限が効く(通常は倍枠通常のまま) */
 const mulHime4 = d => mulByOf(d) === 'hime4';
 /* スキル上昇率を姫の武将の素攻にだけ掛ける */
-const himeOnlyOf = d => toFlag(d?.himeOnly) === 1;
+/* 効果の対象:スキル上昇率を掛ける武将(姫・剣豪・覇だけにもできる)。前の形の himeOnly: 1 は姫 */
+const ONLY_TO = { all: '部隊全員', hime: '姫の武将だけ', kengou: '剣豪の武将だけ', ha: '覇の武将だけ' };
+const ONLY_SHORT = { hime: '姫', kengou: '剣豪', ha: '覇' };
+const onlyToOf = d =>
+  d?.onlyTo && ONLY_TO[d.onlyTo] ? d.onlyTo : toFlag(d?.himeOnly) === 1 ? 'hime' : 'all';
+/* 武将がその対象に当てはまるか(姫・剣豪は武将マスタのチェック、覇はレアリティ「覇・天」) */
+const cardIsOnly = (c, to) =>
+  to === 'hime'
+    ? !!toFlag(c?.hime)
+    : to === 'kengou'
+      ? !!toFlag(c?.kengou)
+      : to === 'ha'
+        ? c?.rarity === '覇・天'
+        : true;
 /* 倍枠極限 = 部隊内武将の初期スキルLV(10 + TR)の合計 ÷ 10。通常枠は1倍 */
 const mulInitLv = d => mulByOf(d) === 'initlv';
 const INIT_LV_BASE = 10;
@@ -259,7 +272,7 @@ function normalizeSkill(d) {
     muzin: effsOf(d).muzin ? Math.max(0, ...d.trs.map(t => N(t.muzin))) : 0,
     xskill: toFlag(d.init) ? 0 : toFlag(d.xskill),
     noAdd: toFlag(d.noAdd),
-    ...(himeOnlyOf(d) ? { himeOnly: 1 } : {}),
+    ...(onlyToOf(d) !== 'all' ? { onlyTo: onlyToOf(d) } : {}),
     coefBy: coefByOf(d),
     ...(coefByOf(d) === 'branch'
       ? {

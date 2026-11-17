@@ -7,7 +7,6 @@ const FLAG_LABELS = {
   hime: ['姫ではない', '姫'],
   xskill: ['該当しない', 'Xスキル'],
   noAdd: ['付与できる', '付与できない'],
-  himeOnly: ['部隊全員', '姫の武将だけ'],
 };
 const RARITIES = ['覇・天', '天', '極', '傑'];
 const CARD_FIELDS = [

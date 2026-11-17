@@ -439,6 +439,7 @@ const SELECTS = {
   mimic: d => Object.entries(MIMIC).map(([v, l]) => [v, l, mimicOf(d) === v]),
   tbby: d => Object.entries(TB_BY).map(([v, l]) => [v, l, tbByOf(d) === v]),
   mulby: d => Object.entries(MUL_BY).map(([v, l]) => [v, l, mulByOf(d) === v]),
+  onlyto: d => Object.entries(ONLY_TO).map(([v, l]) => [v, l, onlyToOf(d) === v]),
   cutby: d => Object.entries(CUT_BY).map(([v, l]) => [v, l, cutByOf(d) === v]),
   coef: d => Object.entries(COEF_BY).map(([v, l]) => [v, l, coefByOf(d) === v]),
   side: (d, f) => SIDES.map(v => [null, v, d[f] === v]),
@@ -587,7 +588,7 @@ function skillEditorBody(d) {
     !mm && ['coefBy', '係数の掛け方', 'coef'],
     !ini && ['xskill', 'Xスキル', 'flag'],
     ini ? ['noMimic', '模倣', 'flag'] : ['mimic', '模倣', 'mimic'],
-    !mm && ['himeOnly', '効果の対象', 'flag'],
+    !mm && ['onlyTo', '効果の対象', 'onlyto'],
   ].filter(Boolean);
   /* 総バフの設定・倍枠の設定(掛け方・対象・自分を数えるか)は、特殊効果のチェックのすぐ下に枠でまとめて出す */
   const tbCountBox = ini && ef.total ? countBox(d, 'tb', `総${sw(d)}バフの掛け方`, tbCountNote(d)) : '';
@@ -678,8 +679,8 @@ function skillNotes(d) {
     b = sw(d);
   const notes = [
     'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 / 部隊内の飛翔の数 / 敵武将の総コスト / 部隊内の兵科・兵種の数)。敵武将の総コスト = 平均コスト × 人数。「部隊移動速度/係数」は計算のしかたが違います(下の説明)。',
-    himeOnlyOf(d) &&
-      '効果の対象が「姫の武将だけ」:このスキルのスキル上昇率は、姫の武将(武将マスタで姫)の素攻にだけ掛かります(倍枠・無尽はふつうどおり)。',
+    onlyToOf(d) !== 'all' &&
+      `効果の対象が「${ONLY_TO[onlyToOf(d)]}」:このスキルのスキル上昇率は、${{ hime: '姫(武将マスタで姫)', kengou: '剣豪(武将マスタで剣豪)', ha: '覇(レアリティが覇・天)' }[onlyToOf(d)]}の武将の素攻にだけ掛かります(倍枠・無尽はふつうどおり)。`,
     coefByOf(d) === 'speed' &&
       'スキル上昇率 = 素スキル上昇率 + 部隊移動速度 ÷ 係数 × 100。部隊移動速度 = 部隊の兵種の速度のいちばん遅い値 × (100 + 部隊全員のスキルの速度スキルの合計) ÷ 100。無尽のとき、速度スキルの値は2倍になりませんが、このスキルの効果はほかのスキルと同じく2倍になります。',
     coefByOf(d) === 'hisho' &&

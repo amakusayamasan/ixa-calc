@@ -19,10 +19,10 @@ function calc() {
   const sbOf = s => lb * (s.raw?.selfStat ? sbv(s) : 1);
   let base = 0,
     skill = 0,
-    himeBase = 0,
-    himeSkill = 0;
+    /* 対象を限ったスキル(姫・剣豪・覇だけ)のスキル上昇率と、その対象の武将の素攻 */
+    only = Object.fromEntries(Object.keys(ONLY_SHORT).map(k => [k, { skill: 0, base: 0 }]));
   /* スキル上昇率を姫の武将だけに掛けるスキルか */
-  const ho = sel => himeOnlyOf(M.skills.get(sel?.id));
+  const ho = sel => onlyToOf(M.skills.get(sel?.id));
   const rows = sl.map((s, i) => {
     if (!s.c || !s.t) return null;
     /* 黎天列光:1つにつき部隊の全武将の兵数 +2000(部隊で2つまで) */
@@ -59,17 +59,19 @@ function calc() {
       init = initDrop ? 0 : initEff(s.c, s.t, i);
     const ml = slotMul(i, s.t, s.raw);
     const parts = [
-      [init, himeOnlyOf(skillByName(s.c.initName)?.d)],
+      [init, onlyToOf(skillByName(s.c.initName)?.d)],
       [dv(s.s1, i, 's1') * muzinMul(s.s1, 's1') * ml.n, ho(s.s1)],
       [dv(s.s2, i, 's2') * muzinMul(s.s2, 's2') * ml.n, ho(s.s2)],
       [dv(s.lim, i, 'lim') * muzinMul(s.lim, 'lim') * ml.l * limX(s.lim), ho(s.lim)],
     ];
     const sk = parts.reduce((a, [v]) => a + v, 0),
-      skH = parts.reduce((a, [v, h]) => a + (h ? v : 0), 0);
+      skO = {};
+    for (const [v, to] of parts) if (to !== 'all' && v) skO[to] = (skO[to] || 0) + v;
+    const skH = Object.values(skO).reduce((a, v) => a + v, 0);
     base += b;
     skill += sk - skH;
-    himeSkill += skH;
-    if (toFlag(s.c.hime)) himeBase += b;
+    for (const [to, v] of Object.entries(skO)) only[to].skill += v;
+    for (const to of Object.keys(only)) if (cardIsOnly(s.c, to)) only[to].base += b;
     return {
       sb,
       initDrop,
@@ -89,6 +91,7 @@ function calc() {
       b,
       sk,
       skH,
+      skO,
       init,
       initRaw: initBase(s.c, s.t, i),
       ml,
@@ -152,8 +155,7 @@ function calc() {
     rows,
     base,
     skill,
-    himeBase,
-    himeSkill,
+    only,
     buff,
     lb,
     rei,
@@ -162,7 +164,11 @@ function calc() {
     enemyAdd,
     muzin: muzinOn(),
     /* 姫だけのスキル上昇率は、姫の武将の素攻にだけ掛ける */
-    total: ((base * skill + himeBase * himeSkill) / 100 + base) * jin * buff + enemyAdd,
+    total:
+      ((base * skill + Object.values(only).reduce((a, o) => a + o.base * o.skill, 0)) / 100 + base) *
+        jin *
+        buff +
+      enemyAdd,
   };
 }
 /* スキル欄の下に出す効果。スキル上昇率 × 倍枠(極限は×1.2)= この枠で加算される値 */
@@ -248,7 +254,7 @@ function breakdownHtml(x, r) {
       'スキル小計',
       fmt(x.sk, 1),
       [
-        x.skH ? `うち姫のみ${fmt(x.skH, 1)}` : '',
+        ...Object.entries(x.skO || {}).map(([to, v]) => `うち${ONLY_SHORT[to]}のみ${fmt(v, 1)}`),
         x.ml?.h4 != null ? `倍枠 通常×${fmt(x.ml.n, 2)}・極限×${fmt(x.ml.l, 2)}(姫${x.ml.h4}人)` : '',
       ]
         .filter(Boolean)
@@ -279,8 +285,11 @@ function updateResults() {
   $('r-total-jp').textContent = jp(r.total);
   $('r-base').textContent = fmt(r.base, 1);
   $('r-skill').textContent = fmt(r.skill, 1);
-  $('r-hime-box').hidden = !r.himeSkill;
-  $('r-hime').textContent = `${fmt(r.himeSkill, 1)}(姫の素${MD().st} ${fmt(r.himeBase, 1)})`;
+  const on = Object.entries(r.only).filter(([, o]) => o.skill);
+  $('r-hime-box').hidden = !on.length;
+  $('r-hime').textContent = on
+    .map(([to, o]) => `${ONLY_SHORT[to]} ${fmt(o.skill, 1)}(素${MD().st} ${fmt(o.base, 1)})`)
+    .join(' / ');
   $('r-buff').textContent = fmt(r.buff, 2);
   $('r-special').textContent = r.rei + ' / ' + r.hi;
   $('r-enemy').textContent = r.enemyN ? `${fmt(r.enemyAdd)}(${r.enemyN}人)` : '0';
