@@ -128,6 +128,7 @@ const X_SKILL = [
   '兵士加算の対象兵種',
   '兵士加算の自身のもつ兵種',
   '兵数を最大に揃える',
+  '効果の対象',
 ];
 const X_SOLDIER = ['兵科', '兵種', '攻撃力', '防禦力', '破壊', '速度'];
 /* A, B, …, Z, AA, … */
@@ -153,6 +154,7 @@ const COL_HELP = [
     '模倣・模倣倍率',
     '模倣スキル:なし / 自模倣 / 他真似(部隊長)。値 = 素スキル上昇率 + 模倣倍率 × 真似る初期スキル',
   ],
+  [HELP_SK, '効果の対象', '部隊全員 / 姫の武将だけ(スキル上昇率を姫の武将の素攻にだけ掛ける)'],
   [HELP_SK, '兵数を最大に揃える', '1なら、本丸防御陣形(防御部隊)でこの武将の兵数を陣形内の最大兵数に揃える'],
   [
     HELP_SK,
@@ -333,6 +335,7 @@ async function downloadXlsx(withData) {
               ]
             : ['', '', '', '']),
           effsOf(d).tmax ? 1 : 0,
+          himeOnlyOf(d) ? '姫の武将だけ' : '部隊全員',
         ]);
     }
   const sold = withData
@@ -584,15 +587,19 @@ function readSkillRow(s, row, ix) {
     const v = String(row[ix('倍枠の掛け方')]);
     s.mulBy = /LV|ＬＶ/i.test(v)
       ? 'initlv'
-      : /姫/.test(v)
-        ? 'hime'
-        : /剣豪/.test(v)
-          ? 'kengou'
-          : /兵科|兵種/.test(v)
-            ? 'branch'
-            : 'fixed';
+      : /4人/.test(v)
+        ? 'hime4'
+        : /姫/.test(v)
+          ? 'hime'
+          : /剣豪/.test(v)
+            ? 'kengou'
+            : /兵科|兵種/.test(v)
+              ? 'branch'
+              : 'fixed';
   }
   /* 係数の掛け方「部隊内の兵科・兵種の数」の数え方 */
+  /* 効果の対象:「姫」を含めば姫の武将だけ */
+  if (val(ix('効果の対象')) != null) s.himeOnly = /姫/.test(String(row[ix('効果の対象')])) ? 1 : 0;
   if (val(ix('係数の数に自身を含む')) != null) s.coefSelf = toFlag(row[ix('係数の数に自身を含む')]);
   if (val(ix('係数の自身のもつ兵種')) != null) s.coefOwn = toFlag(row[ix('係数の自身のもつ兵種')]);
   for (const [h, f] of [
@@ -706,7 +713,7 @@ function finishSkill(s, old) {
   if (s.tbSoldiers == null && old && old.tbSoldiers) s.tbSoldiers = old.tbSoldiers;
   if (s.tbOwn == null && old && old.tbOwn != null) s.tbOwn = old.tbOwn;
   if (s.troopTo == null && old && old.troopTo) s.troopTo = old.troopTo;
-  for (const f of ['cutBy', 'saddBranches', 'saddSoldiers', 'saddOwn'])
+  for (const f of ['cutBy', 'saddBranches', 'saddSoldiers', 'saddOwn', 'himeOnly'])
     if (s[f] == null && old && old[f] != null) s[f] = old[f];
   for (const f of ['coefSelf', 'coefBranches', 'coefSoldiers', 'coefOwn'])
     if (s[f] == null && old && old[f] != null) s[f] = old[f];

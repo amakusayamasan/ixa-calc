@@ -489,6 +489,8 @@ function tbCountNote(d) {
 const coefCountNote = () =>
   'スキル上昇率 = 素スキル上昇率 + 係数 × 部隊内の兵科・兵種の数(上で選んだ兵科・兵種の武将)。チェックを入れると、このスキルを持つ武将自身も人数に数えます。';
 function mulCountNote(d) {
+  if (mulHime4(d))
+    return '部隊内の姫(武将マスタで姫の武将)が4人のときだけ、この武将の極限スキルに倍枠極限を掛けます。通常枠は倍枠通常のまま。';
   if (mulInitLv(d))
     return '倍枠極限 = 部隊内の武将の初期スキルLV(TR0ならLV10、TR1ならLV11…)の合計 ÷ 10(傑は入れない)。通常枠は1倍。この初期スキルの攻撃or防御の部隊(防御なら防御部隊)でだけ効きます。TR表の倍枠の値は入力しません。';
   const what =
@@ -567,7 +569,7 @@ function countBox(d, p, byLabel, note) {
           ? `<p class="msg err">兵種マスタにない兵科・兵種が指定されています:${unknown.map(esc).join('、')}(このまま残ります)</p>`
           : '')
       : '') +
-    (p === 'mul' && mulInitLv(d) ? `<p class="note">${note}</p>` : '') +
+    (p === 'mul' && (mulInitLv(d) || mulHime4(d)) ? `<p class="note">${note}</p>` : '') +
     (c.counts(d)
       ? `<p class="note">${note}</p><div class="field"><div class="checks">${checkbox(`id="f-${p}Self" data-f="${p}Self"`, c.self(d), '自身をカウントする')}</div></div>`
       : '')
@@ -585,6 +587,7 @@ function skillEditorBody(d) {
     !mm && ['coefBy', '係数の掛け方', 'coef'],
     !ini && ['xskill', 'Xスキル', 'flag'],
     ini ? ['noMimic', '模倣', 'flag'] : ['mimic', '模倣', 'mimic'],
+    !mm && ['himeOnly', '効果の対象', 'flag'],
   ].filter(Boolean);
   /* 総バフの設定・倍枠の設定(掛け方・対象・自分を数えるか)は、特殊効果のチェックのすぐ下に枠でまとめて出す */
   const tbCountBox = ini && ef.total ? countBox(d, 'tb', `総${sw(d)}バフの掛け方`, tbCountNote(d)) : '';
@@ -675,6 +678,8 @@ function skillNotes(d) {
     b = sw(d);
   const notes = [
     'スキル上昇率 = 素スキル上昇率 + 係数 × (人数 / 部隊内の同じスキルの数 / 部隊内のXスキルの数 / 部隊内の飛翔の数 / 敵武将の総コスト / 部隊内の兵科・兵種の数)。敵武将の総コスト = 平均コスト × 人数。「部隊移動速度/係数」は計算のしかたが違います(下の説明)。',
+    himeOnlyOf(d) &&
+      '効果の対象が「姫の武将だけ」:このスキルのスキル上昇率は、姫の武将(武将マスタで姫)の素攻にだけ掛かります(倍枠・無尽はふつうどおり)。',
     coefByOf(d) === 'speed' &&
       'スキル上昇率 = 素スキル上昇率 + 部隊移動速度 ÷ 係数 × 100。部隊移動速度 = 部隊の兵種の速度のいちばん遅い値 × (100 + 部隊全員のスキルの速度スキルの合計) ÷ 100。無尽のとき、速度スキルの値は2倍になりませんが、このスキルの効果はほかのスキルと同じく2倍になります。',
     coefByOf(d) === 'hisho' &&

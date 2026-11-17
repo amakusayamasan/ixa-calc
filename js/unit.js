@@ -155,6 +155,11 @@ function slotMul(i, t, raw) {
     }, 0);
     return raw.mulLv.on ? { n: 1, l: lv / 10, cnt: null, lv } : { n: 1, l: 1, cnt: null };
   }
+  if (t === raw && raw?.mulH4) {
+    /* 部隊内の姫(武将マスタで姫)が4人のときだけ倍枠極限。通常は倍枠通常のまま */
+    const h = (form?.slots || []).filter(s => toFlag(M.cards.get(s.card)?.hime)).length;
+    return { n: N(t.mulNormal), l: h >= 4 ? N(t.mulLimit) : 1, cnt: null, h4: h };
+  }
   if (t !== raw || !raw?.mul) return { n: N(t.mulNormal), l: N(t.mulLimit), cnt: null };
   const m = raw.mul,
     cnt = unitCount(i, m);

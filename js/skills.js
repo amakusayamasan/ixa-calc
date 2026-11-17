@@ -50,10 +50,15 @@ const MUL_BY = {
   kengou: '部隊内の剣豪の数',
   branch: '部隊内の兵科・兵種の数',
   initlv: '部隊内武将の初期スキルLVの合計÷10(極限)',
+  hime4: '部隊内の姫が4人のとき(極限)',
 };
 const mulByOf = d => (MUL_BY[d?.mulBy] ? d.mulBy : 'fixed');
 /* 部隊内の数(姫・剣豪・兵科兵種)で倍枠を増やすか。初期スキルLVの合計で決めるもの(initlv)は別 */
-const mulCounts = d => !['fixed', 'initlv'].includes(mulByOf(d));
+const mulCounts = d => !['fixed', 'initlv', 'hime4'].includes(mulByOf(d));
+/* 部隊内の姫が4人のときだけ倍枠極限が効く(通常は倍枠通常のまま) */
+const mulHime4 = d => mulByOf(d) === 'hime4';
+/* スキル上昇率を姫の武将の素攻にだけ掛ける */
+const himeOnlyOf = d => toFlag(d?.himeOnly) === 1;
 /* 倍枠極限 = 部隊内武将の初期スキルLV(10 + TR)の合計 ÷ 10。通常枠は1倍 */
 const mulInitLv = d => mulByOf(d) === 'initlv';
 const INIT_LV_BASE = 10;
@@ -254,6 +259,7 @@ function normalizeSkill(d) {
     muzin: effsOf(d).muzin ? Math.max(0, ...d.trs.map(t => N(t.muzin))) : 0,
     xskill: toFlag(d.init) ? 0 : toFlag(d.xskill),
     noAdd: toFlag(d.noAdd),
+    ...(himeOnlyOf(d) ? { himeOnly: 1 } : {}),
     coefBy: coefByOf(d),
     ...(coefByOf(d) === 'branch'
       ? {
