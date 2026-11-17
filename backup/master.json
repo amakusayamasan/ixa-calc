@@ -135,6 +135,51 @@
    "side": "攻撃",
    "troops": 6100
   },
+  "n10082_ddru": {
+   "baseDef": 1280,
+   "baseStat": 1090,
+   "cost": 5.5,
+   "growth": 49,
+   "growthDef": 74,
+   "hime": 1,
+   "initName": "神鬼弄",
+   "kengou": 0,
+   "name": "フランチェスカ",
+   "no": 10082,
+   "rarity": "天",
+   "side": "防御",
+   "troops": 5350
+  },
+  "n1187_562i": {
+   "baseDef": 1100,
+   "baseStat": 1100,
+   "cost": 0,
+   "growth": 42,
+   "growthDef": 42,
+   "hime": 0,
+   "initName": "魑魅魍魎ノ界",
+   "kengou": 0,
+   "name": "宇喜多直家",
+   "no": 1187,
+   "rarity": "天",
+   "side": "防御",
+   "troops": 2400
+  },
+  "n1235_mkx0": {
+   "baseDef": 1100,
+   "baseStat": 1190,
+   "cost": 5,
+   "growth": 62,
+   "growthDef": 42,
+   "hime": 0,
+   "initName": "通常3倍",
+   "kengou": 0,
+   "name": "細川忠興",
+   "no": 1235,
+   "rarity": "天",
+   "side": "攻撃",
+   "troops": 4860
+  },
   "n1239_tnvx": {
    "baseDef": 1260,
    "baseStat": 1260,
@@ -195,6 +240,21 @@
    "side": "攻撃",
    "troops": 5400
   },
+  "n1276_anyr": {
+   "baseDef": 1100,
+   "baseStat": 1250,
+   "cost": 5.5,
+   "growth": 71,
+   "growthDef": 50,
+   "hime": 0,
+   "initName": "覇槍ノ武威",
+   "kengou": 0,
+   "name": "結城秀康",
+   "no": 1276,
+   "rarity": "天",
+   "side": "攻撃",
+   "troops": 5250
+  },
   "n1280_m5n0": {
    "baseDef": 1230,
    "baseStat": 1050,
@@ -239,6 +299,21 @@
    "rarity": "天",
    "side": "防御",
    "troops": 5500
+  },
+  "n1296_my77": {
+   "baseDef": 1100,
+   "baseStat": 1250,
+   "cost": 5.5,
+   "growth": 72,
+   "growthDef": 51,
+   "hime": 0,
+   "initName": "覇道ノ泰斗",
+   "kengou": 0,
+   "name": "北条早雲",
+   "no": 1296,
+   "rarity": "天",
+   "side": "攻撃",
+   "troops": 5300
   },
   "n1298_evit": {
    "baseDef": 1220,
@@ -285,6 +360,21 @@
    "side": "攻撃",
    "troops": 6100
   },
+  "n1311_j9gd": {
+   "baseDef": 1310,
+   "baseStat": 1230,
+   "cost": 6,
+   "growth": 66,
+   "growthDef": 84,
+   "hime": 0,
+   "initName": "蛇神幻計",
+   "kengou": 0,
+   "name": "斎藤道三",
+   "no": 1311,
+   "rarity": "覇・天",
+   "side": "防御",
+   "troops": 5500
+  },
   "n1312_np52": {
    "baseDef": 1200,
    "baseStat": 1310,
@@ -314,6 +404,36 @@
    "rarity": "天",
    "side": "防御",
    "troops": 5340
+  },
+  "n1317_jul1": {
+   "baseDef": 1090,
+   "baseStat": 1280,
+   "cost": 5.5,
+   "growth": 74,
+   "growthDef": 49,
+   "hime": 0,
+   "initName": "凶狂威令",
+   "kengou": 0,
+   "name": "細川晴元",
+   "no": 1317,
+   "rarity": "天",
+   "side": "攻撃",
+   "troops": 5350
+  },
+  "n1318_su8l": {
+   "baseDef": 1050,
+   "baseStat": 1260,
+   "cost": 4,
+   "growth": 72,
+   "growthDef": 48,
+   "hime": 0,
+   "initName": "焔天滅刻",
+   "kengou": 0,
+   "name": "武田晴信",
+   "no": 1318,
+   "rarity": "天",
+   "side": "攻撃",
+   "troops": 4750
   },
   "n1321_uuv6": {
    "baseDef": 1080,
@@ -373,6 +493,36 @@
    "side": "攻撃・防御",
    "troops": 25000
   },
+  "n2414_y27d": {
+   "baseDef": 1020,
+   "baseStat": 1050,
+   "cost": 4,
+   "growth": 48,
+   "growthDef": 26,
+   "hime": 0,
+   "initName": "通常3倍",
+   "kengou": 0,
+   "name": "蒲生郷成",
+   "no": 2414,
+   "rarity": "極",
+   "side": "攻撃",
+   "troops": 3760
+  },
+  "n2437_hzkq": {
+   "baseDef": 1050,
+   "baseStat": 1140,
+   "cost": 4,
+   "growth": 40,
+   "growthDef": 35,
+   "hime": 0,
+   "initName": "通常3倍",
+   "kengou": 0,
+   "name": "佐竹義重",
+   "no": 2437,
+   "rarity": "極",
+   "side": "攻撃",
+   "troops": 3850
+  },
   "n2491_j518": {
    "baseDef": 1300,
    "baseStat": 1040,
@@ -403,6 +553,36 @@
    "side": "防御",
    "troops": 4210
   },
+  "n2565_35z7": {
+   "baseDef": 1120,
+   "baseStat": 1220,
+   "cost": 5,
+   "growth": 64,
+   "growthDef": 50,
+   "hime": 0,
+   "initName": "通常3倍",
+   "kengou": 0,
+   "name": "藤堂高虎",
+   "no": 2565,
+   "rarity": "極",
+   "side": "攻撃",
+   "troops": 4750
+  },
+  "n2566_gzn5": {
+   "baseDef": 1180,
+   "baseStat": 1060,
+   "cost": 2,
+   "growth": 46,
+   "growthDef": 55,
+   "hime": 0,
+   "initName": "天魔ノ寵愛",
+   "kengou": 0,
+   "name": "吉乃",
+   "no": 2566,
+   "rarity": "極",
+   "side": "防御",
+   "troops": 3000
+  },
   "n2602_0xib": {
    "baseDef": 2000,
    "baseStat": 1800,
@@ -417,6 +597,51 @@
    "rarity": "極",
    "side": "防御",
    "troops": 4990
+  },
+  "n2796_5sef": {
+   "baseDef": 990,
+   "baseStat": 990,
+   "cost": 2,
+   "growth": 34,
+   "growthDef": 34,
+   "hime": 1,
+   "initName": "義神ノ抱擁",
+   "kengou": 0,
+   "name": "綾御前",
+   "no": 2796,
+   "rarity": "極",
+   "side": "防御",
+   "troops": 2700
+  },
+  "n2853_fq68": {
+   "baseDef": 2080,
+   "baseStat": 1780,
+   "cost": 5,
+   "growth": 129,
+   "growthDef": 158,
+   "hime": 0,
+   "initName": "闇払ノ秘剣",
+   "kengou": 1,
+   "name": "富田勢源",
+   "no": 2853,
+   "rarity": "極",
+   "side": "防御",
+   "troops": 5600
+  },
+  "n2988_15bj": {
+   "baseDef": 1040,
+   "baseStat": 1000,
+   "cost": 4,
+   "growth": 29,
+   "growthDef": 32,
+   "hime": 0,
+   "initName": "幻惑の瞳術",
+   "kengou": 0,
+   "name": "甲賀弦之介",
+   "no": 2988,
+   "rarity": "極",
+   "side": "防御",
+   "troops": 3740
   }
  },
  "skills": {
@@ -3978,6 +4203,696 @@
      "costCut": 7,
      "speed": 200,
      "tr": 5
+    }
+   ],
+   "xskill": 0
+  },
+  "smwj4smbmiffz": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": false,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": true,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "魑魅魍魎ノ界",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "防御",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 80,
+     "coef": 0,
+     "tr": 0
+    }
+   ],
+   "xskill": 0
+  },
+  "smwj4ws7bfo8y": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": false,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": true,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "天魔ノ寵愛",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "防御",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 160,
+     "coef": 0,
+     "tr": 0
+    }
+   ],
+   "xskill": 0
+  },
+  "smwj50pxbdv6x": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": false,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": true,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "神鬼弄",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "防御",
+   "tbBy": "hime",
+   "tbSelf": 0,
+   "trs": [
+    {
+     "base": 0,
+     "coef": 0,
+     "tbCoef": 4.5,
+     "totalBuff": 25,
+     "tr": 0
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "tbCoef": 5,
+     "totalBuff": 26,
+     "tr": 1
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "tbCoef": 5.5,
+     "totalBuff": 27,
+     "tr": 2
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "tbCoef": 6,
+     "totalBuff": 28,
+     "tr": 3
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "tbCoef": 6.5,
+     "totalBuff": 29,
+     "tr": 4
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "tbCoef": 7,
+     "totalBuff": 30,
+     "tr": 5
+    }
+   ],
+   "xskill": 0
+  },
+  "smwj54mbx8yb9": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": true,
+    "mul": false,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": true,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "蛇神幻計",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "防御",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 55,
+     "tr": 0
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 58,
+     "tr": 1
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 62,
+     "tr": 2
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 67,
+     "tr": 3
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 73,
+     "tr": 4
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 80,
+     "tr": 5
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "totalBuff": 84,
+     "tr": 6
+    }
+   ],
+   "xskill": 0
+  },
+  "smwj57xu5ewwn": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": true,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": false,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "義神ノ抱擁",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "防御",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 0,
+     "coef": 0,
+     "tr": 0
+    }
+   ],
+   "xskill": 0
+  },
+  "smwj5bhmboy9a": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": true,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": false,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "幻惑の瞳術",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "防御",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 0,
+     "coef": 0,
+     "tr": 0
+    }
+   ],
+   "xskill": 0
+  },
+  "smwj5umb0xqok": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": true,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "initlv",
+   "muzin": 0,
+   "name": "闇払ノ秘剣",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "防御",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 0,
+     "coef": 0,
+     "tr": 0
+    }
+   ],
+   "xskill": 0
+  },
+  "smwju5r2b4z10": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": true,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "覇道ノ泰斗",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "攻撃",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 500,
+     "coef": 0,
+     "mulLimit": 2,
+     "mulNormal": 2,
+     "tr": 0
+    },
+    {
+     "base": 540,
+     "coef": 0,
+     "mulLimit": 2.1,
+     "mulNormal": 2.1,
+     "tr": 1
+    },
+    {
+     "base": 600,
+     "coef": 0,
+     "mulLimit": 2.2,
+     "mulNormal": 2.2,
+     "tr": 2
+    },
+    {
+     "base": 670,
+     "coef": 0,
+     "mulLimit": 2.3,
+     "mulNormal": 2.3,
+     "tr": 3
+    },
+    {
+     "base": 750,
+     "coef": 0,
+     "mulLimit": 2.4,
+     "mulNormal": 2.4,
+     "tr": 4
+    },
+    {
+     "base": 840,
+     "coef": 0,
+     "mulLimit": 2.5,
+     "mulNormal": 2.5,
+     "tr": 5
+    },
+    {
+     "base": 1000,
+     "coef": 0,
+     "mulLimit": 2.6,
+     "mulNormal": 2.6,
+     "tr": 6
+    }
+   ],
+   "xskill": 0
+  },
+  "smwjue4nrh78b": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": true,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "凶狂威令",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "攻撃",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 510,
+     "coef": 0,
+     "mulLimit": 3.5,
+     "mulNormal": 1,
+     "tr": 0
+    },
+    {
+     "base": 550,
+     "coef": 0,
+     "mulLimit": 3.6,
+     "mulNormal": 1,
+     "tr": 1
+    },
+    {
+     "base": 630,
+     "coef": 0,
+     "mulLimit": 3.8,
+     "mulNormal": 1,
+     "tr": 2
+    },
+    {
+     "base": 730,
+     "coef": 0,
+     "mulLimit": 4,
+     "mulNormal": 1,
+     "tr": 3
+    },
+    {
+     "base": 850,
+     "coef": 0,
+     "mulLimit": 4.2,
+     "mulNormal": 1,
+     "tr": 4
+    },
+    {
+     "base": 990,
+     "coef": 0,
+     "mulLimit": 4.5,
+     "mulNormal": 1,
+     "tr": 5
+    },
+    {
+     "base": 1180,
+     "coef": 0,
+     "mulLimit": 5,
+     "mulNormal": 1,
+     "tr": 6
+    }
+   ],
+   "xskill": 0
+  },
+  "smwjv8px847uu": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": true,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "焔天滅刻",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "攻撃",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 0,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 2.5,
+     "tr": 0
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 2.6,
+     "tr": 1
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 2.7,
+     "tr": 2
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 2.8,
+     "tr": 3
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 2.9,
+     "tr": 4
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 3,
+     "tr": 5
+    },
+    {
+     "base": 0,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 3.1,
+     "tr": 6
+    }
+   ],
+   "xskill": 0
+  },
+  "smwjwr7m12sbi": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": true,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "覇槍ノ武威",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "攻撃",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 200,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 3,
+     "tr": 0
+    },
+    {
+     "base": 280,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 3,
+     "tr": 1
+    },
+    {
+     "base": 400,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 3,
+     "tr": 2
+    },
+    {
+     "base": 550,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 3,
+     "tr": 3
+    },
+    {
+     "base": 730,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 3,
+     "tr": 4
+    },
+    {
+     "base": 940,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 3,
+     "tr": 5
+    }
+   ],
+   "xskill": 0
+  },
+  "smwjwy6lujuxo": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": false,
+    "mul": true,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "通常3倍",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "攻撃",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 0,
+     "coef": 0,
+     "mulLimit": 1,
+     "mulNormal": 3,
+     "tr": 0
     }
    ],
    "xskill": 0
