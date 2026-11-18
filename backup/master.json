@@ -3705,6 +3705,7 @@
   "smwgwbbmyqgdz": {
    "coefBy": "people",
    "effs": {
+    "cut": false,
     "dup": false,
     "enemy": false,
     "fukutsu": false,
@@ -3712,15 +3713,18 @@
     "leader": false,
     "mul": true,
     "muzin": false,
+    "sadd": false,
     "self": false,
     "speed": false,
     "split": false,
     "stat": false,
+    "tmax": false,
     "total": false,
     "troop": false
    },
+   "himeOnly": 1,
    "init": 1,
-   "mulBy": "fixed",
+   "mulBy": "hime4",
    "muzin": 0,
    "name": "冥妃神鈴戟",
    "noAdd": 1,
@@ -4892,6 +4896,32 @@
      "coef": 0,
      "mulLimit": 1,
      "mulNormal": 3,
+     "tr": 0
+    }
+   ],
+   "xskill": 0
+  },
+  "smwkpo4oiwoyk": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "fukutsu": false,
+    "hisho": false,
+    "muzin": false,
+    "speed": false,
+    "split": false,
+    "tmax": false
+   },
+   "init": 0,
+   "muzin": 0,
+   "name": "六字の采配",
+   "noAdd": 0,
+   "side": "攻撃",
+   "trs": [
+    {
+     "base": 30,
+     "coef": 0,
      "tr": 0
     }
    ],
