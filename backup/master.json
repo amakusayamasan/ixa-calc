@@ -1,5 +1,20 @@
 {
  "cards": {
+  "n10019_cztk": {
+   "baseDef": 1210,
+   "baseStat": 1700,
+   "cost": 5,
+   "growth": 95,
+   "growthDef": 52,
+   "hime": 0,
+   "initName": "夢幻神童",
+   "kengou": 0,
+   "name": "今川義元",
+   "no": 10019,
+   "rarity": "覇・天",
+   "side": "攻撃",
+   "troops": 4680
+  },
   "n10046_4966": {
    "baseDef": 1210,
    "baseStat": 1210,
@@ -1137,17 +1152,20 @@
   "smwew8mos6tjx": {
    "coefBy": "people",
    "effs": {
+    "cut": false,
     "dup": false,
     "enemy": false,
     "fukutsu": false,
     "hisho": true,
-    "leader": false,
+    "leader": true,
     "mul": false,
     "muzin": false,
+    "sadd": false,
     "self": false,
     "speed": false,
     "split": false,
     "stat": true,
+    "tmax": false,
     "total": false,
     "troop": false
    },
@@ -4922,6 +4940,45 @@
     {
      "base": 30,
      "coef": 0,
+     "tr": 0
+    }
+   ],
+   "xskill": 0
+  },
+  "smwm47q0vgumh": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": true,
+    "leader": true,
+    "mul": false,
+    "muzin": false,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": true,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 0,
+   "name": "夢幻神童",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "攻撃",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 150,
+     "coef": 0,
+     "hisho": 8,
+     "statBuff": 2.5,
      "tr": 0
     }
    ],
