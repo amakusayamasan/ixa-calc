@@ -98,7 +98,7 @@ function initEff(c, t, i) {
   if (t?.loOff) return 0;
   const v = initBase(c, t, i);
   if (!muzinOn() || c?.rarity === '傑') return v;
-  return cardMuzin(c, t?.tr) > 0 ? v * 2 : 0;
+  return cardMuzin(c, t?.tr) > 0 ? v * muzinX() : 0;
 }
 /* 無尽が有効で、初期スキルに無尽がない武将は、初期スキル由来の効果がすべて無効:
    総攻バフ・素攻バフ・倍枠通常・倍枠極限を1(等倍)として扱う */

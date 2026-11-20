@@ -243,9 +243,9 @@ const limX = sel => (isMimic(M.skills.get(sel.id)) ? 1 : 1.2);
 /* 無尽でスキル効果が何倍になるか(k: s1 / s2 / lim) */
 function muzinMul(sel, k) {
   if (!muzinOn()) return 1;
-  if (k === 'lim') return 2;
+  if (k === 'lim') return muzinX();
   const s = M.skills.get(sel.id);
-  return skillMuzin(s, sel.tr) > 0 ? 2 : 1;
+  return skillMuzin(s, sel.tr) > 0 ? muzinX() : 1;
 }
 /* 重複上限(スキルの特殊効果のチェック「重複上限」)の設定。部隊内でどれを外すかは unit.js */
 const dupOn = d =>

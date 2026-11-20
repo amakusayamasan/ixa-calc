@@ -43,6 +43,7 @@ const MODES = {
     jbIn: 'defIn',
     jbOut: 'defOut',
     muzinNo: '1299',
+    muzinTr6: 2.1, // 石田三成(1299)がTR6のときは無尽の倍率が2.1倍
     storeKey: 'ixa-form-def-v1',
     statOf: (c, hei) => N(c.baseDef) + (hei ? 0 : N(c.growthDef) * STAT_FACTOR),
   },
@@ -50,6 +51,8 @@ const MODES = {
 let mode = 'atk';
 const MD = () => MODES[mode];
 const muzinOn = () => !!form && String(M.cards.get(form.slots[0].card)?.no ?? '') === MD().muzinNo;
+/* 無尽の倍率:ふつうは2倍。部隊長の無尽武将がTR6で、その部隊に TR6 の倍率があればその倍率(防御の石田三成は2.1倍) */
+const muzinX = () => (muzinOn() && MD().muzinTr6 && N(form.slots[0].tr) >= 6 ? MD().muzinTr6 : 2);
 const REI_TROOPS = 2000;
 /* レアリティで増える兵数(武将マスタの兵数に足す):傑は対象外、剣豪は 1600 だけ、覇・天は 1200+1600、それ以外は 600+1600 */
 const RARITY_TROOPS = { '覇・天': 1200 + 1600, 傑: 0 };

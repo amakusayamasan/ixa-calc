@@ -104,7 +104,7 @@ function calc() {
     sl.filter(s => s.c && (cardMuzin(s.c, s.tr) > 0 || mz(s.s1) || mz(s.s2) || mz(s.lim))).length,
   );
   /* 無尽部隊では、無尽を持つ武将(傑以外)の上乗せ分は2倍 */
-  const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c, s.tr) > 0 ? 2 : 1);
+  const tbMul = s => (muzinOn() && s.c?.rarity !== '傑' && cardMuzin(s.c, s.tr) > 0 ? muzinX() : 1);
   /* 部隊内の姫・剣豪・対象兵科・兵種の数(数え方は unit.js の unitCount) */
   const countN = i => {
     const r = sl[i].raw;
@@ -199,7 +199,7 @@ function skillEffect(i, k) {
     : '';
   const mz = muzinMul(sel, k),
     tag =
-      (mz > 1 ? ' <span class="mz">無尽×2</span>' : '') +
+      (mz > 1 ? ` <span class="mz">無尽×${fmt(mz, 2)}</span>` : '') +
       (cn != null
         ? ` <span class="mz cn">${COEF_SHORT[coefByOf(sk)]}${coefByOf(sk) === 'speed' ? fmt(cn, 2) : cn}${coefMax(sk) ? `・係数TR${maxTrOf(sel.id)}` : ''}</span>`
         : '') +
@@ -220,7 +220,7 @@ function breakdownHtml(x, r) {
       ? '重複上限のため無効'
       : r.muzin && x.initRaw && x.init !== x.initRaw
         ? x.init
-          ? '無尽×2'
+          ? `無尽×${fmt(muzinX(), 2)}`
           : '無尽なしで無効'
         : '';
   const lines = [
@@ -268,7 +268,7 @@ function breakdownHtml(x, r) {
     [
       `総${m.st}バフ`,
       '×' + fmt(x.tb, 2),
-      x.tbMc != null ? `${x.tbKind}${x.tbMc}人${x.tbMul > 1 ? '・無尽×2' : ''}` : '',
+      x.tbMc != null ? `${x.tbKind}${x.tbMc}人${x.tbMul > 1 ? `・無尽×${fmt(x.tbMul, 2)}` : ''}` : '',
     ],
   ];
   return lines
