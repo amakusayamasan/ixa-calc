@@ -345,6 +345,21 @@
    "side": "攻撃",
    "troops": 5230
   },
+  "n1299_jx3j": {
+   "baseDef": 1310,
+   "baseStat": 1230,
+   "cost": 6,
+   "growth": 66,
+   "growthDef": 82,
+   "hime": 0,
+   "initName": "義戦ノ旗手",
+   "kengou": 0,
+   "name": "石田三成",
+   "no": 1299,
+   "rarity": "覇・天",
+   "side": "防御",
+   "troops": 5450
+  },
   "n1304_0u03": {
    "baseDef": 1270,
    "baseStat": 1090,
@@ -4980,6 +4995,80 @@
      "hisho": 8,
      "statBuff": 2.5,
      "tr": 0
+    }
+   ],
+   "xskill": 0
+  },
+  "smwp2a9ja0778": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "enemy": false,
+    "fukutsu": false,
+    "hisho": false,
+    "leader": true,
+    "mul": false,
+    "muzin": true,
+    "sadd": false,
+    "self": false,
+    "speed": false,
+    "split": false,
+    "stat": false,
+    "tmax": false,
+    "total": false,
+    "troop": false
+   },
+   "init": 1,
+   "mulBy": "fixed",
+   "muzin": 1,
+   "name": "義戦ノ旗手",
+   "noAdd": 1,
+   "noMimic": 1,
+   "side": "防御",
+   "tbBy": "fixed",
+   "trs": [
+    {
+     "base": 360,
+     "coef": 0,
+     "muzin": 1,
+     "tr": 0
+    },
+    {
+     "base": 400,
+     "coef": 0,
+     "muzin": 1,
+     "tr": 1
+    },
+    {
+     "base": 475,
+     "coef": 0,
+     "muzin": 1,
+     "tr": 2
+    },
+    {
+     "base": 585,
+     "coef": 0,
+     "muzin": 1,
+     "tr": 3
+    },
+    {
+     "base": 730,
+     "coef": 0,
+     "muzin": 1,
+     "tr": 4
+    },
+    {
+     "base": 920,
+     "coef": 0,
+     "muzin": 1,
+     "tr": 5
+    },
+    {
+     "base": 1010,
+     "coef": 0,
+     "muzin": 1,
+     "tr": 6
     }
    ],
    "xskill": 0
