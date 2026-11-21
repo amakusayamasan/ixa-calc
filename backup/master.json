@@ -5072,6 +5072,57 @@
     }
    ],
    "xskill": 0
+  },
+  "smwp2rzo54oz9": {
+   "coefBy": "people",
+   "effs": {
+    "cut": false,
+    "dup": false,
+    "fukutsu": false,
+    "hisho": false,
+    "muzin": false,
+    "speed": false,
+    "split": false,
+    "tmax": false
+   },
+   "init": 0,
+   "muzin": 0,
+   "name": "皇天覇虎",
+   "noAdd": 0,
+   "side": "攻撃",
+   "trs": [
+    {
+     "base": 100,
+     "coef": 12.5,
+     "tr": 0
+    },
+    {
+     "base": 100,
+     "coef": 12.9,
+     "tr": 1
+    },
+    {
+     "base": 100,
+     "coef": 13.3,
+     "tr": 2
+    },
+    {
+     "base": 100,
+     "coef": 13.9,
+     "tr": 3
+    },
+    {
+     "base": 100,
+     "coef": 14.6,
+     "tr": 4
+    },
+    {
+     "base": 100,
+     "coef": 15.5,
+     "tr": 5
+    }
+   ],
+   "xskill": 0
   }
  },
  "soldiers": {
